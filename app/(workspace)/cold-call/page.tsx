@@ -1,0 +1,21 @@
+import { SectionHeader } from "@/components/common/section-header";
+import { ColdCallView } from "@/components/cold-call/cold-call-view";
+import { leadsApi } from "@/lib/api";
+import { PAGE_HEADERS } from "@/lib/constants";
+
+export default async function ColdCallPage({ searchParams }: PageProps<"/cold-call">) {
+  const sp = await searchParams;
+  const q = typeof sp.q === "string" ? sp.q : "";
+  const leads = await leadsApi.list({ q });
+
+  return (
+    <div>
+      <SectionHeader
+        eyebrow={PAGE_HEADERS.coldCall.eyebrow}
+        title={PAGE_HEADERS.coldCall.title}
+        subtitle={PAGE_HEADERS.coldCall.subtitle}
+      />
+      <ColdCallView initialLeads={leads} q={q} />
+    </div>
+  );
+}

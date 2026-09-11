@@ -1,0 +1,63 @@
+/* ---------------------------------------------------------------------------
+   Elipse Studio CRM — design tokens
+   Ported verbatim from app.py:93-120 (the Streamlit palette block).
+   Dark is the default theme, matching st.session_state["theme"] = "dark".
+   --------------------------------------------------------------------------- */
+
+:root {
+  /* Dark — default */
+  --bg: #0d0f12;
+  --card: #161920;
+  --border: #262b36;
+  --text: #f8fafc;
+  --muted: #94a3b8;
+  --accent: #e06842;
+  --accent-hover: #ea7a56;
+  --tag: #222733;
+  --input: #1c202a;
+  --sidebar: #0b0c0e;
+  --badge: #ef4444;
+
+  /* Semantic — identical across both themes (hardcoded inline in app.py) */
+  --success: #10b981;
+  --warn: #f59e0b;
+  --info: #3b82f6;
+  --danger: #ef4444;
+  --linkedin: #0a66c2;
+  --xray-bg: #1e293b;
+  --xray-text: #38bdf8;
+
+  /* Tinted pill backgrounds (rgba(<hue>, .12-.15) in app.py) */
+  --success-tint: rgba(16, 185, 129, 0.14);
+  --warn-tint: rgba(245, 158, 11, 0.14);
+  --info-tint: rgba(59, 130, 246, 0.14);
+  --danger-tint: rgba(239, 68, 68, 0.15);
+
+  /* Radii — 12 cards / 10 expanders / 8 buttons+inputs / 6 tags / 4 pills */
+  --radius-card: 12px;
+  --radius-panel: 10px;
+  --radius-control: 8px;
+  --radius-tag: 6px;
+  --radius-pill: 4px;
+
+  /* Shadows */
+  --shadow-card-hover: 0 4px 16px rgba(0, 0, 0, 0.06);
+  --shadow-overlay: 0 8px 30px rgba(0, 0, 0, 0.25);
+  --shadow-call: 0 2px 8px rgba(16, 185, 129, 0.25);
+  --shadow-linkedin: 0 2px 8px rgba(10, 102, 194, 0.3);
+}
+
+/* Editorial Warm Light Beige (Soft Sand Linen / Non-white) */
+[data-theme="light"] {
+  --bg: #f4efe6;
+  --card: #faf6ee;
+  --border: #e2d9cc;
+  --text: #1c1917;
+  --muted: #78716c;
+  --accent: #a84b2c;
+  --accent-hover: #8f3e23;
+  --tag: #eae2d5;
+  --input: #faf6ee;
+  --sidebar: #ebe3d6;
+  --badge: #c94528;
+}

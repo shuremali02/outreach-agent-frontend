@@ -1,0 +1,252 @@
+@import "tailwindcss";
+@import "../styles/tokens.css";
+
+/* Map tokens onto Tailwind v4 utilities: bg-card, text-muted, border-accent, ... */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-card: var(--card);
+  --color-border: var(--border);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-tag: var(--tag);
+  --color-input: var(--input);
+  --color-sidebar: var(--sidebar);
+  --color-badge: var(--badge);
+
+  --color-success: var(--success);
+  --color-warn: var(--warn);
+  --color-info: var(--info);
+  --color-danger: var(--danger);
+  --color-linkedin: var(--linkedin);
+  --color-xray-bg: var(--xray-bg);
+  --color-xray-text: var(--xray-text);
+
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-playfair), Georgia, serif;
+  --font-mono: var(--font-jetbrains), "SF Mono", Consolas, Menlo, monospace;
+
+  --radius-card: 12px;
+  --radius-panel: 10px;
+  --radius-control: 8px;
+  --radius-tag: 6px;
+  --radius-pill: 4px;
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  body {
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-playfair), Georgia, serif;
+    color: var(--text);
+    letter-spacing: -0.02em;
+  }
+
+  /* Focus ring — app.py used border-color:accent + 0 0 0 1px accent */
+  :focus-visible {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent);
+  }
+
+  ::selection {
+    background-color: var(--accent);
+    color: #fff;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Named classes ported 1:1 from the app.py CSS block.
+   Only these ~22 survive; the Streamlit-DOM neutralisation rules are dropped.
+   --------------------------------------------------------------------------- */
+@layer components {
+  .serif-title {
+    font-family: var(--font-playfair), Georgia, serif;
+    color: var(--text);
+    letter-spacing: -0.02em;
+  }
+
+  .hero-heading {
+    font-family: var(--font-playfair), Georgia, serif;
+    font-size: 2.75rem;
+    font-weight: 600;
+    line-height: 1.15;
+    color: var(--text);
+    margin-bottom: 0.25rem;
+  }
+
+  .date-eyebrow {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.5rem;
+  }
+
+  .subtitle {
+    font-size: 1.05rem;
+    color: var(--muted);
+    margin-bottom: 1.5rem;
+  }
+
+  .logo-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0.5rem 0 1.5rem 0;
+  }
+
+  .logo-oval {
+    width: 22px;
+    height: 14px;
+    border: 2px solid var(--accent);
+    border-radius: 50%;
+    transform: rotate(-15deg);
+    display: inline-block;
+  }
+
+  .logo-text {
+    font-family: var(--font-playfair), Georgia, serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .logo-sub {
+    font-size: 0.95rem;
+    color: var(--muted);
+    font-weight: 400;
+  }
+
+  .crm-card {
+    background-color: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    transition: all 0.2s ease;
+  }
+
+  .crm-card-hover:hover {
+    border-color: var(--accent);
+    box-shadow: var(--shadow-card-hover);
+  }
+
+  .metric-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.4rem;
+  }
+
+  .metric-val {
+    font-size: 2.1rem;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.1;
+    margin-bottom: 0.35rem;
+  }
+
+  .metric-sub {
+    font-size: 0.8rem;
+    color: var(--muted);
+  }
+
+  .stage-tag {
+    display: inline-block;
+    padding: 3px 9px;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    background-color: var(--tag);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+
+  .badge-count {
+    background-color: var(--badge);
+    color: #fff;
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 10px;
+    margin-left: 6px;
+  }
+
+  .terminal-ticker {
+    font-family: var(--font-jetbrains), "SF Mono", Consolas, Menlo, monospace;
+    font-size: 1.85rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.2;
+  }
+
+  .terminal-pill {
+    font-family: var(--font-jetbrains), Consolas, monospace;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 4px;
+    display: inline-block;
+  }
+
+  .terminal-pill-green {
+    background-color: var(--success-tint);
+    color: var(--success);
+  }
+
+  .terminal-pill-amber {
+    background-color: var(--warn-tint);
+    color: var(--warn);
+  }
+
+  .terminal-pill-blue {
+    background-color: var(--info-tint);
+    color: var(--info);
+  }
+
+  .comment-card {
+    background-color: var(--tag);
+    border-left: 3px solid var(--accent);
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 8px;
+  }
+
+  .comment-author {
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: var(--text);
+  }
+
+  .comment-time {
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin-left: 6px;
+  }
+
+  .comment-body {
+    font-size: 0.88rem;
+    color: var(--text);
+    margin-top: 4px;
+    line-height: 1.45;
+  }
+}
