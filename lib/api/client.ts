@@ -69,17 +69,33 @@ async function request<T>(
   init: RequestInit & { query?: Query } = {},
 ): Promise<T> {
   const { query, ...rest } = init;
-  const url = `${baseUrl()}${withQuery(path, query)}`;
+  const base = baseUrl();
+  const url = `${base}${withQuery(path, query)}`;
 
-  const res = await fetch(url, {
-    ...rest,
-    headers: {
-      "Content-Type": "application/json",
-      ...(rest.headers ?? {}),
-    },
-    // Always read through; the query cache decides what is fresh.
-    cache: "no-store",
-  });
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      ...rest,
+      headers: {
+        "Content-Type": "application/json",
+        ...(rest.headers ?? {}),
+      },
+      // Always read through; the query cache decides what is fresh.
+      cache: "no-store",
+    });
+  } catch {
+    // The raw error here is a bare "TypeError: fetch failed" -- true for a
+    // dead backend, a wrong port, or (Windows) "localhost" resolving to the
+    // IPv6 loopback when uvicorn only binds IPv4, none of which a sales rep
+    // reading error.tsx's error.message can act on. Name what's actually
+    // wrong and how to fix it instead.
+    throw new ApiRequestError(
+      `Can't reach the backend at ${base}. Make sure outreach-backend is running ` +
+        `(uv run uvicorn app.main:app --reload --port 8000) and that ` +
+        "NEXT_PUBLIC_API_URL in .env.local uses 127.0.0.1, not localhost.",
+      0,
+    );
+  }
 
   if (!res.ok) {
     let detail: string | undefined;

@@ -13,7 +13,7 @@ import { JobProgress } from "./job-progress";
 import { TabButton } from "@/components/common/tab-button";
 import {
   AI_DISCOVERY,
-  APOLLO_IMPORT,
+  // APOLLO_IMPORT, -- only used by the commented-out Apollo tab below
   CSV_IMPORT,
   INGEST_TABS,
   INGEST_TITLE,
@@ -53,13 +53,15 @@ export function IngestDrawer() {
   const [aiCount, setAiCount] = useState(8);
   const ai = useJobRunner();
 
-  // Apollo
-  const [apolloPrompt, setApolloPrompt] = useState<string>(APOLLO_IMPORT.defaultValue);
-  const [apolloLimit, setApolloLimit] = useState(30);
-  const [apolloKey, setApolloKey] = useState("");
-  const [apolloScrape, setApolloScrape] = useState(false);
-  const [apolloEnrich, setApolloEnrich] = useState(false);
-  const apollo = useJobRunner();
+  // Apollo tab commented out (see the TabButton/Tabs.Content below and
+  // cold-call-view.tsx) -- no paid Apollo key, not used. Uncomment this
+  // block together with them to bring it back.
+  // const [apolloPrompt, setApolloPrompt] = useState<string>(APOLLO_IMPORT.defaultValue);
+  // const [apolloLimit, setApolloLimit] = useState(30);
+  // const [apolloKey, setApolloKey] = useState("");
+  // const [apolloScrape, setApolloScrape] = useState(false);
+  // const [apolloEnrich, setApolloEnrich] = useState(false);
+  // const apollo = useJobRunner();
 
   // CSV
   const [csvText, setCsvText] = useState("");
@@ -88,7 +90,7 @@ export function IngestDrawer() {
             <Tabs.List className="mb-4 flex gap-2">
               <TabButton value="ai">{INGEST_TABS.ai}</TabButton>
               <TabButton value="csv">{INGEST_TABS.csv}</TabButton>
-              <TabButton value="apollo">{INGEST_TABS.apollo}</TabButton>
+              {/* <TabButton value="apollo">{INGEST_TABS.apollo}</TabButton> -- see commented state above */}
             </Tabs.List>
 
             <Tabs.Content value="ai" className="flex flex-col gap-3">
@@ -172,6 +174,9 @@ export function IngestDrawer() {
               )}
             </Tabs.Content>
 
+            {/* Apollo tab commented out -- no paid key, not used. Uncomment
+                together with the TabButton above and the state block near
+                the top of this component to bring it back.
             <Tabs.Content value="apollo" className="flex flex-col gap-3">
               <p className="text-[0.85rem] text-muted">{APOLLO_IMPORT.intro}</p>
               <p
@@ -195,8 +200,6 @@ export function IngestDrawer() {
                 />
               </div>
               <Field label={APOLLO_IMPORT.keyLabel}>
-                {/* Never persisted client-side; sent with the request only.
-                    Blank falls back to APOLLO_API_KEY in the backend .env. */}
                 <Input
                   type="password"
                   value={apolloKey}
@@ -223,8 +226,6 @@ export function IngestDrawer() {
                       enrich: apolloEnrich,
                       payload: apolloPrompt,
                       limit: apolloLimit,
-                      // app.py:1723 passes the typed key through, falling back
-                      // to the server's own when the field is blank.
                       api_key: apolloKey.trim() || undefined,
                     }),
                   )
@@ -241,6 +242,7 @@ export function IngestDrawer() {
                 </p>
               )}
             </Tabs.Content>
+            */}
           </Tabs.Root>
         </div>
       )}

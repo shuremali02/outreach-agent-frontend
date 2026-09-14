@@ -4,6 +4,9 @@ import { leadsApi } from "@/lib/api";
 import type { PipelineStage } from "@/types";
 import { ALL_CATEGORIES, PAGE_HEADERS } from "@/lib/constants";
 
+// See cold-call/page.tsx.
+export const dynamic = "force-dynamic";
+
 export default async function PipelinePage({ searchParams }: PageProps<"/pipeline">) {
   const sp = await searchParams;
   const stage = (typeof sp.stage === "string" ? sp.stage : "all") as PipelineStage | "all";

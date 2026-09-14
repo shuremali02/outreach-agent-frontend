@@ -33,7 +33,11 @@ export function SystemStatusPanel({ initialData }: { initialData?: SystemStatus 
         label="SignalHire"
         value={data.signalhire ? "Connected" : "Not configured"}
       />
+      {/* Apollo row commented out, not deleted -- Apollo is not used (no key,
+          the Ingest drawer's Apollo tab is also commented out in
+          cold-call-view.tsx). Uncomment both together to bring it back.
       <Row dot={data.apollo ? "🟢" : "⚪"} label="Apollo.io" value={data.apollo ? "Connected" : "Not configured"} />
+      */}
       <Row
         dot={data.google_maps ? "🟢" : "⚪"}
         label="Google Maps"

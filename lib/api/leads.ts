@@ -27,6 +27,19 @@ export const enrichmentApi = {
   startScan: (leadId: number) => api.post<Job>("/jobs/scan", { lead_id: leadId }),
 
   /**
+   * Generate the phone script + objection matrix + email draft for this
+   * lead. One Gemini/Groq call, run manually per lead -- bulk search no
+   * longer generates this automatically for every candidate.
+   */
+  generateBattlecard: (leadId: number) => api.post<Lead>(`/leads/${leadId}/battlecard`),
+
+  /**
+   * Look up a missing company website via Google Places Text Search. No-op
+   * (no API call) server-side if the lead already has one.
+   */
+  findWebsite: (leadId: number) => api.post<Lead>(`/leads/${leadId}/find-website`),
+
+  /**
    * Every known decision maker, with provenance. Unlike decisionMakers() this is
    * not Hunter-specific and each row says where it came from.
    */

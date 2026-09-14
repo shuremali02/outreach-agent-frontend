@@ -51,7 +51,10 @@ export function LinkedInResearchPanel({ lead }: { lead: Lead }) {
           rel="noopener noreferrer"
           className="block rounded-[7px] bg-linkedin px-3 py-2 text-center text-[0.85rem] font-semibold text-white no-underline shadow-[var(--shadow-linkedin)]"
         >
-          🔗 Open LinkedIn (Apollo Reveal)
+          {/* Was "🔗 Open LinkedIn (Apollo Reveal)" in app.py -- this link
+              never calls Apollo, it just opens the saved URL, so the
+              "(Apollo Reveal)" suffix was misleading and is dropped here. */}
+          🔗 Open LinkedIn
         </a>
       ) : (
         <>
@@ -61,7 +64,9 @@ export function LinkedInResearchPanel({ lead }: { lead: Lead }) {
             rel="noopener noreferrer"
             className="block rounded-[7px] border border-linkedin bg-xray-bg px-3 py-2 text-center text-[0.85rem] font-semibold text-xray-text no-underline"
           >
-            🌐 Google X-Ray Search (Apollo Reveal)
+            {/* Was "🌐 Google X-Ray Search (Apollo Reveal)" in app.py -- this
+                is a manual Google search link, not an Apollo API call. */}
+            🌐 Google X-Ray Search
           </a>
           <a
             href={linkedInDirectSearchUrl(lead.contact_name, lead.company_name)}

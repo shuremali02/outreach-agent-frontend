@@ -273,6 +273,10 @@ export const BATTLECARD = {
   linkedInLink: "🔗 LinkedIn",
   linkedInSearchLink: "🔗 Search LinkedIn",
   editContact: "✏️ Edit Phone / LinkedIn",
+  // components/cold-call/battlecard.tsx -- click-to-reveal for
+  // HunterDecisionMakers, so a Call Desk page full of leads doesn't fire one
+  // GET /leads/{id}/contacts per visible card on load. No Streamlit analogue.
+  showContacts: "👥 Show decision-maker contacts",
   phoneLabel: "Direct Phone",
   phonePlaceholder: "+1 (555) 000-0000",
   linkedInLabel: "LinkedIn Profile URL",
@@ -283,6 +287,8 @@ export const BATTLECARD = {
   whyHelpsFallback:
     "High-ticket custom catalog converts higher with real-time 3D web builder.",
   scriptHeading: "🎯 Live 20-Second Phone Script (Read Verbatim)",
+  generateBattlecard: "✨ Generate AI battlecard",
+  generatingBattlecard: "Generating…",
   objectionsHeading: "🛡️ Live Objection Matrix & Rebuttals",
   noteLabel: "Call Notes / Follow-up Details",
   notePlaceholder: "e.g. Left voicemail · gatekeeper screened · callback Tue 2 PM",
@@ -344,13 +350,27 @@ export const DISPOSITIONS = [
 ] as const;
 
 /**
+ * components/cold-call/cold-call-view.tsx — splits the call queue into two
+ * headed sections instead of one flat list. No app.py analogue: a lead
+ * already called once (voicemail/callback) never leaves this queue, so a
+ * large queue buried a handful of brand-new leads among ones already worked.
+ */
+export const COLD_CALL_QUEUE = {
+  newHeading: (count: number) => `🆕 New Leads (${count})`,
+  followUpHeading: (count: number) => `📞 Follow-ups Due (${count})`,
+} as const;
+
+/**
  * app.py:877, 931, 1147, 1223, 1859, 2065, 2231, 2320 — empty and warning states.
  * These are what the sales team is used to reading; a shorter paraphrase drops
  * the instruction telling them what to do next.
  */
 export const EMPTY_STATES = {
-  coldCallQueue:
-    "🎯 No leads in this queue! Use the batch ingestion drawer above to pull verified leads from Apollo or drop a CSV file.",
+  // Was "...Use the batch ingestion drawer above to pull verified leads from
+  // Apollo or drop a CSV file." -- that drawer is commented out (see
+  // cold-call-view.tsx), so pointing to it left a dead end. Points at Lead
+  // Finder (AI Search / Google Maps) instead, which is how leads are sourced now.
+  coldCallQueue: "🎯 No leads in this queue! Use Lead Finder (AI Search or Google Maps) to find new leads.",
   pipeline:
     "No leads found for this filter combination. Try selecting 'All Categories' or use 'AI Lead Finder'.",
   contacts: (category: string) =>
@@ -363,6 +383,9 @@ export const EMPTY_STATES = {
   decisionMakers: (site: string) =>
     `No verified decision-maker emails found on Hunter.io for ${site}.`,
   noWebsite: "No website on this lead to scan.",
+  // components/enrichment/site-scan-panel.tsx -- shown after "Find website"
+  // (Google Places lookup) runs and comes back with nothing for this company.
+  websiteNotFound: "Could not find a website for this company on Google Maps.",
   noPhone: "No phone on file.",
   /** app.py:1859 — Cold Call Desk queue, reused for Today's priority list. */
   todayPriority:
@@ -412,8 +435,11 @@ export const WEEKLY_VELOCITY = {
 /** app.py:843-859 — render_linkedin_research_and_reveal_ui link labels. */
 export const LINKEDIN_PANEL = {
   research: "🤖 AI Research LinkedIn (Gemini Flash)",
-  open: "🔗 Open LinkedIn (Apollo Reveal)",
-  xray: "🌐 Google X-Ray Search (Apollo Reveal)",
+  // "(Apollo Reveal)" dropped -- these links never call Apollo, see
+  // components/enrichment/linkedin-panel.tsx. Note: open/xray below are
+  // currently unused -- linkedin-panel.tsx hardcodes its own copy of them.
+  open: "🔗 Open LinkedIn",
+  xray: "🌐 Google X-Ray Search",
   directSearch: "Or open in LinkedIn search bar",
   unresolved: "Could not resolve direct URL automatically. Use Google X-Ray link below.",
 } as const;

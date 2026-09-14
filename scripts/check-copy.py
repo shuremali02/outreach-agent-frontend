@@ -75,6 +75,26 @@ ALLOWED = {
     "Sales & marketing",
     "People & HR",
     "Spend one SignalHire credit for a direct email and phone",
+    # lib/api/client.ts — a network-level fetch failure (backend down, wrong
+    # port, or "localhost" resolving to the IPv6 loopback on Windows) is
+    # named explicitly instead of surfacing a bare "TypeError: fetch failed".
+    "NEXT_PUBLIC_API_URL in .env.local uses 127.0.0.1, not localhost.",
+    # lib/constants.ts EMPTY_STATES.coldCallQueue — rewritten to point at Lead
+    # Finder instead of the now-commented-out Apollo/CSV ingestion drawer.
+    "🎯 No leads in this queue! Use Lead Finder (AI Search or Google Maps) to find new leads.",
+    # components/cold-call/battlecard.tsx — phone script / objection matrix
+    # generation moved from automatic (inside bulk /jobs/qualify(-maps)) to a
+    # manual per-lead button, matching the existing Scan site / Reveal
+    # pattern. No Streamlit analogue: app.py always generated it inline.
+    "✨ Generate AI battlecard",
+    # components/enrichment/site-scan-panel.tsx -- "Find website" (Google Places
+    # lookup) replaces the disabled Scan site button when a lead has no
+    # website yet, and its not-found message. No Streamlit analogue.
+    "🔎 Find website (Google Maps)",
+    "Could not find a website for this company on Google Maps.",
+    # components/cold-call/battlecard.tsx -- click-to-reveal for the
+    # decision-maker contacts panel (see lib/constants.ts BATTLECARD.showContacts).
+    "👥 Show decision-maker contacts",
 }
 
 CLASS_HINT = re.compile(

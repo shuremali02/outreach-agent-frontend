@@ -6,6 +6,10 @@ import { MetricCard } from "@/components/metrics/metric-card";
 import { leadsApi, metricsApi } from "@/lib/api";
 import { currency, num, todayEyebrow } from "@/lib/format";
 
+// See follow-ups/page.tsx -- no dynamic API here either, so this would fail
+// `next build` the same way once that page's error is fixed.
+export const dynamic = "force-dynamic";
+
 export default async function TodayPage() {
   const [leads, metrics, team] = await Promise.all([
     leadsApi.list(),

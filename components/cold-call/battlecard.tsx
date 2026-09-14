@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useUpdateLead, useCallOutcome } from "@/hooks/use-leads";
 import { LinkedInResearchPanel, HunterDecisionMakers, SiteScanPanel } from "@/components/enrichment";
 import { PhoneBadge } from "@/components/leads/phone-badge";
 import { Button } from "@/components/ui/button";
 import { Input, Field } from "@/components/ui/input";
+import { enrichmentApi } from "@/lib/api";
 import {
   currency, externalUrl, hasUsableEmail, telUrl, mailtoUrl,
   linkedInXrayUrl,
@@ -76,9 +78,21 @@ function EditContact({ lead }: { lead: Lead }) {
 }
 
 export function Battlecard({ lead }: { lead: Lead }) {
+  const qc = useQueryClient();
   const record = useCallOutcome();
+  const generate = useMutation({
+    mutationFn: () => enrichmentApi.generateBattlecard(lead.id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["leads"] }),
+  });
   const [note, setNote] = useState("");
   const [objectionsOpen, setObjectionsOpen] = useState(false);
+  // Every card in the Call Desk queue renders fully expanded (unlike the
+  // Contacts desk, where a card's contents only mount once expanded), so
+  // HunterDecisionMakers firing its GET /leads/{id}/contacts on mount meant
+  // one request per visible lead all at once -- 30 leads on screen, 30
+  // parallel calls. Gated behind a click, same progressive-disclosure
+  // pattern as objectionsOpen above.
+  const [contactsOpen, setContactsOpen] = useState(false);
   const [booked, setBooked] = useState(false);
   const bookedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -175,7 +189,17 @@ export function Battlecard({ lead }: { lead: Lead }) {
             </a>
           </div>
 
-          <HunterDecisionMakers lead={lead} />
+          {contactsOpen ? (
+            <HunterDecisionMakers lead={lead} />
+          ) : (
+            <button
+              type="button"
+              onClick={() => setContactsOpen(true)}
+              className="cursor-pointer text-left text-[0.85rem] font-semibold text-muted hover:text-accent"
+            >
+              {BATTLECARD.showContacts}
+            </button>
+          )}
           <SiteScanPanel lead={lead} />
 
           <div
@@ -189,9 +213,19 @@ export function Battlecard({ lead }: { lead: Lead }) {
 
         {/* Battlecard column */}
         <div className="flex flex-col gap-3">
-          <h4 className="text-[0.95rem] font-semibold">
-            {BATTLECARD.scriptHeading}
-          </h4>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h4 className="text-[0.95rem] font-semibold">
+              {BATTLECARD.scriptHeading}
+            </h4>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => generate.mutate()}
+              disabled={generate.isPending}
+            >
+              {generate.isPending ? BATTLECARD.generatingBattlecard : BATTLECARD.generateBattlecard}
+            </Button>
+          </div>
           <p
             className="rounded-[8px] bg-tag px-4 py-3 text-[0.95rem] leading-[1.55]"
             style={{ border: "1.5px solid var(--accent)" }}

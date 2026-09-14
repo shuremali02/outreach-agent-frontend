@@ -3,10 +3,15 @@
 import { useMemo, useState } from "react";
 import { useLeads } from "@/hooks/use-leads";
 import { Battlecard } from "./battlecard";
+// Re-enabled: the CSV Import tab is how a spreadsheet gets uploaded +
+// enriched (File > Download > CSV from Google Sheets/Excel, then drop the
+// .csv here). Its own Apollo tab stays commented out inside
+// ingest-drawer.tsx (no paid key, not used) -- only "AI Discovery" and "CSV
+// Import" render now.
 import { IngestDrawer } from "@/components/ingest/ingest-drawer";
 import { CategoryPills } from "@/components/leads/category-pills";
 import { TickerCard } from "@/components/metrics/ticker-card";
-import { CALL_QUEUE_STAGES, ALL_CATEGORIES } from "@/lib/constants";
+import { CALL_QUEUE_STAGES, ALL_CATEGORIES, COLD_CALL_QUEUE } from "@/lib/constants";
 import { currency, num } from "@/lib/format";
 import type { Lead } from "@/types";
 import { EMPTY_STATES } from "@/lib/constants";
@@ -28,6 +33,27 @@ export function ColdCallView({ initialLeads, q }: { initialLeads: Lead[]; q: str
   const filtered = useMemo(
     () => (category === ALL_CATEGORIES ? queue : queue.filter((l) => l.industry_tag === category)),
     [queue, category],
+  );
+
+  // Split, not one flat list: a lead already called once (voicemail/callback
+  // -> followup_due) stays in this same queue forever, mixed in with leads
+  // that have never been called (draft_ready) -- with a large queue that
+  // makes a handful of brand-new leads impossible to spot. New leads sort
+  // newest-first so the latest batch is always at the top; follow-ups sort
+  // oldest-touched-first so the longest-overdue callback surfaces first.
+  const newLeads = useMemo(
+    () =>
+      filtered
+        .filter((l) => l.pipeline_stage === "draft_ready")
+        .sort((a, b) => b.created_at.localeCompare(a.created_at)),
+    [filtered],
+  );
+  const followUps = useMemo(
+    () =>
+      filtered
+        .filter((l) => l.pipeline_stage === "followup_due")
+        .sort((a, b) => a.updated_at.localeCompare(b.updated_at)),
+    [filtered],
   );
 
   const verifiedLines = queue.filter(
@@ -69,9 +95,27 @@ export function ColdCallView({ initialLeads, q }: { initialLeads: Lead[]; q: str
         </p>
       )}
 
-      {filtered.map((lead) => (
-        <Battlecard key={lead.id} lead={lead} />
-      ))}
+      {newLeads.length > 0 && (
+        <div className="mb-4">
+          <h3 className="mb-2 text-[1.05rem] font-semibold">
+            {COLD_CALL_QUEUE.newHeading(newLeads.length)}
+          </h3>
+          {newLeads.map((lead) => (
+            <Battlecard key={lead.id} lead={lead} />
+          ))}
+        </div>
+      )}
+
+      {followUps.length > 0 && (
+        <div>
+          <h3 className="mb-2 text-[1.05rem] font-semibold">
+            {COLD_CALL_QUEUE.followUpHeading(followUps.length)}
+          </h3>
+          {followUps.map((lead) => (
+            <Battlecard key={lead.id} lead={lead} />
+          ))}
+        </div>
+      )}
     </>
   );
 }

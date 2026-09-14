@@ -31,6 +31,11 @@ export function SiteScanPanel({ lead }: { lead: Lead }) {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["leads"] }),
   });
 
+  const findWebsite = useMutation({
+    mutationFn: () => enrichmentApi.findWebsite(lead.id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["leads"] }),
+  });
+
   const { data: job } = useJob(jobId);
 
   // Derived, not stored — polling already stops once the job is terminal.
@@ -64,15 +69,26 @@ export function SiteScanPanel({ lead }: { lead: Lead }) {
   return (
     <div className="flex flex-col gap-2">
       <div className="grid grid-cols-2 gap-2">
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => start.mutate()}
-          disabled={scanning || !lead.company_website}
-          title={lead.company_website ? undefined : EMPTY_STATES.noWebsite}
-        >
-          {scanning ? "Scanning…" : "🔍 Scan site (3D / product intel)"}
-        </Button>
+        {lead.company_website ? (
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => start.mutate()}
+            disabled={scanning}
+          >
+            {scanning ? "Scanning…" : "🔍 Scan site (3D / product intel)"}
+          </Button>
+        ) : (
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => findWebsite.mutate()}
+            disabled={findWebsite.isPending}
+            title={EMPTY_STATES.noWebsite}
+          >
+            {findWebsite.isPending ? "Searching…" : "🔎 Find website (Google Maps)"}
+          </Button>
+        )}
         <Button
           variant="secondary"
           size="sm"
@@ -82,6 +98,15 @@ export function SiteScanPanel({ lead }: { lead: Lead }) {
           {enrich.isPending ? "Enriching…" : "✨ Deep enrich (Hunter + SignalHire)"}
         </Button>
       </div>
+
+      {findWebsite.isSuccess && !findWebsite.data?.company_website && (
+        <p className="text-[0.8rem] text-muted">{EMPTY_STATES.websiteNotFound}</p>
+      )}
+      {findWebsite.isError && (
+        <p className="text-[0.8rem] text-danger">
+          {findWebsite.error instanceof Error ? findWebsite.error.message : EMPTY_STATES.websiteNotFound}
+        </p>
+      )}
 
       {scanning && job && (
         <div>
