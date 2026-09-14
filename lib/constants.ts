@@ -380,8 +380,14 @@ export const EMPTY_STATES = {
   problems: "No problems recorded in this category. All clear!",
   comments:
     "No discussions yet. Share your thoughts, objection rebuttals, or solutions below!",
+  // Was "...found on Hunter.io for {site}." -- this list has been
+  // provider-neutral (SignalHire + ContactOut, not Hunter-only) since the
+  // contacts-panel rewrite. Points at the manual LinkedIn/X-Ray search
+  // already on the card above, since a company neither paid provider's
+  // database covers (common for small/niche/international businesses)
+  // genuinely has no automated path left -- see docs.md 2026-09-14.
   decisionMakers: (site: string) =>
-    `No verified decision-maker emails found on Hunter.io for ${site}.`,
+    `No decision maker found automatically for ${site}. Neither SignalHire nor ContactOut has this company -- use the LinkedIn research / Google X-Ray search above to find one manually.`,
   noWebsite: "No website on this lead to scan.",
   // components/enrichment/site-scan-panel.tsx -- shown after "Find website"
   // (Google Places lookup) runs and comes back with nothing for this company.

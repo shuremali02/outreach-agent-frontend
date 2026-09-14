@@ -93,7 +93,10 @@ export function ContactsPanel({ lead }: { lead: Lead }) {
       )}
 
       {!isLoading && contacts.length === 0 && (findPeople.isSuccess || findPeople.isError) && (
-        <p className="text-[0.8rem] text-muted">
+        <p
+          className="rounded-[8px] px-3 py-2 text-[0.8rem]"
+          style={{ background: "var(--warn-tint)", color: "var(--warn)" }}
+        >
           {EMPTY_STATES.decisionMakers(displayDomain(lead.company_website))}
         </p>
       )}
