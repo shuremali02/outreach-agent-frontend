@@ -334,7 +334,10 @@ export function Battlecard({ lead }: { lead: Lead }) {
               {DISPOSITIONS.map((d) => (
                 <Button
                   key={d.outcome}
-                  variant={"primary" in d && d.primary ? "primary" : "secondary"}
+                  // Orange only right after a meeting is actually booked (the
+                  // same 4s `booked` window the success toast above uses) --
+                  // not a permanent "this is the important button" highlight.
+                  variant={d.outcome === "meeting_booked" && booked ? "primary" : "secondary"}
                   size="sm"
                   title={d.help}
                   disabled={record.isPending}

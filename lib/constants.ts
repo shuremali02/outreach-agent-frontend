@@ -409,7 +409,6 @@ export const DISPOSITIONS = [
     outcome: "meeting_booked",
     label: "🎯 Booked!",
     help: "Qualified Meeting Booked! Advances to Pipeline stage.",
-    primary: true,
   },
 ] as const;
 

@@ -9,14 +9,15 @@ import { Battlecard } from "./battlecard";
 // ingest-drawer.tsx (no paid key, not used) -- only "AI Discovery" and "CSV
 // Import" render now.
 import { IngestDrawer } from "@/components/ingest/ingest-drawer";
-import { CategoryPills } from "@/components/leads/category-pills";
-import { CountryPills } from "@/components/leads/country-pills";
 import { TickerCard } from "@/components/metrics/ticker-card";
+import { Field, Select } from "@/components/ui/input";
 import {
   CALL_QUEUE_STAGES,
   ALL_CATEGORIES,
   ALL_COUNTRIES,
   UNKNOWN_COUNTRY,
+  STANDARD_CATEGORIES,
+  COUNTRIES,
   COLD_CALL_QUEUE,
 } from "@/lib/constants";
 import { currency, num } from "@/lib/format";
@@ -96,11 +97,28 @@ export function ColdCallView({ initialLeads, q }: { initialLeads: Lead[]; q: str
         <TickerCard label="Dialing Efficiency" value="0s" size="md" valueColor="info" />
       </div>
 
-      <div className="mb-2">
-        <CategoryPills leads={queue} selected={category} onSelect={setCategory} />
-      </div>
-      <div className="mb-4">
-        <CountryPills leads={queue} selected={country} onSelect={setCountry} />
+      <div className="mb-4 grid grid-cols-2 gap-4">
+        <Field label="Category Filter">
+          <Select value={category} onChange={(e) => setCategory(e.target.value)}>
+            <option value={ALL_CATEGORIES}>{ALL_CATEGORIES}</option>
+            {STANDARD_CATEGORIES.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field label="Country Filter">
+          <Select value={country} onChange={(e) => setCountry(e.target.value)}>
+            <option value={ALL_COUNTRIES}>{ALL_COUNTRIES}</option>
+            <option value={UNKNOWN_COUNTRY}>🏳️ Unknown</option>
+            {COUNTRIES.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.label}
+              </option>
+            ))}
+          </Select>
+        </Field>
       </div>
 
       {filtered.length === 0 && (
