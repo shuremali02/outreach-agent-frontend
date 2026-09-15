@@ -10,8 +10,15 @@ import { Battlecard } from "./battlecard";
 // Import" render now.
 import { IngestDrawer } from "@/components/ingest/ingest-drawer";
 import { CategoryPills } from "@/components/leads/category-pills";
+import { CountryPills } from "@/components/leads/country-pills";
 import { TickerCard } from "@/components/metrics/ticker-card";
-import { CALL_QUEUE_STAGES, ALL_CATEGORIES, COLD_CALL_QUEUE } from "@/lib/constants";
+import {
+  CALL_QUEUE_STAGES,
+  ALL_CATEGORIES,
+  ALL_COUNTRIES,
+  UNKNOWN_COUNTRY,
+  COLD_CALL_QUEUE,
+} from "@/lib/constants";
 import { currency, num } from "@/lib/format";
 import type { Lead } from "@/types";
 import { EMPTY_STATES } from "@/lib/constants";
@@ -19,6 +26,7 @@ import { EMPTY_STATES } from "@/lib/constants";
 export function ColdCallView({ initialLeads, q }: { initialLeads: Lead[]; q: string }) {
   const { data: allLeads = [] } = useLeads({ q }, initialLeads);
   const [category, setCategory] = useState(ALL_CATEGORIES);
+  const [country, setCountry] = useState(ALL_COUNTRIES);
 
   /** app.py: draft_ready|followup_due, excluding dead numbers. */
   const queue = useMemo(
@@ -31,8 +39,14 @@ export function ColdCallView({ initialLeads, q }: { initialLeads: Lead[]; q: str
   );
 
   const filtered = useMemo(
-    () => (category === ALL_CATEGORIES ? queue : queue.filter((l) => l.industry_tag === category)),
-    [queue, category],
+    () =>
+      queue.filter(
+        (l) =>
+          (category === ALL_CATEGORIES || l.industry_tag === category) &&
+          (country === ALL_COUNTRIES ||
+            (country === UNKNOWN_COUNTRY ? !l.country : l.country === country)),
+      ),
+    [queue, category, country],
   );
 
   // Split, not one flat list: a lead already called once (voicemail/callback
@@ -82,8 +96,11 @@ export function ColdCallView({ initialLeads, q }: { initialLeads: Lead[]; q: str
         <TickerCard label="Dialing Efficiency" value="0s" size="md" valueColor="info" />
       </div>
 
-      <div className="mb-4">
+      <div className="mb-2">
         <CategoryPills leads={queue} selected={category} onSelect={setCategory} />
+      </div>
+      <div className="mb-4">
+        <CountryPills leads={queue} selected={country} onSelect={setCountry} />
       </div>
 
       {filtered.length === 0 && (

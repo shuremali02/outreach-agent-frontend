@@ -8,7 +8,16 @@ import { LinkedInResearchPanel, HunterDecisionMakers, SiteScanPanel } from "@/co
 import { MailtoButton } from "@/components/common/mailto-button";
 import { Button } from "@/components/ui/button";
 import { Input, Textarea, Select, Field } from "@/components/ui/input";
-import { PIPELINE_STAGES, STAGE_LABELS, STANDARD_CATEGORIES, ALL_CATEGORIES } from "@/lib/constants";
+import {
+  COUNTRIES,
+  MEETING_BOOKING,
+  PIPELINE_STAGES,
+  STAGE_LABELS,
+  STANDARD_CATEGORIES,
+  ALL_CATEGORIES,
+  ALL_COUNTRIES,
+  UNKNOWN_COUNTRY,
+} from "@/lib/constants";
 import { currency, externalUrl, displayDomain, hasUsableEmail } from "@/lib/format";
 import type { Lead, PipelineStage } from "@/types";
 import { EMPTY_STATES } from "@/lib/constants";
@@ -23,6 +32,13 @@ function ManageDeal({ lead }: { lead: Lead }) {
   const [stage, setStage] = useState<PipelineStage>(lead.pipeline_stage);
   const [phone, setPhone] = useState(lead.contact_phone);
   const [linkedin, setLinkedin] = useState(lead.contact_linkedin);
+  // Seeded from lead.meeting_at (an ISO datetime, set at the "🎯 Booked!"
+  // prompt on the Cold Call Desk) so this stays editable afterward -- a lead
+  // that just became meeting_booked immediately leaves the Cold Call queue
+  // and its Battlecard unmounts, so Pipeline is the only place left to fix a
+  // wrong time.
+  const [meetingDate, setMeetingDate] = useState(lead.meeting_at ? lead.meeting_at.slice(0, 10) : "");
+  const [meetingTime, setMeetingTime] = useState(lead.meeting_at ? lead.meeting_at.slice(11, 16) : "");
 
   return (
     <>
@@ -56,6 +72,16 @@ function ManageDeal({ lead }: { lead: Lead }) {
             ))}
           </Select>
         </Field>
+        {stage === "meeting_booked" && (
+          <div className="grid grid-cols-2 gap-2">
+            <Field label={MEETING_BOOKING.dateLabel}>
+              <Input type="date" value={meetingDate} onChange={(e) => setMeetingDate(e.target.value)} />
+            </Field>
+            <Field label={MEETING_BOOKING.timeLabel}>
+              <Input type="time" value={meetingTime} onChange={(e) => setMeetingTime(e.target.value)} />
+            </Field>
+          </div>
+        )}
         <Field label="Contact Phone">
           <Input value={phone} onChange={(e) => setPhone(e.target.value)} />
         </Field>
@@ -77,6 +103,9 @@ function ManageDeal({ lead }: { lead: Lead }) {
                 pipeline_stage: stage,
                 contact_phone: phone,
                 contact_linkedin: linkedin,
+                ...(meetingDate && meetingTime
+                  ? { meeting_at: `${meetingDate}T${meetingTime}:00` }
+                  : {}),
               },
             })
           }
@@ -112,21 +141,23 @@ export function PipelineView({
   initialLeads,
   stage,
   category,
+  country,
   q,
 }: {
   initialLeads: Lead[];
   stage: PipelineStage | "all";
   category: string;
+  country: string;
   q: string;
 }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { data: leads = [] } = useLeads({ stage, category, q }, initialLeads);
+  const { data: leads = [] } = useLeads({ stage, category, country, q }, initialLeads);
 
   function setParam(key: string, value: string) {
     const params = new URLSearchParams(searchParams.toString());
-    if (value && value !== "all" && value !== ALL_CATEGORIES) params.set(key, value);
+    if (value && value !== "all" && value !== ALL_CATEGORIES && value !== ALL_COUNTRIES) params.set(key, value);
     else params.delete(key);
     const qs = params.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
@@ -134,7 +165,7 @@ export function PipelineView({
 
   return (
     <>
-      <div className="mb-4 grid grid-cols-2 gap-4">
+      <div className="mb-4 grid grid-cols-3 gap-4">
         <Field label="Stage Filter">
           <Select value={stage} onChange={(e) => setParam("stage", e.target.value)}>
             <option value="all">All Stages</option>
@@ -151,6 +182,17 @@ export function PipelineView({
             {STANDARD_CATEGORIES.map((c) => (
               <option key={c} value={c}>
                 {c}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field label="Country Filter">
+          <Select value={country} onChange={(e) => setParam("country", e.target.value)}>
+            <option value={ALL_COUNTRIES}>{ALL_COUNTRIES}</option>
+            <option value={UNKNOWN_COUNTRY}>🏳️ Unknown</option>
+            {COUNTRIES.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.label}
               </option>
             ))}
           </Select>

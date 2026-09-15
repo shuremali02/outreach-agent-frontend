@@ -69,9 +69,23 @@ export interface Lead {
   phone_source: string;
   /** ISO 3166-1 alpha-2, used to parse the number against the right region. */
   phone_country: string;
+  /**
+   * ISO 3166-1 alpha-2 for where the COMPANY trades -- a business fact used
+   * for filtering leads, distinct from phone_country above (a phone-parsing
+   * region; a UAE company can have a US-format cell number). "" until known.
+   */
+  country: string;
   signalhire_uid: string;
   /** URLs the discovery agent actually read, so a lead can be audited. */
   discovery_citations: string[];
+
+  // --- meeting scheduling (schema revision 0003) ---
+  /**
+   * ISO datetime, "" until a rep books a meeting. Set at the "🎯 Booked!"
+   * confirm step; editable afterward via the Pipeline lead card. Distinct
+   * from followup_date (a "call again" date for the Follow-up queue).
+   */
+  meeting_at: string;
 }
 
 export interface QualificationNote {
@@ -133,6 +147,8 @@ export type CallOutcome =
 export interface LeadFilters {
   stage?: PipelineStage | "all";
   category?: string;
+  /** ISO 3166-1 alpha-2, "unknown" for leads with no country recorded, or "all". */
+  country?: string;
   q?: string;
 }
 
@@ -143,6 +159,8 @@ export interface CreateLeadInput {
   contact_name?: string;
   contact_role?: string;
   contact_email?: string;
+  contact_phone?: string;
+  country?: string;
   deal_value?: number;
   industry_tag?: string;
   pipeline_stage?: PipelineStage;
@@ -164,6 +182,7 @@ export type UpdateLeadInput = Partial<
     | "contact_email"
     | "contact_phone"
     | "contact_linkedin"
+    | "country"
     | "industry_tag"
     | "deal_value"
     | "pipeline_stage"
@@ -178,5 +197,6 @@ export type UpdateLeadInput = Partial<
     | "product_description"
     | "screenshot_path"
     | "enrichment_source"
+    | "meeting_at"
   >
 >;

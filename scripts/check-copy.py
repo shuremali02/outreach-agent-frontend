@@ -95,6 +95,35 @@ ALLOWED = {
     # components/cold-call/battlecard.tsx -- click-to-reveal for the
     # decision-maker contacts panel (see lib/constants.ts BATTLECARD.showContacts).
     "👥 Show decision-maker contacts",
+    # components/enrichment/contacts-panel.tsx -- "Find phone" (FullEnrich),
+    # a third manual per-contact provider alongside Reveal/ContactOut. No
+    # Streamlit analogue.
+    "Find phone failed",
+    "Look up a mobile phone number via FullEnrich (up to 10 credits, only charged on a match)",
+    # Display label for a scraped role mailbox with no named person behind it
+    # (contact_ingest.py _ROLE_LABEL_BY_BUCKET) -- used here only to exclude
+    # it from the Find phone button, not shown as new copy.
+    "Leadership Desk",
+    # New Meetings tab (lib/constants.ts PAGE_HEADERS.meetings, MEETING_BOOKING)
+    # -- app.py never tracked a meeting date/time at all, so none of this has
+    # a Streamlit counterpart.
+    "Every meeting your team has booked, laid out on the calendar.",
+    "When is the meeting?",
+    "✅ Confirm booking",
+    # New Country filter (lib/constants.ts COUNTRIES, pipeline-view.tsx) --
+    # app.py had no country field at all, so none of this has a Streamlit
+    # counterpart. Only the multi-word country names get flagged (is_prose
+    # requires len>=14 and a space); the rest of COUNTRIES is unaffected.
+    "Country Filter",
+    "🇦🇪 United Arab Emirates",
+    "🇨🇭 Switzerland",
+    "🇨🇿 Czech Republic",
+    "🇬🇧 United Kingdom",
+    "🇳🇱 Netherlands",
+    "🇳🇿 New Zealand",
+    "🇸🇦 Saudi Arabia",
+    "🇺🇸 United States",
+    "🇿🇦 South Africa",
 }
 
 CLASS_HINT = re.compile(

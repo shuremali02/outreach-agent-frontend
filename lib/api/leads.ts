@@ -6,14 +6,21 @@ export const leadsApi = {
     api.get<Lead[]>("/leads", {
       stage: filters.stage,
       category: filters.category,
+      country: filters.country,
       q: filters.q,
     }),
   get: (id: number) => api.get<Lead>(`/leads/${id}`),
   create: (input: CreateLeadInput) => api.post<Lead>("/leads", input),
   update: (id: number, input: UpdateLeadInput) => api.patch<Lead>(`/leads/${id}`, input),
   remove: (id: number) => api.delete<void>(`/leads/${id}`),
-  recordOutcome: (id: number, outcome: CallOutcome, rep_notes = "") =>
-    api.post<Lead>(`/leads/${id}/outcome`, { outcome, rep_notes }),
+  /**
+   * meeting_at (ISO datetime) is only meaningful for outcome="meeting_booked"
+   * -- the date/time prompt shown when a rep clicks "🎯 Booked!" sets it.
+   * Omitted (not just empty) for every other outcome so it never reaches the
+   * backend's extra="forbid" CallOutcomeInput as an unexpected populated field.
+   */
+  recordOutcome: (id: number, outcome: CallOutcome, rep_notes = "", meeting_at?: string) =>
+    api.post<Lead>(`/leads/${id}/outcome`, { outcome, rep_notes, meeting_at }),
 };
 
 import type { DecisionMaker, LeadContact, LinkedInResearch, Job } from "@/types";
@@ -63,4 +70,13 @@ export const enrichmentApi = {
     api.post<{ request_id: string; status: string }>(`/leads/${leadId}/reveal`, {
       contact_id: contactId,
     }),
+
+  /**
+   * Spend up to 10 FullEnrich credits (0 on a miss) to find ONE contact's
+   * mobile phone number. Phone only -- never requests or spends on email.
+   * Synchronous: FullEnrich is polled server-side before this resolves, so
+   * the response already carries the final contact list.
+   */
+  findPhone: (leadId: number, contactId: number) =>
+    api.post<LeadContact[]>(`/leads/${leadId}/find-phone`, { contact_id: contactId }),
 };

@@ -4,13 +4,21 @@ import { useMemo, useState } from "react";
 import { useLeads, useUpdateLead } from "@/hooks/use-leads";
 import { LeadCard } from "@/components/leads/lead-card";
 import { CategoryPills } from "@/components/leads/category-pills";
+import { CountryPills } from "@/components/leads/country-pills";
 import { LinkedInResearchPanel, HunterDecisionMakers, SiteScanPanel } from "@/components/enrichment";
 import { MailtoButton } from "@/components/common/mailto-button";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input, Textarea, Select, Field } from "@/components/ui/input";
 import { TerminalPill } from "@/components/ui/tag";
-import { PIPELINE_STAGES, STAGE_LABELS, STANDARD_CATEGORIES, ALL_CATEGORIES } from "@/lib/constants";
+import {
+  PIPELINE_STAGES,
+  STAGE_LABELS,
+  STANDARD_CATEGORIES,
+  ALL_CATEGORIES,
+  ALL_COUNTRIES,
+  UNKNOWN_COUNTRY,
+} from "@/lib/constants";
 import { currency, externalUrl, displayDomain, hasUsableEmail, contactLabel } from "@/lib/format";
 import type { Lead, PipelineStage } from "@/types";
 import { EMPTY_STATES } from "@/lib/constants";
@@ -150,10 +158,17 @@ function CsvExportButton({ leads, category }: { leads: Lead[]; category: string 
 export function ContactsView({ initialLeads, q }: { initialLeads: Lead[]; q: string }) {
   const { data: allLeads = [] } = useLeads({ q }, initialLeads);
   const [category, setCategory] = useState(ALL_CATEGORIES);
+  const [country, setCountry] = useState(ALL_COUNTRIES);
 
   const leads = useMemo(
-    () => (category === ALL_CATEGORIES ? allLeads : allLeads.filter((l) => l.industry_tag === category)),
-    [allLeads, category],
+    () =>
+      allLeads.filter(
+        (l) =>
+          (category === ALL_CATEGORIES || l.industry_tag === category) &&
+          (country === ALL_COUNTRIES ||
+            (country === UNKNOWN_COUNTRY ? !l.country : l.country === country)),
+      ),
+    [allLeads, category, country],
   );
 
   const totalValue = leads.reduce((s, l) => s + l.deal_value, 0);
@@ -169,6 +184,9 @@ export function ContactsView({ initialLeads, q }: { initialLeads: Lead[]; q: str
     <>
       <p className="date-eyebrow">🏷️ Browse Leads by Category</p>
       <CategoryPills leads={allLeads} selected={category} onSelect={setCategory} allLabel="All Leads" />
+      <div className="mt-2">
+        <CountryPills leads={allLeads} selected={country} onSelect={setCountry} />
+      </div>
 
       <Card accent="accent" className="my-4">
         <p className="date-eyebrow">Active Sector Overview</p>

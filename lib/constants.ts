@@ -31,6 +31,63 @@ export const STANDARD_CATEGORIES = [
 
 export const ALL_CATEGORIES = "All Categories";
 
+export const ALL_COUNTRIES = "All Countries";
+/** Sentinel for leads with no country recorded yet -- never a real ISO2 code. */
+export const UNKNOWN_COUNTRY = "unknown";
+
+/**
+ * ISO 3166-1 alpha-2 -> display label, for CountryPills / the Pipeline
+ * Country Filter / Add a Lead's Country field. Same ~40-code set the backend
+ * can produce (validation._TLD_REGION / services/countries.py), so every
+ * country the app stores has a matching label here.
+ */
+export const COUNTRIES: { id: string; label: string }[] = [
+  { id: "US", label: "🇺🇸 United States" },
+  { id: "GB", label: "🇬🇧 United Kingdom" },
+  { id: "AE", label: "🇦🇪 United Arab Emirates" },
+  { id: "SA", label: "🇸🇦 Saudi Arabia" },
+  { id: "QA", label: "🇶🇦 Qatar" },
+  { id: "KW", label: "🇰🇼 Kuwait" },
+  { id: "BH", label: "🇧🇭 Bahrain" },
+  { id: "OM", label: "🇴🇲 Oman" },
+  { id: "CA", label: "🇨🇦 Canada" },
+  { id: "AU", label: "🇦🇺 Australia" },
+  { id: "NZ", label: "🇳🇿 New Zealand" },
+  { id: "DE", label: "🇩🇪 Germany" },
+  { id: "FR", label: "🇫🇷 France" },
+  { id: "IT", label: "🇮🇹 Italy" },
+  { id: "ES", label: "🇪🇸 Spain" },
+  { id: "NL", label: "🇳🇱 Netherlands" },
+  { id: "BE", label: "🇧🇪 Belgium" },
+  { id: "CH", label: "🇨🇭 Switzerland" },
+  { id: "AT", label: "🇦🇹 Austria" },
+  { id: "SE", label: "🇸🇪 Sweden" },
+  { id: "NO", label: "🇳🇴 Norway" },
+  { id: "DK", label: "🇩🇰 Denmark" },
+  { id: "FI", label: "🇫🇮 Finland" },
+  { id: "IE", label: "🇮🇪 Ireland" },
+  { id: "PT", label: "🇵🇹 Portugal" },
+  { id: "PL", label: "🇵🇱 Poland" },
+  { id: "IN", label: "🇮🇳 India" },
+  { id: "PK", label: "🇵🇰 Pakistan" },
+  { id: "SG", label: "🇸🇬 Singapore" },
+  { id: "MY", label: "🇲🇾 Malaysia" },
+  { id: "ZA", label: "🇿🇦 South Africa" },
+  { id: "BR", label: "🇧🇷 Brazil" },
+  { id: "MX", label: "🇲🇽 Mexico" },
+  { id: "JP", label: "🇯🇵 Japan" },
+  { id: "CN", label: "🇨🇳 China" },
+  { id: "TR", label: "🇹🇷 Turkey" },
+  { id: "GR", label: "🇬🇷 Greece" },
+  { id: "CZ", label: "🇨🇿 Czech Republic" },
+  { id: "RO", label: "🇷🇴 Romania" },
+  { id: "HU", label: "🇭🇺 Hungary" },
+];
+
+export function countryLabel(code: string): string {
+  return COUNTRIES.find((c) => c.id === code)?.label ?? code;
+}
+
 /** Sidebar navigation — replaces the st.session_state["active_tab"] dispatch. */
 export const NAV_ITEMS = [
   { name: "Today", icon: "⊞", href: "/today", badge: null },
@@ -40,6 +97,7 @@ export const NAV_ITEMS = [
   { name: "Pipeline", icon: "💼", href: "/pipeline", badge: null },
   { name: "Contacts", icon: "👥", href: "/contacts", badge: null },
   { name: "Follow-ups", icon: "📅", href: "/follow-ups", badge: "followups_due" },
+  { name: "Meetings", icon: "🗓️", href: "/meetings", badge: null },
   { name: "AI Lead Finder", icon: "🔍", href: "/lead-finder", badge: null },
 ] as const;
 
@@ -250,6 +308,12 @@ export const PAGE_HEADERS = {
     title: "Follow-up Hub",
     subtitle: "Stay on top of active conversations and scheduled check-ins.",
   },
+  // No Streamlit analogue -- app.py never tracked a meeting date at all.
+  meetings: {
+    eyebrow: undefined,
+    title: "Meetings",
+    subtitle: "Every meeting your team has booked, laid out on the calendar.",
+  },
   leadFinder: {
     eyebrow: undefined,
     title: "AI Lead Discovery & Research",
@@ -361,6 +425,41 @@ export const COLD_CALL_QUEUE = {
 } as const;
 
 /**
+ * components/cold-call/battlecard.tsx (the "🎯 Booked!" click -> date/time
+ * prompt) and components/pipeline/pipeline-view.tsx (editing a meeting's
+ * time later). No app.py analogue -- app.py never captured a meeting date.
+ */
+export const MEETING_BOOKING = {
+  prompt: "When is the meeting?",
+  dateLabel: "Date",
+  timeLabel: "Time",
+  confirm: "✅ Confirm booking",
+  cancel: "Cancel",
+} as const;
+
+/** components/meetings/meetings-calendar.tsx. No app.py analogue. */
+export const MEETINGS_CALENDAR = {
+  prevMonth: "‹ Prev",
+  nextMonth: "Next ›",
+  today: "Today",
+  moreCount: (n: number) => `+${n} more`,
+} as const;
+
+/**
+ * components/meetings/meetings-calendar.tsx -- per-meeting quick actions so a
+ * rep can close out a meeting without opening Pipeline. "Done" moves the lead
+ * to Proposal Sent (the next stage after a meeting actually happens); "Cancel"
+ * moves it to Closed Lost (client said no meeting after all). Both just PATCH
+ * pipeline_stage via the existing useUpdateLead hook -- no new endpoint.
+ */
+export const MEETING_ACTIONS = {
+  done: "✅ Done",
+  cancel: "✖ Cancel",
+  doneConfirm: (company: string) => `Mark the meeting with ${company} as done? This moves the lead to Proposal Sent.`,
+  cancelConfirm: (company: string) => `Cancel the meeting with ${company}? This moves the lead to Closed Lost.`,
+} as const;
+
+/**
  * app.py:877, 931, 1147, 1223, 1859, 2065, 2231, 2320 — empty and warning states.
  * These are what the sales team is used to reading; a shorter paraphrase drops
  * the instruction telling them what to do next.
@@ -393,6 +492,9 @@ export const EMPTY_STATES = {
   // (Google Places lookup) runs and comes back with nothing for this company.
   websiteNotFound: "Could not find a website for this company on Google Maps.",
   noPhone: "No phone on file.",
+  // components/meetings/meetings-calendar.tsx. No app.py analogue.
+  meetings: (monthLabel: string) =>
+    `No meetings booked in ${monthLabel} yet. Click "🎯 Booked!" on a call to schedule one.`,
   /** app.py:1859 — Cold Call Desk queue, reused for Today's priority list. */
   todayPriority:
     "🎯 No leads in this queue! Use the batch ingestion drawer above to pull verified leads from Apollo or drop a CSV file.",

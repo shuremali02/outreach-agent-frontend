@@ -31,10 +31,24 @@ const SOURCE_LABEL: Record<string, string> = {
   signalhire_reveal: "SignalHire ✓",
   apollo: "Apollo",
   manual: "manual",
+  fullenrich: "FullEnrich",
 };
 
 function hasContactDetail(c: LeadContact): boolean {
   return Boolean(c.email || c.phone);
+}
+
+// contact_ingest.py _ROLE_LABEL_BY_BUCKET's display names for a scraped role
+// mailbox with no named person behind it -- "Find phone" needs an actual
+// name + company to look up, so these must never be offered a lookup.
+const SYNTHETIC_CONTACT_NAMES = new Set([
+  "Sales Team", "HR Team", "Leadership Desk", "Company Desk", "Main line",
+]);
+
+function looksLikePerson(name: string): boolean {
+  const n = (name || "").trim();
+  if (!n || SYNTHETIC_CONTACT_NAMES.has(n)) return false;
+  return /^[A-Za-z][\p{L}'.-]*\s+[A-Za-z][\p{L}'.-]+/u.test(n);
 }
 
 export function ContactsPanel({ lead }: { lead: Lead }) {
@@ -68,6 +82,13 @@ export function ContactsPanel({ lead }: { lead: Lead }) {
     },
   });
 
+  // Synchronous, unlike reveal -- FullEnrich is polled to completion
+  // server-side, so the response already carries the final contact list.
+  const findPhone = useMutation({
+    mutationFn: (contactId: number) => enrichmentApi.findPhone(lead.id, contactId),
+    onSuccess: (rows) => qc.setQueryData(["lead-contacts", lead.id], rows),
+  });
+
   const grouped = new Map<string, LeadContact[]>();
   for (const c of contacts) {
     const b = BUCKET_ORDER.includes(c.role_bucket) ? c.role_bucket : "other";
@@ -89,6 +110,12 @@ export function ContactsPanel({ lead }: { lead: Lead }) {
       {reveal.isError && (
         <p className="text-[0.78rem] text-danger">
           {reveal.error instanceof Error ? reveal.error.message : "Reveal failed"}
+        </p>
+      )}
+
+      {findPhone.isError && (
+        <p className="text-[0.78rem] text-danger">
+          {findPhone.error instanceof Error ? findPhone.error.message : "Find phone failed"}
         </p>
       )}
 
@@ -141,17 +168,31 @@ export function ContactsPanel({ lead }: { lead: Lead }) {
                       </a>
                     )}
                   </div>
-                  {c.source === "signalhire" && !hasContactDetail(c) && (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => reveal.mutate(c.id)}
-                      disabled={reveal.isPending}
-                      title="Spend one SignalHire credit for a direct email and phone"
-                    >
-                      {reveal.isPending ? "Revealing…" : "🔓 Reveal"}
-                    </Button>
-                  )}
+                  <div className="flex shrink-0 flex-col gap-1">
+                    {c.source === "signalhire" && !hasContactDetail(c) && (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => reveal.mutate(c.id)}
+                        disabled={reveal.isPending}
+                        title="Spend one SignalHire credit for a direct email and phone"
+                      >
+                        {reveal.isPending ? "Revealing…" : "🔓 Reveal"}
+                      </Button>
+                    )}
+                    {!c.phone &&
+                      (c.linkedin || (looksLikePerson(c.name) && (lead.company_website || lead.company_name))) && (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => findPhone.mutate(c.id)}
+                          disabled={findPhone.isPending}
+                          title="Look up a mobile phone number via FullEnrich (up to 10 credits, only charged on a match)"
+                        >
+                          {findPhone.isPending ? "Looking up…" : "📱 Find phone"}
+                        </Button>
+                      )}
+                  </div>
                 </div>
               ))}
             </div>

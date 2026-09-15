@@ -16,6 +16,7 @@ import {
   BATTLECARD,
   DISPOSITIONS,
   FALLBACK_OBJECTIONS,
+  MEETING_BOOKING,
   fallbackScript,
 } from "@/lib/constants";
 import type { CallOutcome, Lead } from "@/types";
@@ -96,6 +97,15 @@ export function Battlecard({ lead }: { lead: Lead }) {
   const [booked, setBooked] = useState(false);
   const bookedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // "🎯 Booked!" no longer records the outcome immediately -- it opens this
+  // date/time prompt first (in place of the dispositions grid, see the
+  // render below), and ONLY the "Confirm booking" click actually calls
+  // record.mutate(). Cancel just closes the prompt with zero network calls,
+  // so the outcome genuinely never gets recorded on a cancel.
+  const [bookingPrompt, setBookingPrompt] = useState(false);
+  const [meetingDate, setMeetingDate] = useState("");
+  const [meetingTime, setMeetingTime] = useState("");
+
   // A "meeting_booked" outcome moves the lead out of CALL_QUEUE_STAGES, so
   // ColdCallView's queue filter drops it and this component unmounts almost
   // immediately -- well within the 4s window. Clear the pending timer on
@@ -107,18 +117,38 @@ export function Battlecard({ lead }: { lead: Lead }) {
   }, []);
 
   function disposition(outcome: CallOutcome) {
+    if (outcome === "meeting_booked") {
+      setBookingPrompt(true);
+      return;
+    }
     record.mutate(
       { id: lead.id, outcome, notes: note },
+      { onSuccess: () => setNote("") },
+    );
+  }
+
+  function confirmBooking() {
+    if (!meetingDate || !meetingTime) return;
+    record.mutate(
+      {
+        id: lead.id,
+        outcome: "meeting_booked",
+        notes: note,
+        meetingAt: `${meetingDate}T${meetingTime}:00`,
+      },
       {
         onSuccess: () => {
           setNote("");
-          if (outcome === "meeting_booked") {
-            setBooked(true);
-            bookedTimer.current = setTimeout(() => setBooked(false), 4000);
-          }
+          setBookingPrompt(false);
+          setBooked(true);
+          bookedTimer.current = setTimeout(() => setBooked(false), 4000);
         },
       },
     );
+  }
+
+  function cancelBooking() {
+    setBookingPrompt(false);
   }
 
   return (
@@ -266,20 +296,55 @@ export function Battlecard({ lead }: { lead: Lead }) {
           )}
 
           <p className="date-eyebrow !mb-1.5 mt-2">{BATTLECARD.dispositionsHeading}</p>
-          <div className="grid grid-cols-5 gap-2">
-            {DISPOSITIONS.map((d) => (
-              <Button
-                key={d.outcome}
-                variant={"primary" in d && d.primary ? "primary" : "secondary"}
-                size="sm"
-                title={d.help}
-                disabled={record.isPending}
-                onClick={() => disposition(d.outcome as CallOutcome)}
-              >
-                {d.label}
-              </Button>
-            ))}
-          </div>
+          {bookingPrompt ? (
+            <div className="flex flex-col gap-2 rounded-[8px] border border-accent bg-input px-3 py-3">
+              <p className="text-[0.85rem] font-semibold">{MEETING_BOOKING.prompt}</p>
+              <div className="grid grid-cols-2 gap-2">
+                <Field label={MEETING_BOOKING.dateLabel}>
+                  <Input
+                    type="date"
+                    value={meetingDate}
+                    onChange={(e) => setMeetingDate(e.target.value)}
+                  />
+                </Field>
+                <Field label={MEETING_BOOKING.timeLabel}>
+                  <Input
+                    type="time"
+                    value={meetingTime}
+                    onChange={(e) => setMeetingTime(e.target.value)}
+                  />
+                </Field>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <Button variant="secondary" size="sm" onClick={cancelBooking}>
+                  {MEETING_BOOKING.cancel}
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  disabled={!meetingDate || !meetingTime || record.isPending}
+                  onClick={confirmBooking}
+                >
+                  {MEETING_BOOKING.confirm}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-5 gap-2">
+              {DISPOSITIONS.map((d) => (
+                <Button
+                  key={d.outcome}
+                  variant={"primary" in d && d.primary ? "primary" : "secondary"}
+                  size="sm"
+                  title={d.help}
+                  disabled={record.isPending}
+                  onClick={() => disposition(d.outcome as CallOutcome)}
+                >
+                  {d.label}
+                </Button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

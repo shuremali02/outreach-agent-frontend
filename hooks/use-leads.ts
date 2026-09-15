@@ -45,8 +45,10 @@ export function useDeleteLead() {
 export function useCallOutcome() {
   const invalidate = useInvalidate();
   return useMutation({
-    mutationFn: ({ id, outcome, notes }: { id: number; outcome: CallOutcome; notes?: string }) =>
-      leadsApi.recordOutcome(id, outcome, notes ?? ""),
+    mutationFn: ({
+      id, outcome, notes, meetingAt,
+    }: { id: number; outcome: CallOutcome; notes?: string; meetingAt?: string }) =>
+      leadsApi.recordOutcome(id, outcome, notes ?? "", meetingAt),
     onSuccess: invalidate,
   });
 }

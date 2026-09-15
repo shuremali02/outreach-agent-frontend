@@ -4,7 +4,7 @@ import * as Popover from "@radix-ui/react-popover";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { leadsApi } from "@/lib/api";
-import { PIPELINE_STAGES, STANDARD_CATEGORIES } from "@/lib/constants";
+import { COUNTRIES, PIPELINE_STAGES, STANDARD_CATEGORIES } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { Input, Textarea, Select, Field } from "@/components/ui/input";
 import type { CreateLeadInput, PipelineStage } from "@/types";
@@ -15,6 +15,8 @@ const EMPTY: CreateLeadInput = {
   contact_name: "",
   contact_role: "",
   contact_email: "",
+  contact_phone: "",
+  country: "",
   deal_value: 18000,
   industry_tag: STANDARD_CATEGORIES[5],
   pipeline_stage: "draft_ready",
@@ -96,13 +98,23 @@ export function AddLeadPopover() {
                 />
               </Field>
             </div>
-            <Field label="Contact Email">
-              <Input
-                type="email"
-                value={form.contact_email}
-                onChange={(e) => set("contact_email", e.target.value)}
-              />
-            </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Contact Email">
+                <Input
+                  type="email"
+                  value={form.contact_email}
+                  onChange={(e) => set("contact_email", e.target.value)}
+                />
+              </Field>
+              <Field label="Contact Phone">
+                <Input
+                  type="tel"
+                  value={form.contact_phone}
+                  onChange={(e) => set("contact_phone", e.target.value)}
+                  placeholder="+1 (555) 000-0000"
+                />
+              </Field>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Estimated Deal Value ($)">
                 <Input
@@ -126,18 +138,30 @@ export function AddLeadPopover() {
                 </Select>
               </Field>
             </div>
-            <Field label="Industry Category">
-              <Select
-                value={form.industry_tag}
-                onChange={(e) => set("industry_tag", e.target.value)}
-              >
-                {STANDARD_CATEGORIES.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </Select>
-            </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Industry Category">
+                <Select
+                  value={form.industry_tag}
+                  onChange={(e) => set("industry_tag", e.target.value)}
+                >
+                  {STANDARD_CATEGORIES.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              <Field label="Country">
+                <Select value={form.country} onChange={(e) => set("country", e.target.value)}>
+                  <option value="">Not specified</option>
+                  {COUNTRIES.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.label}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </div>
             <Field label="3D Configurator Angle / Reason">
               <Textarea
                 rows={3}
