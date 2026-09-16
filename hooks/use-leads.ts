@@ -5,7 +5,18 @@ import { leadsApi } from "@/lib/api";
 import type { CallOutcome, Lead, LeadFilters, UpdateLeadInput } from "@/types";
 
 export function leadsKey(filters: LeadFilters = {}) {
-  return ["leads", filters.stage ?? null, filters.category ?? null, filters.q ?? null] as const;
+  // Every filter leadsApi.list() actually sends must be in this key -- React
+  // Query treats an unchanged key as "same query, don't refetch", so a
+  // filter missing here (country was, until this fix) can change on screen
+  // while the cached pre-change result keeps being shown, looking like the
+  // filter is "working" on stale data instead of actually re-querying.
+  return [
+    "leads",
+    filters.stage ?? null,
+    filters.category ?? null,
+    filters.country ?? null,
+    filters.q ?? null,
+  ] as const;
 }
 
 export function useLeads(filters: LeadFilters = {}, initialData?: Lead[]) {

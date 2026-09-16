@@ -51,7 +51,23 @@ function looksLikePerson(name: string): boolean {
   return /^[A-Za-z][\p{L}'.-]*\s+[A-Za-z][\p{L}'.-]+/u.test(n);
 }
 
-export function ContactsPanel({ lead }: { lead: Lead }) {
+export function ContactsPanel({
+  lead,
+  autoSearchOnMount = false,
+}: {
+  lead: Lead;
+  /**
+   * Cold Call Desk only (battlecard.tsx) -- that page gates this whole panel
+   * behind a click already (rendering it on mount for 30 visible cards at
+   * once would fire 30 parallel GETs), so once a rep DOES open it, run the
+   * search immediately instead of making them find and click a second
+   * "Find decision makers" button inside. Contacts/Pipeline/Today render
+   * this panel unconditionally for every visible lead, so they never pass
+   * this -- auto-searching there would reintroduce exactly that N-parallel-
+   * requests problem, just for findPeople instead of the GET.
+   */
+  autoSearchOnMount?: boolean;
+}) {
   const qc = useQueryClient();
 
   const { data: contacts = [], isLoading } = useQuery({
@@ -63,6 +79,17 @@ export function ContactsPanel({ lead }: { lead: Lead }) {
     mutationFn: () => enrichmentApi.findPeople(lead.id),
     onSuccess: (rows) => qc.setQueryData(["lead-contacts", lead.id], rows),
   });
+
+  const autoSearched = useRef(false);
+  useEffect(() => {
+    if (!autoSearchOnMount || autoSearched.current || isLoading) return;
+    autoSearched.current = true;
+    // Only when nothing is already known -- a lead that already has contacts
+    // from an earlier bulk enrichment shouldn't get re-searched just for
+    // being opened; the manual button below still covers "search again".
+    if (contacts.length === 0) findPeople.mutate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoSearchOnMount, isLoading, contacts.length]);
 
   // Pending reveal-refetch timers, cleared on unmount so a closed/navigated-
   // away panel never fires a stray invalidate for a query nothing watches.

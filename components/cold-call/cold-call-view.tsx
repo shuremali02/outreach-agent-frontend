@@ -15,12 +15,14 @@ import {
   CALL_QUEUE_STAGES,
   ALL_CATEGORIES,
   ALL_COUNTRIES,
+  ALL_SOURCES,
   UNKNOWN_COUNTRY,
   STANDARD_CATEGORIES,
   COUNTRIES,
+  LEAD_SOURCE_LABELS,
   COLD_CALL_QUEUE,
 } from "@/lib/constants";
-import { currency, num } from "@/lib/format";
+import { currency, leadSource, num } from "@/lib/format";
 import type { Lead } from "@/types";
 import { EMPTY_STATES } from "@/lib/constants";
 
@@ -28,6 +30,9 @@ export function ColdCallView({ initialLeads, q }: { initialLeads: Lead[]; q: str
   const { data: allLeads = [] } = useLeads({ q }, initialLeads);
   const [category, setCategory] = useState(ALL_CATEGORIES);
   const [country, setCountry] = useState(ALL_COUNTRIES);
+  // Derived from source_prompt (leadSource()), not a real backend filter --
+  // filtered client-side same as category/country here.
+  const [source, setSource] = useState(ALL_SOURCES);
 
   /** app.py: draft_ready|followup_due, excluding dead numbers. */
   const queue = useMemo(
@@ -45,9 +50,10 @@ export function ColdCallView({ initialLeads, q }: { initialLeads: Lead[]; q: str
         (l) =>
           (category === ALL_CATEGORIES || l.industry_tag === category) &&
           (country === ALL_COUNTRIES ||
-            (country === UNKNOWN_COUNTRY ? !l.country : l.country === country)),
+            (country === UNKNOWN_COUNTRY ? !l.country : l.country === country)) &&
+          (source === ALL_SOURCES || leadSource(l.source_prompt) === source),
       ),
-    [queue, category, country],
+    [queue, category, country, source],
   );
 
   // Split, not one flat list: a lead already called once (voicemail/callback
@@ -97,7 +103,7 @@ export function ColdCallView({ initialLeads, q }: { initialLeads: Lead[]; q: str
         <TickerCard label="Dialing Efficiency" value="0s" size="md" valueColor="info" />
       </div>
 
-      <div className="mb-4 grid grid-cols-2 gap-4">
+      <div className="mb-4 grid grid-cols-3 gap-4">
         <Field label="Category Filter">
           <Select value={category} onChange={(e) => setCategory(e.target.value)}>
             <option value={ALL_CATEGORIES}>{ALL_CATEGORIES}</option>
@@ -115,6 +121,16 @@ export function ColdCallView({ initialLeads, q }: { initialLeads: Lead[]; q: str
             {COUNTRIES.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.label}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field label="Source Filter">
+          <Select value={source} onChange={(e) => setSource(e.target.value)}>
+            <option value={ALL_SOURCES}>{ALL_SOURCES}</option>
+            {Object.entries(LEAD_SOURCE_LABELS).map(([id, label]) => (
+              <option key={id} value={id}>
+                {label}
               </option>
             ))}
           </Select>

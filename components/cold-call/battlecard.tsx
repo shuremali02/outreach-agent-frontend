@@ -9,14 +9,16 @@ import { Button } from "@/components/ui/button";
 import { Input, Field } from "@/components/ui/input";
 import { enrichmentApi } from "@/lib/api";
 import {
-  currency, externalUrl, hasUsableEmail, telUrl, mailtoUrl,
+  addedAt, currency, externalUrl, hasUsableEmail, leadSource, telUrl, mailtoUrl,
   linkedInXrayUrl,
 } from "@/lib/format";
 import {
   BATTLECARD,
   DISPOSITIONS,
   FALLBACK_OBJECTIONS,
+  LEAD_SOURCE_LABELS,
   MEETING_BOOKING,
+  countryLabel,
   fallbackScript,
 } from "@/lib/constants";
 import type { CallOutcome, Lead } from "@/types";
@@ -94,6 +96,12 @@ export function Battlecard({ lead }: { lead: Lead }) {
   // parallel calls. Gated behind a click, same progressive-disclosure
   // pattern as objectionsOpen above.
   const [contactsOpen, setContactsOpen] = useState(false);
+  // promote_primary() (backend) fills this from lead_contacts the moment any
+  // contact is known, so it's a free, already-available "has this lead been
+  // searched before" signal -- no separate request needed just to decide
+  // which entry point to show. "Decision Maker" is the pre-cleanup
+  // placeholder some older leads may still carry (see docs.md 2026-09-15).
+  const hasKnownContact = Boolean(lead.contact_name) && lead.contact_name !== "Decision Maker";
   const [booked, setBooked] = useState(false);
   const bookedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -161,9 +169,19 @@ export function Battlecard({ lead }: { lead: Lead }) {
         <PhoneBadge status={lead.phone_status} phone={lead.contact_phone} />
         <span className="stage-tag">{lead.industry_tag}</span>
       </div>
-      <p className="mb-4 text-[0.88rem] text-muted">
+      <p className="mb-1 text-[0.88rem] text-muted">
         👤 {lead.contact_name || "Decision Maker"}
         {lead.contact_role && ` · ${lead.contact_role}`}
+      </p>
+      {/* Ali (Sales Rep, 2026-09-15): "there should be date and time
+          mentioned on the leads when they were generated ... also the
+          country name" -- and who/what added it. All three from data
+          already on the lead, none of it was previously shown anywhere. */}
+      <p className="mb-4 text-[0.75rem] text-muted">
+        🕒 {addedAt(lead.created_at)}
+        {" · "}
+        {LEAD_SOURCE_LABELS[leadSource(lead.source_prompt)]}
+        {lead.country && ` · ${countryLabel(lead.country)}`}
       </p>
 
       <div className="grid grid-cols-[1.2fr_2fr] gap-6">
@@ -220,8 +238,8 @@ export function Battlecard({ lead }: { lead: Lead }) {
           </div>
 
           {contactsOpen ? (
-            <HunterDecisionMakers lead={lead} />
-          ) : (
+            <HunterDecisionMakers lead={lead} autoSearchOnMount={!hasKnownContact} />
+          ) : hasKnownContact ? (
             <button
               type="button"
               onClick={() => setContactsOpen(true)}
@@ -229,6 +247,10 @@ export function Battlecard({ lead }: { lead: Lead }) {
             >
               {BATTLECARD.showContacts}
             </button>
+          ) : (
+            <Button variant="secondary" size="sm" block onClick={() => setContactsOpen(true)}>
+              {BATTLECARD.findContacts}
+            </Button>
           )}
           <SiteScanPanel lead={lead} />
 

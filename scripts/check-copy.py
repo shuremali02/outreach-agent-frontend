@@ -124,6 +124,16 @@ ALLOWED = {
     "🇸🇦 Saudi Arabia",
     "🇺🇸 United States",
     "🇿🇦 South Africa",
+    # New lead-source badge/filter (lib/format.ts leadSource(), lib/constants.ts
+    # LEAD_SOURCE_LABELS) -- app.py never showed or filtered on where/how a
+    # lead was added, so none of this has a Streamlit counterpart. The two
+    # format.ts strings are exact-match keys against source_prompt (see
+    # qualify.py / lead_engine.py), not copy shown to a user directly.
+    "🧑‍💼 Sales Team",
+    "🤖 AI Generated",
+    "🗺️ Google Maps Generated",
+    "CSV Batch Import",
+    "Google Maps sourcing:",
 }
 
 CLASS_HINT = re.compile(

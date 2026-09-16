@@ -119,6 +119,14 @@ export interface LeadContact {
   verified_at: string;
 }
 
+/**
+ * Derived client-side from Lead.source_prompt (lib/format.ts leadSource) --
+ * not a stored column. The four real values are exactly what qualify.py /
+ * lead_engine.py / crud/leads.py already write into source_prompt today, so
+ * no migration or backend change is needed to show or filter on this.
+ */
+export type LeadSource = "sales_team" | "ai_generated" | "google_maps" | "csv_import" | "other";
+
 export type PipelineStage =
   | "new_lead"
   | "draft_ready"

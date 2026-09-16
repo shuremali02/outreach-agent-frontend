@@ -3,8 +3,10 @@
 import { useMemo, useState } from "react";
 import { useLeads, useUpdateLead } from "@/hooks/use-leads";
 import { LeadCard } from "@/components/leads/lead-card";
-import { CategoryPills } from "@/components/leads/category-pills";
-import { CountryPills } from "@/components/leads/country-pills";
+// CategoryPills/CountryPills/SourcePills no longer used here -- this page's
+// filters were converted to dropdowns to match Cold Call Desk/Pipeline (see
+// docs.md). The components themselves are kept, unused, in case a pill-style
+// filter is wanted again somewhere.
 import { LinkedInResearchPanel, HunterDecisionMakers, SiteScanPanel } from "@/components/enrichment";
 import { MailtoButton } from "@/components/common/mailto-button";
 import { Card } from "@/components/ui/card";
@@ -12,14 +14,18 @@ import { Button } from "@/components/ui/button";
 import { Input, Textarea, Select, Field } from "@/components/ui/input";
 import { TerminalPill } from "@/components/ui/tag";
 import {
+  COUNTRIES,
+  ALL_SOURCES,
   PIPELINE_STAGES,
   STAGE_LABELS,
   STANDARD_CATEGORIES,
   ALL_CATEGORIES,
   ALL_COUNTRIES,
   UNKNOWN_COUNTRY,
+  LEAD_SOURCE_LABELS,
+  countryLabel,
 } from "@/lib/constants";
-import { currency, externalUrl, displayDomain, hasUsableEmail, contactLabel } from "@/lib/format";
+import { addedAt, currency, externalUrl, displayDomain, hasUsableEmail, contactLabel, leadSource } from "@/lib/format";
 import type { Lead, PipelineStage } from "@/types";
 import { EMPTY_STATES } from "@/lib/constants";
 
@@ -30,6 +36,9 @@ function ClassificationPanel({ lead }: { lead: Lead }) {
   const [phone, setPhone] = useState(lead.contact_phone);
   const [linkedin, setLinkedin] = useState(lead.contact_linkedin);
   const [dealValue, setDealValue] = useState(lead.deal_value);
+  // See pipeline-view.tsx ManageDeal's identical field -- corrects a wrong
+  // or missing country on an already-saved lead.
+  const [country, setCountry] = useState(lead.country);
 
   return (
     <div className="flex flex-col gap-3">
@@ -67,6 +76,16 @@ function ClassificationPanel({ lead }: { lead: Lead }) {
           onChange={(e) => setDealValue(Number(e.target.value))}
         />
       </Field>
+      <Field label="Country">
+        <Select value={country} onChange={(e) => setCountry(e.target.value)}>
+          <option value="">Not specified</option>
+          {COUNTRIES.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.label}
+            </option>
+          ))}
+        </Select>
+      </Field>
       <Button
         variant="primary"
         size="sm"
@@ -80,6 +99,7 @@ function ClassificationPanel({ lead }: { lead: Lead }) {
               contact_phone: phone,
               contact_linkedin: linkedin,
               deal_value: dealValue,
+              country,
             },
           })
         }
@@ -159,6 +179,7 @@ export function ContactsView({ initialLeads, q }: { initialLeads: Lead[]; q: str
   const { data: allLeads = [] } = useLeads({ q }, initialLeads);
   const [category, setCategory] = useState(ALL_CATEGORIES);
   const [country, setCountry] = useState(ALL_COUNTRIES);
+  const [source, setSource] = useState(ALL_SOURCES);
 
   const leads = useMemo(
     () =>
@@ -166,9 +187,10 @@ export function ContactsView({ initialLeads, q }: { initialLeads: Lead[]; q: str
         (l) =>
           (category === ALL_CATEGORIES || l.industry_tag === category) &&
           (country === ALL_COUNTRIES ||
-            (country === UNKNOWN_COUNTRY ? !l.country : l.country === country)),
+            (country === UNKNOWN_COUNTRY ? !l.country : l.country === country)) &&
+          (source === ALL_SOURCES || leadSource(l.source_prompt) === source),
       ),
-    [allLeads, category, country],
+    [allLeads, category, country, source],
   );
 
   const totalValue = leads.reduce((s, l) => s + l.deal_value, 0);
@@ -182,10 +204,38 @@ export function ContactsView({ initialLeads, q }: { initialLeads: Lead[]; q: str
 
   return (
     <>
-      <p className="date-eyebrow">🏷️ Browse Leads by Category</p>
-      <CategoryPills leads={allLeads} selected={category} onSelect={setCategory} allLabel="All Leads" />
-      <div className="mt-2">
-        <CountryPills leads={allLeads} selected={country} onSelect={setCountry} />
+      <div className="mb-4 grid grid-cols-3 gap-4">
+        <Field label="Category Filter">
+          <Select value={category} onChange={(e) => setCategory(e.target.value)}>
+            <option value={ALL_CATEGORIES}>{ALL_CATEGORIES}</option>
+            {STANDARD_CATEGORIES.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field label="Country Filter">
+          <Select value={country} onChange={(e) => setCountry(e.target.value)}>
+            <option value={ALL_COUNTRIES}>{ALL_COUNTRIES}</option>
+            <option value={UNKNOWN_COUNTRY}>🏳️ Unknown</option>
+            {COUNTRIES.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.label}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field label="Source Filter">
+          <Select value={source} onChange={(e) => setSource(e.target.value)}>
+            <option value={ALL_SOURCES}>{ALL_SOURCES}</option>
+            {Object.entries(LEAD_SOURCE_LABELS).map(([id, label]) => (
+              <option key={id} value={id}>
+                {label}
+              </option>
+            ))}
+          </Select>
+        </Field>
       </div>
 
       <Card accent="accent" className="my-4">
@@ -220,6 +270,9 @@ export function ContactsView({ initialLeads, q }: { initialLeads: Lead[]; q: str
                 — {currency(lead.deal_value)} · {lead.industry_tag} (
                 {STAGE_LABELS[lead.pipeline_stage]})
               </span>
+              <span className="ml-2 text-[0.75rem] text-muted">
+                🕒 {addedAt(lead.created_at)} · {LEAD_SOURCE_LABELS[leadSource(lead.source_prompt)]}
+              </span>
             </span>
           }
         >
@@ -244,6 +297,9 @@ export function ContactsView({ initialLeads, q }: { initialLeads: Lead[]; q: str
                 <p className="text-[0.85rem] text-muted">✉️ {lead.contact_email}</p>
               )}
               {lead.contact_phone && <p className="text-[0.85rem] text-muted">📞 {lead.contact_phone}</p>}
+              <p className="text-[0.85rem] text-muted">
+                🌍 {lead.country ? countryLabel(lead.country) : "Not specified"}
+              </p>
 
               <LinkedInResearchPanel lead={lead} />
               <HunterDecisionMakers lead={lead} />

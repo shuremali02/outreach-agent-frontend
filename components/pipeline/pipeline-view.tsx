@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useLeads, useUpdateLead, useDeleteLead } from "@/hooks/use-leads";
 import { LeadCard } from "@/components/leads/lead-card";
 import { LinkedInResearchPanel, HunterDecisionMakers, SiteScanPanel } from "@/components/enrichment";
@@ -10,15 +10,18 @@ import { Button } from "@/components/ui/button";
 import { Input, Textarea, Select, Field } from "@/components/ui/input";
 import {
   COUNTRIES,
+  LEAD_SOURCE_LABELS,
   MEETING_BOOKING,
   PIPELINE_STAGES,
   STAGE_LABELS,
   STANDARD_CATEGORIES,
   ALL_CATEGORIES,
   ALL_COUNTRIES,
+  ALL_SOURCES,
   UNKNOWN_COUNTRY,
+  countryLabel,
 } from "@/lib/constants";
-import { currency, externalUrl, displayDomain, hasUsableEmail } from "@/lib/format";
+import { addedAt, currency, externalUrl, displayDomain, hasUsableEmail, leadSource } from "@/lib/format";
 import type { Lead, PipelineStage } from "@/types";
 import { EMPTY_STATES } from "@/lib/constants";
 
@@ -32,6 +35,12 @@ function ManageDeal({ lead }: { lead: Lead }) {
   const [stage, setStage] = useState<PipelineStage>(lead.pipeline_stage);
   const [phone, setPhone] = useState(lead.contact_phone);
   const [linkedin, setLinkedin] = useState(lead.contact_linkedin);
+  // Corrects a wrong or missing country on an already-saved lead -- discovery
+  // tags this automatically now, but an older lead (pre-country-field) or a
+  // bad website-domain guess (region_from_url) can still be wrong, and this
+  // is the only place to fix it since none of the discovery paths re-run
+  // themselves on an existing lead.
+  const [country, setCountry] = useState(lead.country);
   // Seeded from lead.meeting_at (an ISO datetime, set at the "🎯 Booked!"
   // prompt on the Cold Call Desk) so this stays editable afterward -- a lead
   // that just became meeting_booked immediately leaves the Cold Call queue
@@ -88,6 +97,16 @@ function ManageDeal({ lead }: { lead: Lead }) {
         <Field label="LinkedIn URL">
           <Input value={linkedin} onChange={(e) => setLinkedin(e.target.value)} />
         </Field>
+        <Field label="Country">
+          <Select value={country} onChange={(e) => setCountry(e.target.value)}>
+            <option value="">Not specified</option>
+            {COUNTRIES.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.label}
+              </option>
+            ))}
+          </Select>
+        </Field>
 
         <Button
           variant="primary"
@@ -103,6 +122,7 @@ function ManageDeal({ lead }: { lead: Lead }) {
                 pipeline_stage: stage,
                 contact_phone: phone,
                 contact_linkedin: linkedin,
+                country,
                 ...(meetingDate && meetingTime
                   ? { meeting_at: `${meetingDate}T${meetingTime}:00` }
                   : {}),
@@ -153,7 +173,15 @@ export function PipelineView({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { data: leads = [] } = useLeads({ stage, category, country, q }, initialLeads);
+  const { data: fetchedLeads = [] } = useLeads({ stage, category, country, q }, initialLeads);
+  // Source (leadSource(), derived from source_prompt) isn't a backend
+  // column, so unlike Stage/Category/Country it's never sent to the server
+  // -- filtered client-side over whatever the server already returned.
+  const [source, setSource] = useState(ALL_SOURCES);
+  const leads = useMemo(
+    () => fetchedLeads.filter((l) => source === ALL_SOURCES || leadSource(l.source_prompt) === source),
+    [fetchedLeads, source],
+  );
 
   function setParam(key: string, value: string) {
     const params = new URLSearchParams(searchParams.toString());
@@ -165,7 +193,7 @@ export function PipelineView({
 
   return (
     <>
-      <div className="mb-4 grid grid-cols-3 gap-4">
+      <div className="mb-4 grid grid-cols-4 gap-4">
         <Field label="Stage Filter">
           <Select value={stage} onChange={(e) => setParam("stage", e.target.value)}>
             <option value="all">All Stages</option>
@@ -197,6 +225,16 @@ export function PipelineView({
             ))}
           </Select>
         </Field>
+        <Field label="Source Filter">
+          <Select value={source} onChange={(e) => setSource(e.target.value)}>
+            <option value={ALL_SOURCES}>{ALL_SOURCES}</option>
+            {Object.entries(LEAD_SOURCE_LABELS).map(([id, label]) => (
+              <option key={id} value={id}>
+                {label}
+              </option>
+            ))}
+          </Select>
+        </Field>
       </div>
 
       {leads.length === 0 && <p className="text-muted">{EMPTY_STATES.pipeline}</p>}
@@ -211,6 +249,11 @@ export function PipelineView({
                 {" "}
                 — {currency(lead.deal_value)} · {lead.industry_tag} (
                 {STAGE_LABELS[lead.pipeline_stage]})
+              </span>
+              {/* Ali (Sales Rep, 2026-09-15): leads couldn't be verified
+                  without knowing when/how they were added. */}
+              <span className="ml-2 text-[0.75rem] text-muted">
+                🕒 {addedAt(lead.created_at)} · {LEAD_SOURCE_LABELS[leadSource(lead.source_prompt)]}
               </span>
             </span>
           }
@@ -240,6 +283,9 @@ export function PipelineView({
 
               <p className="text-[0.82rem] text-muted">
                 <strong>Category:</strong> {lead.industry_tag}
+              </p>
+              <p className="text-[0.82rem] text-muted">
+                <strong>Country:</strong> {lead.country ? countryLabel(lead.country) : "Not specified"}
               </p>
               {lead.reason && (
                 <p className="text-[0.82rem] text-muted">

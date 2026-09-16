@@ -1,4 +1,4 @@
-import type { Lead } from "@/types";
+import type { Lead, LeadSource } from "@/types";
 
 /** $1,234,567 — matches Streamlit's f"${v:,.0f}". */
 export function currency(value: number): string {
@@ -32,9 +32,38 @@ export function commentTime(iso: string): string {
   return iso.slice(0, 16).replace("T", " ");
 }
 
+/**
+ * "2026-09-15 · 5:30 PM" -- when a lead was added, shown on lead cards.
+ * 12-hour, unlike commentTime's 24-hour above -- that one deliberately
+ * matches app.py's original comment-timestamp rendering, this one has no
+ * such precedent and reps asked for 12-hour specifically.
+ */
+export function addedAt(iso: string): string {
+  if (!iso) return "";
+  const time = new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  return `${iso.slice(0, 10)} · ${time}`;
+}
+
 export function shortDate(iso: string): string {
   if (!iso) return "";
   return iso.slice(0, 10);
+}
+
+/**
+ * Which channel found/added this lead, read off source_prompt -- exact
+ * strings written by app/services/qualify.py ("qualify: <icp>", used by
+ * both AI Discovery and Google Maps sourcing, distinguished by the "Google
+ * Maps sourcing:" prefix runners.py puts on the icp_prompt it passes in),
+ * app/services/lead_engine.py ("CSV Batch Import"), and
+ * app/crud/leads.py create_lead() ("Manual entry"). No separate DB column.
+ */
+export function leadSource(sourcePrompt: string): LeadSource {
+  const sp = sourcePrompt || "";
+  if (sp.includes("Google Maps sourcing:")) return "google_maps";
+  if (sp.startsWith("qualify:")) return "ai_generated";
+  if (sp === "CSV Batch Import") return "csv_import";
+  if (sp === "Manual entry") return "sales_team";
+  return "other";
 }
 
 /**

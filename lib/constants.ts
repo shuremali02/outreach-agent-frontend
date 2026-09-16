@@ -1,4 +1,4 @@
-import type { PipelineStage } from "@/types";
+import type { LeadSource, PipelineStage } from "@/types";
 
 /** db.PIPELINE_STAGES — order matters, it drives every stage dropdown. */
 export const PIPELINE_STAGES: { id: PipelineStage; label: string }[] = [
@@ -87,6 +87,22 @@ export const COUNTRIES: { id: string; label: string }[] = [
 export function countryLabel(code: string): string {
   return COUNTRIES.find((c) => c.id === code)?.label ?? code;
 }
+
+export const ALL_SOURCES = "All Sources";
+
+/**
+ * Labels for lib/format.ts leadSource() -- which channel found/added a
+ * lead, shown as a badge on every lead card and as a filter (Source
+ * Filter / SourcePills) alongside Category and Country. Purely derived
+ * client-side, no backend column.
+ */
+export const LEAD_SOURCE_LABELS: Record<LeadSource, string> = {
+  sales_team: "🧑‍💼 Sales Team",
+  ai_generated: "🤖 AI Generated",
+  google_maps: "🗺️ Google Maps Generated",
+  csv_import: "📄 CSV Import",
+  other: "❔ Other",
+};
 
 /** Sidebar navigation — replaces the st.session_state["active_tab"] dispatch. */
 export const NAV_ITEMS = [
@@ -340,7 +356,18 @@ export const BATTLECARD = {
   // components/cold-call/battlecard.tsx -- click-to-reveal for
   // HunterDecisionMakers, so a Call Desk page full of leads doesn't fire one
   // GET /leads/{id}/contacts per visible card on load. No Streamlit analogue.
+  // Two different entry points into the same panel, chosen by whether this
+  // lead already has a known contact (lead.contact_name):
+  //  - known already -> this small text link, just to expand and view it.
+  //  - nothing known yet -> findContacts below, a full prominent button
+  //    shown directly (no hidden gate), identical label to the button one
+  //    level inside (contacts-panel.tsx) it stands in for.
   showContacts: "👥 Show decision-maker contacts",
+  // Same literal text as contacts-panel.tsx's own internal button -- reusing
+  // it here means clicking this looks and reads exactly like that button,
+  // even though what it actually does is mount the panel with
+  // autoSearchOnMount so the search fires immediately, no second click.
+  findContacts: "🎯 Find decision makers",
   phoneLabel: "Direct Phone",
   phonePlaceholder: "+1 (555) 000-0000",
   linkedInLabel: "LinkedIn Profile URL",
