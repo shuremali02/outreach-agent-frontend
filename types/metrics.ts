@@ -55,15 +55,13 @@ export interface TeamMetrics {
 export type SprintHorizon = "total" | "week_1" | "week_2" | "week_3";
 
 /** GET /activity-metrics — the Today page's Today/This-Week scrollers, live
- *  from call_events (not the Google Sheet WeekStats/TeamMetrics above). */
-export interface ActivityToday {
+ *  from call_events (not the Google Sheet WeekStats/TeamMetrics above).
+ *  Same 10 fields for both windows -- one set of cards, two time ranges. */
+export interface ActivityWindow {
   calls: number;
   connected: number;
   emails: number;
   leads_added: number;
-}
-
-export interface ActivityWeek {
   followups: number;
   meetings: number;
   disconnected: number;
@@ -73,8 +71,8 @@ export interface ActivityWeek {
 }
 
 export interface ActivityMetrics {
-  today: ActivityToday;
-  this_week: ActivityWeek;
+  today: ActivityWindow;
+  this_week: ActivityWindow;
 }
 
 /** GET /status — drives the sidebar SYSTEM STATUS block. */

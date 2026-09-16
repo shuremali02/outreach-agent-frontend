@@ -249,4 +249,31 @@
     margin-top: 4px;
     line-height: 1.45;
   }
+
+  /* components/today/activity-scroller.tsx -- auto-scrolling card strip.
+     The track renders its card list twice back-to-back and animates exactly
+     -50% (one full set's width), so it loops seamlessly. Paused on hover so
+     a rep can actually read/click a card instead of chasing it. */
+  .activity-marquee {
+    overflow: hidden;
+  }
+
+  .activity-marquee-track {
+    display: flex;
+    width: max-content;
+    animation: activity-marquee-scroll 32s linear infinite;
+  }
+
+  .activity-marquee:hover .activity-marquee-track {
+    animation-play-state: paused;
+  }
+}
+
+@keyframes activity-marquee-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
 }

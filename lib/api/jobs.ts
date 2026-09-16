@@ -4,6 +4,8 @@ import type { Job, JobKind } from "@/types";
 export interface DiscoverInput {
   prompt: string;
   max_leads: number;
+  /** ISO 3166-1 alpha-2, "" = no constraint. */
+  country?: string;
 }
 
 export interface ScanInput {
@@ -30,6 +32,8 @@ export interface MapsQualifyInput {
   max_leads: number;
   /** Same meaning as QualifyInput.scan. */
   scan?: boolean;
+  /** ISO 3166-1 alpha-2, "" = worldwide. Sent to Google Places as regionCode. */
+  country?: string;
 }
 
 export interface ImportInput {

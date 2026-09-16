@@ -228,6 +228,12 @@ export const LEAD_FINDER = {
   skipped: (n: number) => `Skipped ${n} already in your database.`,
   empty:
     "Found no new companies (or all discovered were already in your database). Try specifying a different niche or state!",
+  // Country constraint, shared by both the AI and Google Maps tabs -- folded
+  // into the AI prompt server-side, sent as Google Places' regionCode for
+  // Maps (see app/jobs/runners.py run_discover / run_maps_qualify). No
+  // Streamlit analogue -- app.py's discovery had no country constraint.
+  countryLabel: "Country",
+  countryAny: "🌍 Any Country",
 } as const;
 
 /**
@@ -504,23 +510,27 @@ export const MEETING_ACTIONS = {
 export const ACTIVITY_SCROLLER = {
   todayHeading: "Today",
   thisWeekHeading: "This Week",
-  today: {
-    calls: "Calls",
-    connected: "Connected",
-    emails: "Emails",
+  // Same 10 cards shown in both rows -- only the numbers differ (today's
+  // window vs this week's), never the set of metrics. `key` matches
+  // ActivityWindow's field names (types/metrics.ts). `color` is a fixed hex
+  // (not a --success/--warn/etc. theme token) specifically so all 10 cards
+  // can each get their own distinct, high-contrast color -- the app only
+  // has 4-5 semantic tokens, not enough for 10 visually-different cards.
+  cards: [
+    { key: "calls", label: "Calls", color: "#3b82f6" },
+    { key: "connected", label: "Connected", color: "#10b981" },
+    { key: "emails", label: "Emails", color: "#e06842" },
     // "Leads" alone read as ambiguous -- this specifically counts leads the
     // sales team added manually (source_prompt == "Manual entry"), not AI/
     // Maps/CSV-discovered ones, so the label says so.
-    leadsAdded: "Sales Team Leads",
-  },
-  thisWeek: {
-    followups: "Follow-ups",
-    meetings: "Meetings",
-    disconnected: "Disconnected",
-    voicemail: "Voicemail",
-    receptionist: "Receptionist",
-    decisionMaker: "Decision Maker",
-  },
+    { key: "leads_added", label: "Sales Team Leads", color: "#8b5cf6" },
+    { key: "followups", label: "Follow-ups", color: "#f59e0b" },
+    { key: "meetings", label: "Meetings", color: "#14b8a6" },
+    { key: "disconnected", label: "Disconnected", color: "#ef4444" },
+    { key: "voicemail", label: "Voicemail", color: "#ec4899" },
+    { key: "receptionist", label: "Receptionist", color: "#06b6d4" },
+    { key: "decision_maker", label: "Decision Maker", color: "#6366f1" },
+  ],
 } as const;
 
 /**

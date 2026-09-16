@@ -11,7 +11,7 @@ import { LeadCountSlider } from "@/components/ingest/lead-count-slider";
 import { JobProgress } from "@/components/ingest/job-progress";
 import { Card } from "@/components/ui/card";
 import { TabButton } from "@/components/common/tab-button";
-import { LEAD_FINDER, MAPS_FINDER, QUALIFY, STANDARD_CATEGORIES } from "@/lib/constants";
+import { COUNTRIES, LEAD_FINDER, MAPS_FINDER, QUALIFY, STANDARD_CATEGORIES } from "@/lib/constants";
 import { QualifySummary } from "./qualify-summary";
 import type { DiscoverJobResult, QualifyJobResult } from "@/types";
 
@@ -55,6 +55,10 @@ export function DiscoveryForm() {
   const [mapsQuery, setMapsQuery] = useState("");
   const [category, setCategory] = useState<string>(STANDARD_CATEGORIES[0]);
 
+  // Country constraint -- shared by both tabs. "" = no constraint (worldwide
+  // for Maps, unconstrained for the AI prompt).
+  const [country, setCountry] = useState("");
+
   const [count, setCount] = useState(5);
   const [jobId, setJobId] = useState<string | null>(null);
 
@@ -63,12 +67,14 @@ export function DiscoveryForm() {
   const start = useMutation({
     mutationFn: () =>
       source === "maps"
-        ? jobsApi.qualifyMaps({ maps_query: mapsQuery, industry_tag: category, max_leads: count })
+        ? jobsApi.qualifyMaps({
+            maps_query: mapsQuery, industry_tag: category, max_leads: count, country,
+          })
         // Plain discovery, not the qualify funnel: one Gemini pass, saved
         // straight away, no per-company scan/contact-verify/reject stage.
         // "Google Maps" stays on the qualify funnel on purpose -- that path's
         // whole point is verifying what Places returns.
-        : jobsApi.start("discover", { prompt, max_leads: count }),
+        : jobsApi.start("discover", { prompt, max_leads: count, country }),
     onSuccess: (j) => setJobId(j.job_id),
   });
 
@@ -107,15 +113,27 @@ export function DiscoveryForm() {
         </Tabs.Root>
 
         {source === "ai" ? (
-          <Field label={LEAD_FINDER.label}>
-            <Input
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              placeholder={LEAD_FINDER.placeholder}
-              maxLength={2000}
-              required
-            />
-          </Field>
+          <>
+            <Field label={LEAD_FINDER.label}>
+              <Input
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                placeholder={LEAD_FINDER.placeholder}
+                maxLength={2000}
+                required
+              />
+            </Field>
+            <Field label={LEAD_FINDER.countryLabel}>
+              <Select value={country} onChange={(e) => setCountry(e.target.value)}>
+                <option value="">{LEAD_FINDER.countryAny}</option>
+                {COUNTRIES.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.label}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </>
         ) : (
           <>
             <Field label={MAPS_FINDER.queryLabel}>
@@ -127,15 +145,27 @@ export function DiscoveryForm() {
                 required
               />
             </Field>
-            <Field label="Industry Category">
-              <Select value={category} onChange={(e) => setCategory(e.target.value)}>
-                {STANDARD_CATEGORIES.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </Select>
-            </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Industry Category">
+                <Select value={category} onChange={(e) => setCategory(e.target.value)}>
+                  {STANDARD_CATEGORIES.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              <Field label={LEAD_FINDER.countryLabel}>
+                <Select value={country} onChange={(e) => setCountry(e.target.value)}>
+                  <option value="">{LEAD_FINDER.countryAny}</option>
+                  {COUNTRIES.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.label}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </div>
           </>
         )}
 
