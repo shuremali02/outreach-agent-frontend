@@ -8,7 +8,7 @@ import { LeadCard } from "@/components/leads/lead-card";
 import { PhoneBadge } from "@/components/leads/phone-badge";
 import { Button } from "@/components/ui/button";
 import { Input, Field } from "@/components/ui/input";
-import { enrichmentApi } from "@/lib/api";
+import { enrichmentApi, leadsApi } from "@/lib/api";
 import {
   addedAt, currency, externalUrl, hasUsableEmail, leadSource, telUrl, mailtoUrl,
   linkedInXrayUrl,
@@ -87,6 +87,14 @@ export function Battlecard({ lead }: { lead: Lead }) {
   const generate = useMutation({
     mutationFn: () => enrichmentApi.generateBattlecard(lead.id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["leads"] }),
+  });
+  // "Open in Mail App" only opens a mailto: link -- no send confirmation
+  // reaches the backend, so this is a separate, explicit, rep-confirmed
+  // record (feeds the Today page's Emails count, call_events.py).
+  const [emailMarked, setEmailMarked] = useState(false);
+  const markEmailSent = useMutation({
+    mutationFn: () => leadsApi.markEmailSent(lead.id),
+    onSuccess: () => setEmailMarked(true),
   });
   const [note, setNote] = useState("");
   const [objectionsOpen, setObjectionsOpen] = useState(false);
@@ -231,12 +239,22 @@ export function Battlecard({ lead }: { lead: Lead }) {
               </a>
             )}
             {hasUsableEmail(lead.contact_email) && (
-              <a
-                href={mailtoUrl(lead.contact_email, lead.subject, lead.body)}
-                className="text-accent underline"
-              >
-                ✉️ {lead.contact_email}
-              </a>
+              <div className="flex flex-wrap items-center gap-2">
+                <a
+                  href={mailtoUrl(lead.contact_email, lead.subject, lead.body)}
+                  className="text-accent underline"
+                >
+                  ✉️ {lead.contact_email}
+                </a>
+                <button
+                  type="button"
+                  onClick={() => markEmailSent.mutate()}
+                  disabled={markEmailSent.isPending || emailMarked}
+                  className="cursor-pointer text-[0.75rem] text-muted hover:text-accent disabled:cursor-default"
+                >
+                  {emailMarked ? BATTLECARD.emailMarkedSent : BATTLECARD.markEmailSent}
+                </button>
+              </div>
             )}
             <a
               href={lead.contact_linkedin || linkedInXrayUrl(lead.contact_name, lead.company_name)}
@@ -363,7 +381,9 @@ export function Battlecard({ lead }: { lead: Lead }) {
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-5 gap-2">
+            // 6 dispositions now (added "Receptionist") -- 3x2 fits better
+            // than a cramped 6-wide row.
+            <div className="grid grid-cols-3 gap-2">
               {DISPOSITIONS.map((d) => (
                 <Button
                   key={d.outcome}

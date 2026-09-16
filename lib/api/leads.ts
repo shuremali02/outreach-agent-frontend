@@ -21,6 +21,8 @@ export const leadsApi = {
    */
   recordOutcome: (id: number, outcome: CallOutcome, rep_notes = "", meeting_at?: string) =>
     api.post<Lead>(`/leads/${id}/outcome`, { outcome, rep_notes, meeting_at }),
+  /** "✅ Mark Email Sent" -- see app/api/leads.py mark_email_sent(). */
+  markEmailSent: (id: number) => api.post<void>(`/leads/${id}/email-sent`),
 };
 
 import type { DecisionMaker, LeadContact, LinkedInResearch, Job } from "@/types";

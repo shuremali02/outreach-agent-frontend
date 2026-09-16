@@ -140,6 +140,17 @@ ALLOWED = {
     "Set both Date and Time — without them this lead is staged as Meeting Booked but will not appear on the Meetings tab.",
     # add-lead-popover.tsx's inline form-validation error for the same case.
     "Set both Date and Time for a lead staged as Meeting Booked.",
+    # New "Mark Email Sent" action and "Receptionist" disposition
+    # (lib/constants.ts BATTLECARD/DISPOSITIONS, call_events.py) -- app.py had
+    # no email-send confirmation and only 4 disposition buttons, neither has
+    # a Streamlit counterpart.
+    "✅ Mark Email Sent",
+    "Email marked sent!",
+    "👤 Receptionist",
+    "Reached the receptionist/gatekeeper, not a decision maker. Keeps in Follow-up queue.",
+    # ACTIVITY_SCROLLER "Today" card label -- clarifies this counts only
+    # manually-added (Sales Team) leads, not AI/Maps/CSV-discovered ones.
+    "Sales Team Leads",
 }
 
 CLASS_HINT = re.compile(

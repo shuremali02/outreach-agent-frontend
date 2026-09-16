@@ -150,7 +150,8 @@ export type CallOutcome =
   | "voicemail"
   | "dead_number"
   | "not_interested"
-  | "callback_scheduled";
+  | "callback_scheduled"
+  | "receptionist";
 
 export interface LeadFilters {
   stage?: PipelineStage | "all";

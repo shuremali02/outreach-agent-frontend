@@ -374,6 +374,11 @@ export const BATTLECARD = {
   linkedInPlaceholder: "https://www.linkedin.com/in/...",
   saveContact: "💾 Save Contact Info",
   saveSuccess: "Updated contact info!",
+  // "Open in Mail App" only opens a mailto: link -- the backend has no way to
+  // know an email was actually sent, so this is a separate, explicit,
+  // rep-confirmed record (call_events.py). No Streamlit analogue.
+  markEmailSent: "✅ Mark Email Sent",
+  emailMarkedSent: "Email marked sent!",
   whyHelps: "Why Elipse Studio Helps:",
   whyHelpsFallback:
     "High-ticket custom catalog converts higher with real-time 3D web builder.",
@@ -437,6 +442,11 @@ export const DISPOSITIONS = [
     label: "🎯 Booked!",
     help: "Qualified Meeting Booked! Advances to Pipeline stage.",
   },
+  {
+    outcome: "receptionist",
+    label: "👤 Receptionist",
+    help: "Reached the receptionist/gatekeeper, not a decision maker. Keeps in Follow-up queue.",
+  },
 ] as const;
 
 /**
@@ -483,6 +493,34 @@ export const MEETING_ACTIONS = {
   cancel: "✖ Cancel",
   doneConfirm: (company: string) => `Mark the meeting with ${company} as done? This moves the lead to Proposal Sent.`,
   cancelConfirm: (company: string) => `Cancel the meeting with ${company}? This moves the lead to Closed Lost.`,
+} as const;
+
+/**
+ * components/today/activity-scroller.tsx -- replaces the Google-Sheet-backed
+ * SalesFloorTicker on the Today page with two horizontal-scroll rows read
+ * live from call_events (app/crud/call_events.py), not the sheet. No
+ * Streamlit analogue -- app.py had no per-day/per-week activity breakdown.
+ */
+export const ACTIVITY_SCROLLER = {
+  todayHeading: "Today",
+  thisWeekHeading: "This Week",
+  today: {
+    calls: "Calls",
+    connected: "Connected",
+    emails: "Emails",
+    // "Leads" alone read as ambiguous -- this specifically counts leads the
+    // sales team added manually (source_prompt == "Manual entry"), not AI/
+    // Maps/CSV-discovered ones, so the label says so.
+    leadsAdded: "Sales Team Leads",
+  },
+  thisWeek: {
+    followups: "Follow-ups",
+    meetings: "Meetings",
+    disconnected: "Disconnected",
+    voicemail: "Voicemail",
+    receptionist: "Receptionist",
+    decisionMaker: "Decision Maker",
+  },
 } as const;
 
 /**

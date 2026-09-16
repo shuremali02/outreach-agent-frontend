@@ -1,5 +1,5 @@
 import { QuoteStrip } from "@/components/today/quote-strip";
-import { SalesFloorTicker } from "@/components/today/sales-floor-ticker";
+import { ActivityScroller } from "@/components/today/activity-scroller";
 import { PriorityOutreachList } from "@/components/today/priority-outreach";
 import { ProblemDesk } from "@/components/problems/problem-desk";
 import { MetricCard } from "@/components/metrics/metric-card";
@@ -11,10 +11,15 @@ import { currency, num, todayEyebrow } from "@/lib/format";
 export const dynamic = "force-dynamic";
 
 export default async function TodayPage() {
-  const [leads, metrics, team] = await Promise.all([
+  // team_analytics' Google Sheet call stats moved out of this page --
+  // SalesFloorTicker (kept, unused, in case it's wanted again) only ever had
+  // 3-week blocks, never a "today" row, so it could never answer what this
+  // page now needs. Sales Terminal (app/(workspace)/terminal/page.tsx) still
+  // fetches metricsApi.team() on its own for the full historical view.
+  const [leads, metrics, activity] = await Promise.all([
     leadsApi.list(),
     metricsApi.crm(),
-    metricsApi.team(),
+    metricsApi.activity(),
   ]);
 
   return (
@@ -22,7 +27,7 @@ export default async function TodayPage() {
       <p className="date-eyebrow">{todayEyebrow()}</p>
       <QuoteStrip />
 
-      <SalesFloorTicker total={team.total} />
+      <ActivityScroller data={activity} />
 
       <ProblemDesk />
 
