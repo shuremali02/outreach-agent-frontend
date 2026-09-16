@@ -82,14 +82,25 @@ function ManageDeal({ lead }: { lead: Lead }) {
           </Select>
         </Field>
         {stage === "meeting_booked" && (
-          <div className="grid grid-cols-2 gap-2">
-            <Field label={MEETING_BOOKING.dateLabel}>
-              <Input type="date" value={meetingDate} onChange={(e) => setMeetingDate(e.target.value)} />
-            </Field>
-            <Field label={MEETING_BOOKING.timeLabel}>
-              <Input type="time" value={meetingTime} onChange={(e) => setMeetingTime(e.target.value)} />
-            </Field>
-          </div>
+          <>
+            <div className="grid grid-cols-2 gap-2">
+              <Field label={MEETING_BOOKING.dateLabel}>
+                <Input type="date" value={meetingDate} onChange={(e) => setMeetingDate(e.target.value)} />
+              </Field>
+              <Field label={MEETING_BOOKING.timeLabel}>
+                <Input type="time" value={meetingTime} onChange={(e) => setMeetingTime(e.target.value)} />
+              </Field>
+            </div>
+            {!(meetingDate && meetingTime) && (
+              <p
+                className="rounded-[8px] px-3 py-2 text-[0.8rem]"
+                style={{ background: "var(--warn-tint)", color: "var(--warn)" }}
+              >
+                Set both Date and Time — without them this lead is staged as Meeting Booked but
+                will not appear on the Meetings tab.
+              </p>
+            )}
+          </>
         )}
         <Field label="Contact Phone">
           <Input value={phone} onChange={(e) => setPhone(e.target.value)} />
@@ -111,7 +122,7 @@ function ManageDeal({ lead }: { lead: Lead }) {
         <Button
           variant="primary"
           size="sm"
-          disabled={update.isPending}
+          disabled={update.isPending || (stage === "meeting_booked" && !(meetingDate && meetingTime))}
           onClick={() =>
             update.mutate({
               id: lead.id,

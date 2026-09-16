@@ -201,10 +201,18 @@ export function ContactsPanel({
                         variant="secondary"
                         size="sm"
                         onClick={() => reveal.mutate(c.id)}
+                        // Disabled for every row while ANY reveal is in flight
+                        // (this is one shared mutation for the whole panel,
+                        // so two clicks in a row would fire two concurrent
+                        // credit spends) -- but the "Revealing…" LABEL only
+                        // shows on the row actually being revealed, via
+                        // reveal.variables (the contactId passed to
+                        // .mutate()), so it doesn't look like every contact
+                        // is being looked up at once.
                         disabled={reveal.isPending}
                         title="Spend one SignalHire credit for a direct email and phone"
                       >
-                        {reveal.isPending ? "Revealing…" : "🔓 Reveal"}
+                        {reveal.isPending && reveal.variables === c.id ? "Revealing…" : "🔓 Reveal"}
                       </Button>
                     )}
                     {!c.phone &&
@@ -216,7 +224,7 @@ export function ContactsPanel({
                           disabled={findPhone.isPending}
                           title="Look up a mobile phone number via FullEnrich (up to 10 credits, only charged on a match)"
                         >
-                          {findPhone.isPending ? "Looking up…" : "📱 Find phone"}
+                          {findPhone.isPending && findPhone.variables === c.id ? "Looking up…" : "📱 Find phone"}
                         </Button>
                       )}
                   </div>

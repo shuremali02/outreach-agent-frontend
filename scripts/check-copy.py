@@ -134,6 +134,12 @@ ALLOWED = {
     "🗺️ Google Maps Generated",
     "CSV Batch Import",
     "Google Maps sourcing:",
+    # Pipeline/Contacts edit panels -- warns before a "Meeting Booked" stage
+    # save with no date/time (silently invisible on the Meetings tab; see
+    # docs.md 2026-09-16). No Streamlit analogue, app.py never had this stage.
+    "Set both Date and Time — without them this lead is staged as Meeting Booked but will not appear on the Meetings tab.",
+    # add-lead-popover.tsx's inline form-validation error for the same case.
+    "Set both Date and Time for a lead staged as Meeting Booked.",
 }
 
 CLASS_HINT = re.compile(

@@ -4,7 +4,7 @@ import * as Popover from "@radix-ui/react-popover";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { leadsApi } from "@/lib/api";
-import { COUNTRIES, PIPELINE_STAGES, STANDARD_CATEGORIES } from "@/lib/constants";
+import { COUNTRIES, MEETING_BOOKING, PIPELINE_STAGES, STANDARD_CATEGORIES } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { Input, Textarea, Select, Field } from "@/components/ui/input";
 import type { CreateLeadInput, PipelineStage } from "@/types";
@@ -27,6 +27,12 @@ export function AddLeadPopover() {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<CreateLeadInput>(EMPTY);
   const [error, setError] = useState<string | null>(null);
+  // Separate date/time inputs, combined into meeting_at on submit -- same
+  // pattern as Pipeline/Contacts' stage editors. A rep adding a lead they
+  // already have a meeting with needs this set here, at creation time, not
+  // just when editing an existing lead (see docs.md 2026-09-16).
+  const [meetingDate, setMeetingDate] = useState("");
+  const [meetingTime, setMeetingTime] = useState("");
   const qc = useQueryClient();
 
   const create = useMutation({
@@ -35,6 +41,8 @@ export function AddLeadPopover() {
       qc.invalidateQueries({ queryKey: ["leads"] });
       qc.invalidateQueries({ queryKey: ["metrics"] });
       setForm(EMPTY);
+      setMeetingDate("");
+      setMeetingTime("");
       setError(null);
       setOpen(false);
     },
@@ -44,6 +52,8 @@ export function AddLeadPopover() {
   function set<K extends keyof CreateLeadInput>(key: K, value: CreateLeadInput[K]) {
     setForm((f) => ({ ...f, [key]: value }));
   }
+
+  const needsMeetingTime = form.pipeline_stage === "meeting_booked" && !(meetingDate && meetingTime);
 
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
@@ -65,7 +75,16 @@ export function AddLeadPopover() {
                 setError("Company name is required.");
                 return;
               }
-              create.mutate(form);
+              if (needsMeetingTime) {
+                setError("Set both Date and Time for a lead staged as Meeting Booked.");
+                return;
+              }
+              create.mutate({
+                ...form,
+                ...(meetingDate && meetingTime
+                  ? { meeting_at: `${meetingDate}T${meetingTime}:00` }
+                  : {}),
+              });
             }}
             className="flex flex-col gap-3"
           >
@@ -138,6 +157,27 @@ export function AddLeadPopover() {
                 </Select>
               </Field>
             </div>
+            {form.pipeline_stage === "meeting_booked" && (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label={MEETING_BOOKING.dateLabel}>
+                    <Input type="date" value={meetingDate} onChange={(e) => setMeetingDate(e.target.value)} />
+                  </Field>
+                  <Field label={MEETING_BOOKING.timeLabel}>
+                    <Input type="time" value={meetingTime} onChange={(e) => setMeetingTime(e.target.value)} />
+                  </Field>
+                </div>
+                {needsMeetingTime && (
+                  <p
+                    className="rounded-[8px] px-3 py-2 text-[0.8rem]"
+                    style={{ background: "var(--warn-tint)", color: "var(--warn)" }}
+                  >
+                    Set both Date and Time — without them this lead is staged as Meeting Booked but
+                    will not appear on the Meetings tab.
+                  </p>
+                )}
+              </>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <Field label="Industry Category">
                 <Select
@@ -172,7 +212,7 @@ export function AddLeadPopover() {
 
             {error && <p className="text-[0.8rem] text-danger">{error}</p>}
 
-            <Button type="submit" variant="primary" block disabled={create.isPending}>
+            <Button type="submit" variant="primary" block disabled={create.isPending || needsMeetingTime}>
               {create.isPending ? "Saving…" : "Save Lead to CRM"}
             </Button>
           </form>

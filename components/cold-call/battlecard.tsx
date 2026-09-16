@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useUpdateLead, useCallOutcome } from "@/hooks/use-leads";
 import { LinkedInResearchPanel, HunterDecisionMakers, SiteScanPanel } from "@/components/enrichment";
+import { LeadCard } from "@/components/leads/lead-card";
 import { PhoneBadge } from "@/components/leads/phone-badge";
 import { Button } from "@/components/ui/button";
 import { Input, Field } from "@/components/ui/input";
@@ -159,9 +160,9 @@ export function Battlecard({ lead }: { lead: Lead }) {
     setBookingPrompt(false);
   }
 
-  return (
-    <div className="mb-4 rounded-[12px] border border-border bg-card p-5">
-      <div className="mb-3 flex flex-wrap items-center gap-3">
+  const summary = (
+    <div>
+      <div className="flex flex-wrap items-center gap-3">
         <h3 className="serif-title text-[1.4rem] font-bold">{lead.company_name}</h3>
         <span className="rounded-[6px] bg-tag px-2 py-1 font-mono text-[0.8rem] font-bold">
           {currency(lead.deal_value)}
@@ -169,7 +170,7 @@ export function Battlecard({ lead }: { lead: Lead }) {
         <PhoneBadge status={lead.phone_status} phone={lead.contact_phone} />
         <span className="stage-tag">{lead.industry_tag}</span>
       </div>
-      <p className="mb-1 text-[0.88rem] text-muted">
+      <p className="mb-1 mt-1 text-[0.88rem] text-muted">
         👤 {lead.contact_name || "Decision Maker"}
         {lead.contact_role && ` · ${lead.contact_role}`}
       </p>
@@ -177,13 +178,23 @@ export function Battlecard({ lead }: { lead: Lead }) {
           mentioned on the leads when they were generated ... also the
           country name" -- and who/what added it. All three from data
           already on the lead, none of it was previously shown anywhere. */}
-      <p className="mb-4 text-[0.75rem] text-muted">
+      <p className="text-[0.75rem] text-muted">
         🕒 {addedAt(lead.created_at)}
         {" · "}
         {LEAD_SOURCE_LABELS[leadSource(lead.source_prompt)]}
         {lead.country && ` · ${countryLabel(lead.country)}`}
       </p>
+    </div>
+  );
 
+  return (
+    // Defaults open -- a card in the call queue is meant to be worked right
+    // now, unlike Pipeline/Contacts' browse-and-search lists which default
+    // closed. Collapsing is still available (the same ▾/▸ arrow, click to
+    // toggle) so a rep can tuck away a lead they're not calling next without
+    // losing their place in the queue -- previously this whole card had no
+    // collapse at all.
+    <LeadCard summary={summary} defaultOpen>
       <div className="grid grid-cols-[1.2fr_2fr] gap-6">
         {/* Dialer column */}
         <div className="flex flex-col gap-3">
@@ -372,6 +383,6 @@ export function Battlecard({ lead }: { lead: Lead }) {
           )}
         </div>
       </div>
-    </div>
+    </LeadCard>
   );
 }

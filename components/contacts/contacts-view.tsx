@@ -16,6 +16,7 @@ import { TerminalPill } from "@/components/ui/tag";
 import {
   COUNTRIES,
   ALL_SOURCES,
+  MEETING_BOOKING,
   PIPELINE_STAGES,
   STAGE_LABELS,
   STANDARD_CATEGORIES,
@@ -39,6 +40,12 @@ function ClassificationPanel({ lead }: { lead: Lead }) {
   // See pipeline-view.tsx ManageDeal's identical field -- corrects a wrong
   // or missing country on an already-saved lead.
   const [country, setCountry] = useState(lead.country);
+  // See pipeline-view.tsx ManageDeal's identical fields -- this panel had no
+  // way at all to set a meeting date/time, so selecting "Meeting Booked"
+  // here always left meeting_at null, silently invisible on the Meetings
+  // tab despite the lead being correctly staged (see docs.md 2026-09-16).
+  const [meetingDate, setMeetingDate] = useState(lead.meeting_at ? lead.meeting_at.slice(0, 10) : "");
+  const [meetingTime, setMeetingTime] = useState(lead.meeting_at ? lead.meeting_at.slice(11, 16) : "");
 
   return (
     <div className="flex flex-col gap-3">
@@ -61,6 +68,27 @@ function ClassificationPanel({ lead }: { lead: Lead }) {
           ))}
         </Select>
       </Field>
+      {stage === "meeting_booked" && (
+        <>
+          <div className="grid grid-cols-2 gap-2">
+            <Field label={MEETING_BOOKING.dateLabel}>
+              <Input type="date" value={meetingDate} onChange={(e) => setMeetingDate(e.target.value)} />
+            </Field>
+            <Field label={MEETING_BOOKING.timeLabel}>
+              <Input type="time" value={meetingTime} onChange={(e) => setMeetingTime(e.target.value)} />
+            </Field>
+          </div>
+          {!(meetingDate && meetingTime) && (
+            <p
+              className="rounded-[8px] px-3 py-2 text-[0.8rem]"
+              style={{ background: "var(--warn-tint)", color: "var(--warn)" }}
+            >
+              Set both Date and Time — without them this lead is staged as Meeting Booked but
+              will not appear on the Meetings tab.
+            </p>
+          )}
+        </>
+      )}
       <Field label="Contact Phone">
         <Input value={phone} onChange={(e) => setPhone(e.target.value)} />
       </Field>
@@ -89,7 +117,7 @@ function ClassificationPanel({ lead }: { lead: Lead }) {
       <Button
         variant="primary"
         size="sm"
-        disabled={update.isPending}
+        disabled={update.isPending || (stage === "meeting_booked" && !(meetingDate && meetingTime))}
         onClick={() =>
           update.mutate({
             id: lead.id,
@@ -100,6 +128,9 @@ function ClassificationPanel({ lead }: { lead: Lead }) {
               contact_linkedin: linkedin,
               deal_value: dealValue,
               country,
+              ...(meetingDate && meetingTime
+                ? { meeting_at: `${meetingDate}T${meetingTime}:00` }
+                : {}),
             },
           })
         }

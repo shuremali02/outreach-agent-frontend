@@ -173,6 +173,8 @@ export interface CreateLeadInput {
   industry_tag?: string;
   pipeline_stage?: PipelineStage;
   reason?: string;
+  /** ISO datetime -- only meaningful when pipeline_stage is "meeting_booked". */
+  meeting_at?: string;
 }
 
 /**
