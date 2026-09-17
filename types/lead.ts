@@ -86,6 +86,15 @@ export interface Lead {
    * from followup_date (a "call again" date for the Follow-up queue).
    */
   meeting_at: string;
+
+  // --- last disposition (schema revision 0006) ---
+  /**
+   * CallOutcome value from the most recent disposition, "" if never called.
+   * pipeline_stage alone can't tell voicemail/callback_scheduled/receptionist
+   * apart -- all three collapse to "followup_due" -- this is what the
+   * Follow-ups page filters and displays on.
+   */
+  last_call_outcome: string;
 }
 
 export interface QualificationNote {
