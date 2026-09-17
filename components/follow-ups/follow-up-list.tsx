@@ -18,6 +18,15 @@ const OUTCOME_LABELS: Record<string, string> = Object.fromEntries(
 );
 const ALL_REASONS = "All Reasons";
 
+/**
+ * dead_number/wrong_number route to pipeline_stage "lost" (crud/leads.py
+ * _OUTCOME_STAGE) -- a lead with either outcome never lands in a Follow-up
+ * stage, so offering them here would just be a filter option that always
+ * returns nothing. Per user request 2026-09-17.
+ */
+const NOT_A_FOLLOWUP_REASON = new Set(["dead_number", "wrong_number"]);
+const FOLLOWUP_REASONS = DISPOSITIONS.filter((d) => !NOT_A_FOLLOWUP_REASON.has(d.outcome));
+
 /** The pre-composed 2nd-touch draft from app.py, with the calendar link inlined. */
 function secondTouch(lead: Lead, calendarLink: string): string {
   const first = (lead.contact_name || "there").split(" ")[0];
@@ -112,13 +121,12 @@ export function FollowUpList({
 
   // Reason filter: pipeline_stage alone can't say WHY a lead landed here --
   // voicemail, callback_scheduled and receptionist all collapse to the same
-  // "followup_due" stage. Only offer reasons actually present, so the
-  // dropdown doesn't show options that would just empty the list.
+  // "followup_due" stage. Always shows every disposition (not just ones
+  // currently present, per user request 2026-09-17 -- "Decision Maker" and
+  // "Closed" weren't showing simply because no lead had that outcome YET),
+  // matching how Pipeline/Contacts' Category/Country/Source filters always
+  // show their full option list too.
   const [reason, setReason] = useState(ALL_REASONS);
-  const presentReasons = useMemo(
-    () => DISPOSITIONS.filter((d) => stageLeads.some((l) => l.last_call_outcome === d.outcome)),
-    [stageLeads],
-  );
   const leads = useMemo(
     () => stageLeads.filter((l) => reason === ALL_REASONS || l.last_call_outcome === reason),
     [stageLeads, reason],
@@ -134,18 +142,16 @@ export function FollowUpList({
 
   return (
     <>
-      {presentReasons.length > 1 && (
-        <Field label="Reason Filter" className="mb-4 max-w-xs">
-          <Select value={reason} onChange={(e) => setReason(e.target.value)}>
-            <option value={ALL_REASONS}>{ALL_REASONS}</option>
-            {presentReasons.map((d) => (
-              <option key={d.outcome} value={d.outcome}>
-                {d.label}
-              </option>
-            ))}
-          </Select>
-        </Field>
-      )}
+      <Field label="Reason Filter" className="mb-4 max-w-xs">
+        <Select value={reason} onChange={(e) => setReason(e.target.value)}>
+          <option value={ALL_REASONS}>{ALL_REASONS}</option>
+          {FOLLOWUP_REASONS.map((d) => (
+            <option key={d.outcome} value={d.outcome}>
+              {d.label}
+            </option>
+          ))}
+        </Select>
+      </Field>
       {leads.map((lead) => (
         <FollowUpCard key={lead.id} lead={lead} calendarLink={calendarLink} />
       ))}

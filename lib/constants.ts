@@ -458,6 +458,31 @@ export const DISPOSITIONS = [
     label: "👤 Receptionist",
     help: "Reached the receptionist/gatekeeper, not a decision maker. Keeps in Follow-up queue.",
   },
+  {
+    outcome: "decision_maker",
+    label: "🧑‍💼 Decision Maker",
+    help: "Spoke with the decision maker directly, no outcome yet. Keeps in Follow-up queue.",
+  },
+  {
+    outcome: "no_answer",
+    label: "📞 No Answer",
+    help: "Phone rang, nobody picked up. Keeps in Follow-up queue.",
+  },
+  {
+    outcome: "hang_up",
+    label: "🚫 Hang Up",
+    help: "Call connected then was hung up before any conversation. Keeps in Follow-up queue.",
+  },
+  {
+    outcome: "wrong_number",
+    label: "📵 Wrong Number",
+    help: "This number doesn't reach the company at all. Removes from queue.",
+  },
+  {
+    outcome: "closed",
+    label: "🤝 Closed",
+    help: "Client is closing the deal, not final yet. Advances to Proposal Sent.",
+  },
 ] as const;
 
 /**

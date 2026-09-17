@@ -160,7 +160,12 @@ export type CallOutcome =
   | "dead_number"
   | "not_interested"
   | "callback_scheduled"
-  | "receptionist";
+  | "receptionist"
+  | "decision_maker"
+  | "no_answer"
+  | "hang_up"
+  | "wrong_number"
+  | "closed";
 
 export interface LeadFilters {
   stage?: PipelineStage | "all";

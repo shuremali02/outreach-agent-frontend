@@ -401,9 +401,9 @@ export function Battlecard({ lead }: { lead: Lead }) {
               </div>
             </div>
           ) : (
-            // 6 dispositions now (added "Receptionist") -- 3x2 fits better
-            // than a cramped 6-wide row.
-            <div className="grid grid-cols-3 gap-2">
+            // 11 dispositions now (added Closed; Irrelevant renamed to Wrong
+            // Number) -- 4-wide (4+4+3) fits better than a 5-wide 5+5+1.
+            <div className="grid grid-cols-4 gap-2">
               {DISPOSITIONS.map((d) => (
                 <Button
                   key={d.outcome}

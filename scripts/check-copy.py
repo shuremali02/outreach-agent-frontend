@@ -152,6 +152,34 @@ ALLOWED = {
     "Email marked sent!",
     "👤 Receptionist",
     "Reached the receptionist/gatekeeper, not a decision maker. Keeps in Follow-up queue.",
+    # New "Decision Maker" disposition (replaces the old derived Today/This-
+    # Week count of the same name with a real button, per user request
+    # 2026-09-17) -- same reasoning as Receptionist above, no Streamlit
+    # counterpart.
+    "🧑‍💼 Decision Maker",
+    "Spoke with the decision maker directly, no outcome yet. Keeps in Follow-up queue.",
+    # 3 more dispositions the user asked for directly from a reference call-
+    # desk tool's button list (No Answer, Hang Up, Irrelevant) -- same
+    # reasoning as Receptionist/Decision Maker above, no Streamlit counterpart.
+    "Phone rang, nobody picked up. Keeps in Follow-up queue.",
+    "Call connected then was hung up before any conversation. Keeps in Follow-up queue.",
+    # "Irrelevant" renamed to "Wrong Number", and "Closed" added, per user
+    # request 2026-09-17 -- same reference button list as above.
+    "📵 Wrong Number",
+    "This number doesn't reach the company at all. Removes from queue.",
+    # "Closed" corrected 2026-09-17: NOT "business shut down" (a wrong first
+    # reading) -- confirmed live it means the client is closing the deal, a
+    # positive outcome that advances the lead to Proposal Sent.
+    "Client is closing the deal, not final yet. Advances to Proposal Sent.",
+    # job-progress.tsx: the old "Complete — N leads processed" message
+    # claimed N (the REQUESTED count, set before the run even started) as if
+    # it were the actual outcome -- a run that found zero leads (e.g. quota
+    # exhausted) showed this green success line directly above the caller's
+    # own red error message, visibly contradicting it (confirmed live
+    # 2026-09-17). Now neutral; each caller's own result summary (already
+    # reading job.result) is the one source of truth for what actually
+    # happened.
+    "✅ Job finished.",
     # ACTIVITY_SCROLLER "Today" card label -- clarifies this counts only
     # manually-added (Sales Team) leads, not AI/Maps/CSV-discovered ones.
     "Sales Team Leads",

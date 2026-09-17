@@ -250,30 +250,18 @@
     line-height: 1.45;
   }
 
-  /* components/today/activity-scroller.tsx -- auto-scrolling card strip.
-     The track renders its card list twice back-to-back and animates exactly
-     -50% (one full set's width), so it loops seamlessly. Paused on hover so
-     a rep can actually read/click a card instead of chasing it. */
-  .activity-marquee {
-    overflow: hidden;
-  }
-
-  .activity-marquee-track {
+  /* components/today/activity-scroller.tsx -- card strip the rep drags to
+     scroll by hand (mouse/touch), instead of the earlier auto-scrolling
+     marquee -- user asked for the cards to stay put unless dragged.
+     Scrollbar hidden cross-browser since the drag itself is the intended
+     way to scroll this row; native wheel/trackpad scroll still works. */
+  .activity-scroll-row {
     display: flex;
-    width: max-content;
-    animation: activity-marquee-scroll 32s linear infinite;
+    overflow-x: auto;
+    scrollbar-width: none;
   }
 
-  .activity-marquee:hover .activity-marquee-track {
-    animation-play-state: paused;
-  }
-}
-
-@keyframes activity-marquee-scroll {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(-50%);
+  .activity-scroll-row::-webkit-scrollbar {
+    display: none;
   }
 }

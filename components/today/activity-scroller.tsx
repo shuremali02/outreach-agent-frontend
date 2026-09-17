@@ -1,3 +1,6 @@
+"use client";
+
+import { useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { ACTIVITY_SCROLLER } from "@/lib/constants";
 import { num } from "@/lib/format";
@@ -14,8 +17,10 @@ import type { ActivityMetrics, ActivityWindow } from "@/types";
  * shared theme token -- there aren't 10 of those) so all 10 read as visually
  * distinct at a glance.
  *
- * Auto-scrolls slowly (.activity-marquee in globals.css), pausing on hover
- * so a rep can actually read or click a card instead of chasing it.
+ * Cards stay put -- a rep drags the row by hand (mouse or touch) to see the
+ * rest, same as the original hand-drawn sketch. An earlier version
+ * auto-scrolled on a timer; user asked for that removed since it kept
+ * moving cards out from under a click.
  */
 export function ActivityScroller({ data }: { data: ActivityMetrics }) {
   return (
@@ -29,46 +34,51 @@ export function ActivityScroller({ data }: { data: ActivityMetrics }) {
 }
 
 function Row({ heading, window }: { heading: string; window: ActivityWindow }) {
+  const trackRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<{ startX: number; startScrollLeft: number } | null>(null);
+  const [dragging, setDragging] = useState(false);
+
+  function onPointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    const el = trackRef.current;
+    if (!el) return;
+    dragRef.current = { startX: e.clientX, startScrollLeft: el.scrollLeft };
+    setDragging(true);
+    el.setPointerCapture(e.pointerId);
+  }
+  function onPointerMove(e: React.PointerEvent<HTMLDivElement>) {
+    const el = trackRef.current;
+    if (!el || !dragRef.current) return;
+    el.scrollLeft = dragRef.current.startScrollLeft - (e.clientX - dragRef.current.startX);
+  }
+  function endDrag() {
+    dragRef.current = null;
+    setDragging(false);
+  }
+
   return (
     <div>
       <p className="metric-label mb-2">{heading}</p>
-      <div className="activity-marquee">
-        <div className="activity-marquee-track gap-3 pb-1 pr-3">
-          {ACTIVITY_SCROLLER.cards.map((c) => (
-            <MiniStat key={c.key} label={c.label} color={c.color} value={window[c.key as keyof ActivityWindow]} />
-          ))}
-          {/* Exact duplicate, hidden from assistive tech, so the flat list of
-              20 items is exactly 2x one set's width -- -50% loops seamlessly. */}
-          {ACTIVITY_SCROLLER.cards.map((c) => (
-            <MiniStat
-              key={`dup-${c.key}`}
-              label={c.label}
-              color={c.color}
-              value={window[c.key as keyof ActivityWindow]}
-              hidden
-            />
-          ))}
-        </div>
+      <div
+        ref={trackRef}
+        className="activity-scroll-row select-none gap-3 pb-1 pr-3"
+        style={{ cursor: dragging ? "grabbing" : "grab" }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={endDrag}
+        onPointerLeave={endDrag}
+        onPointerCancel={endDrag}
+      >
+        {ACTIVITY_SCROLLER.cards.map((c) => (
+          <MiniStat key={c.key} label={c.label} color={c.color} value={window[c.key as keyof ActivityWindow]} />
+        ))}
       </div>
     </div>
   );
 }
 
-function MiniStat({
-  label,
-  value,
-  color,
-  hidden = false,
-}: {
-  label: string;
-  value: number;
-  color: string;
-  /** True for the marquee's duplicate set -- kept out of assistive tech. */
-  hidden?: boolean;
-}) {
+function MiniStat({ label, value, color }: { label: string; value: number; color: string }) {
   return (
     <div
-      aria-hidden={hidden}
       className="flex w-[190px] shrink-0 flex-col justify-between rounded-[14px] px-5 py-4"
       style={{ background: color, color: "#fff" }}
     >
