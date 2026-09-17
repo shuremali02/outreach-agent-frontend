@@ -18,7 +18,11 @@ const EMPTY: CreateLeadInput = {
   contact_phone: "",
   country: "",
   deal_value: 18000,
-  industry_tag: STANDARD_CATEGORIES[5],
+  // No default category -- was STANDARD_CATEGORIES[5] (Tech & Commercial),
+  // which silently tagged a lead with the wrong category whenever a rep
+  // didn't notice and change it. Blank forces an explicit, deliberate pick
+  // (see the required-field validation below), same reasoning as country.
+  industry_tag: "",
   pipeline_stage: "draft_ready",
   reason: "",
 };
@@ -54,6 +58,9 @@ export function AddLeadPopover() {
   }
 
   const needsMeetingTime = form.pipeline_stage === "meeting_booked" && !(meetingDate && meetingTime);
+  // Category and Country are now required -- see EMPTY's industry_tag
+  // comment above for why a silent default was removed.
+  const missingRequired = !form.industry_tag || !form.country;
 
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
@@ -73,6 +80,10 @@ export function AddLeadPopover() {
               e.preventDefault();
               if (!form.company_name.trim()) {
                 setError("Company name is required.");
+                return;
+              }
+              if (missingRequired) {
+                setError("Select an Industry Category and a Country before saving.");
                 return;
               }
               if (needsMeetingTime) {
@@ -179,11 +190,15 @@ export function AddLeadPopover() {
               </>
             )}
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Industry Category">
+              <Field label="Industry Category *">
                 <Select
                   value={form.industry_tag}
                   onChange={(e) => set("industry_tag", e.target.value)}
+                  required
                 >
+                  <option value="" disabled>
+                    Select a category
+                  </option>
                   {STANDARD_CATEGORIES.map((c) => (
                     <option key={c} value={c}>
                       {c}
@@ -191,9 +206,11 @@ export function AddLeadPopover() {
                   ))}
                 </Select>
               </Field>
-              <Field label="Country">
-                <Select value={form.country} onChange={(e) => set("country", e.target.value)}>
-                  <option value="">Not specified</option>
+              <Field label="Country *">
+                <Select value={form.country} onChange={(e) => set("country", e.target.value)} required>
+                  <option value="" disabled>
+                    Select a country
+                  </option>
                   {COUNTRIES.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.label}
@@ -212,7 +229,12 @@ export function AddLeadPopover() {
 
             {error && <p className="text-[0.8rem] text-danger">{error}</p>}
 
-            <Button type="submit" variant="primary" block disabled={create.isPending || needsMeetingTime}>
+            <Button
+              type="submit"
+              variant="primary"
+              block
+              disabled={create.isPending || needsMeetingTime || missingRequired}
+            >
               {create.isPending ? "Saving…" : "Save Lead to CRM"}
             </Button>
           </form>

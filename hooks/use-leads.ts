@@ -63,3 +63,12 @@ export function useCallOutcome() {
     onSuccess: invalidate,
   });
 }
+
+/** "➕ Add Note" -- always appends server-side, see lib/api/leads.ts addNote(). */
+export function useAddNote() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: ({ id, text }: { id: number; text: string }) => leadsApi.addNote(id, text),
+    onSuccess: invalidate,
+  });
+}

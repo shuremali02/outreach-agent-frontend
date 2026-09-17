@@ -27,9 +27,31 @@ export function todayEyebrow(d = new Date()): string {
     .toUpperCase();
 }
 
+/**
+ * "2026-09-17 16:40" in the VIEWER's own local time. Backend timestamps
+ * (created_at etc.) are real UTC instants marked with a trailing "Z" (see
+ * app/schemas/lead.py _dt_utc()) specifically so `new Date(iso)` converts
+ * correctly here -- confirmed live 2026-09-17: without that marker, and
+ * without going through a real Date object, this was showing the server's
+ * raw UTC clock unconverted (11:38 shown when it was actually 16:38 PKT).
+ * Deliberately built from the Date object's own getters, not string slicing
+ * -- slicing the original UTC string can show the wrong calendar DATE too,
+ * not just the wrong time, for anything within ~5 hours of UTC midnight.
+ */
+function localDateTimeParts(iso: string): { date: string; d: Date } | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return { date, d };
+}
+
 /** Comment timestamps: app.py rendered created_at[:16] with T -> space. */
 export function commentTime(iso: string): string {
-  return iso.slice(0, 16).replace("T", " ");
+  const parts = localDateTimeParts(iso);
+  if (!parts) return "";
+  const { date, d } = parts;
+  const time = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  return `${date} ${time}`;
 }
 
 /**
@@ -39,31 +61,40 @@ export function commentTime(iso: string): string {
  * such precedent and reps asked for 12-hour specifically.
  */
 export function addedAt(iso: string): string {
-  if (!iso) return "";
-  const time = new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-  return `${iso.slice(0, 10)} · ${time}`;
+  const parts = localDateTimeParts(iso);
+  if (!parts) return "";
+  const time = parts.d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  return `${parts.date} · ${time}`;
 }
 
 export function shortDate(iso: string): string {
-  if (!iso) return "";
-  return iso.slice(0, 10);
+  return localDateTimeParts(iso)?.date ?? "";
 }
 
 /**
  * Which channel found/added this lead, read off source_prompt -- exact
- * strings written by app/services/qualify.py ("qualify: <icp>", used by
- * both AI Discovery and Google Maps sourcing, distinguished by the "Google
- * Maps sourcing:" prefix runners.py puts on the icp_prompt it passes in),
- * app/services/lead_engine.py ("CSV Batch Import"), and
- * app/crud/leads.py create_lead() ("Manual entry"). No separate DB column.
+ * strings written by app/services/lead_engine.py ("CSV Batch Import"),
+ * app/crud/leads.py create_lead() ("Manual entry"), and Google Maps sourcing
+ * (qualify.py prefixes "qualify: " + the "Google Maps sourcing:" marker
+ * runners.py puts on the icp_prompt it passes in). No separate DB column.
+ *
+ * Confirmed live 2026-09-17: the plain "AI Lead Finder" Discover tab (the
+ * only AI path actually wired into the UI) is agent_core.run_agent(), whose
+ * save payload sets source_prompt to the RAW user prompt with no "qualify: "
+ * prefix at all -- unlike the /jobs/qualify funnel, which is not reachable
+ * from this UI. Every such lead was falling through to "other" (invisible
+ * under the "AI Generated" filter/pill) because the old logic assumed ALL
+ * AI-discovered leads were prefixed. Fixed by defaulting to ai_generated
+ * instead -- Manual/CSV/Maps are checked explicitly above it, so anything
+ * left over is some form of AI discovery, which is the common case here.
  */
 export function leadSource(sourcePrompt: string): LeadSource {
   const sp = sourcePrompt || "";
+  if (!sp) return "other";
   if (sp.includes("Google Maps sourcing:")) return "google_maps";
-  if (sp.startsWith("qualify:")) return "ai_generated";
   if (sp === "CSV Batch Import") return "csv_import";
   if (sp === "Manual entry") return "sales_team";
-  return "other";
+  return "ai_generated";
 }
 
 /**

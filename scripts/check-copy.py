@@ -100,6 +100,10 @@ ALLOWED = {
     # Streamlit analogue.
     "Find phone failed",
     "Look up a mobile phone number via FullEnrich (up to 10 credits, only charged on a match)",
+    # Explicit "no match" feedback -- a miss is a normal 200, not an error,
+    # so without this a rep saw nothing happen and could reasonably retry,
+    # risking a second real credit spend (confirmed live 2026-09-17).
+    "📵 No mobile number found for this contact.",
     # Display label for a scraped role mailbox with no named person behind it
     # (contact_ingest.py _ROLE_LABEL_BY_BUCKET) -- used here only to exclude
     # it from the Find phone button, not shown as new copy.
@@ -151,6 +155,14 @@ ALLOWED = {
     # ACTIVITY_SCROLLER "Today" card label -- clarifies this counts only
     # manually-added (Sales Team) leads, not AI/Maps/CSV-discovered ones.
     "Sales Team Leads",
+    # Add a Lead: Category and Country are now required, not silently
+    # defaulted (see add-lead-popover.tsx EMPTY.industry_tag comment). No
+    # Streamlit analogue -- app.py always had a default category and no
+    # country field at all.
+    "Industry Category *",
+    "Select a category",
+    "Select a country",
+    "Select an Industry Category and a Country before saving.",
 }
 
 CLASS_HINT = re.compile(

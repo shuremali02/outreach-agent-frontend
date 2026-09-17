@@ -394,6 +394,11 @@ export const BATTLECARD = {
   objectionsHeading: "🛡️ Live Objection Matrix & Rebuttals",
   noteLabel: "Call Notes / Follow-up Details",
   notePlaceholder: "e.g. Left voicemail · gatekeeper screened · callback Tue 2 PM",
+  // Saves this note immediately (append-only, crud/leads.py add_note()),
+  // independent of clicking a disposition below -- a note typed mid-call no
+  // longer has to wait for the call to end with a specific outcome to be
+  // saved at all. No Streamlit analogue.
+  addNote: "➕ Add Note",
   dispositionsHeading: "⚡ 1-Click Call Outcome Dispositions",
   booked: (company: string, value: string) =>
     `🎉 BOOM! Meeting booked for ${company} (${value})!`,

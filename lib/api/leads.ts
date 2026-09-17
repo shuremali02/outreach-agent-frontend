@@ -23,6 +23,14 @@ export const leadsApi = {
     api.post<Lead>(`/leads/${id}/outcome`, { outcome, rep_notes, meeting_at }),
   /** "✅ Mark Email Sent" -- see app/api/leads.py mark_email_sent(). */
   markEmailSent: (id: number) => api.post<void>(`/leads/${id}/email-sent`),
+  /**
+   * "➕ Add Note" -- always APPENDS server-side (see app/crud/leads.py
+   * add_note()), never overwrites lead.notes wholesale. Replaces the old
+   * "Save Notes" full-field PATCH, which silently lost a call-disposition
+   * note appended elsewhere while the Contacts card sat open (confirmed
+   * live 2026-09-18).
+   */
+  addNote: (id: number, text: string) => api.post<Lead>(`/leads/${id}/notes`, { text }),
 };
 
 import type { DecisionMaker, LeadContact, LinkedInResearch, Job } from "@/types";

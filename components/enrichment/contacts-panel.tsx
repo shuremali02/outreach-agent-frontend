@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { enrichmentApi } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -111,9 +111,30 @@ export function ContactsPanel({
 
   // Synchronous, unlike reveal -- FullEnrich is polled to completion
   // server-side, so the response already carries the final contact list.
+  //
+  // A miss is a normal 200 (find-phone never errors on "no match" -- see
+  // app/api/leads.py mark_email_sent's sibling endpoint's docstring), so
+  // findPhone.isError below never fires for it. Without noMatchIds, a rep
+  // clicking "Find phone" and getting no result saw literally nothing
+  // happen -- button just goes back to normal -- so they'd reasonably click
+  // it again, risking a second real spend on a lookup that may have simply
+  // timed out server-side rather than genuinely missed. Confirmed live
+  // 2026-09-16: exactly this happened (Nils Kah's real, billed match was
+  // silently lost to a too-short poll window, now fixed separately, but a
+  // rep had no way to tell "still nothing" from "spent and lost" either way).
+  const [noMatchIds, setNoMatchIds] = useState<Set<number>>(new Set());
   const findPhone = useMutation({
     mutationFn: (contactId: number) => enrichmentApi.findPhone(lead.id, contactId),
-    onSuccess: (rows) => qc.setQueryData(["lead-contacts", lead.id], rows),
+    onSuccess: (rows, contactId) => {
+      qc.setQueryData(["lead-contacts", lead.id], rows);
+      const updated = rows.find((r) => r.id === contactId);
+      setNoMatchIds((prev) => {
+        const next = new Set(prev);
+        if (updated && !updated.phone) next.add(contactId);
+        else next.delete(contactId);
+        return next;
+      });
+    },
   });
 
   const grouped = new Map<string, LeadContact[]>();
@@ -194,6 +215,11 @@ export function ContactsPanel({
                         LinkedIn
                       </a>
                     )}
+                    {noMatchIds.has(c.id) && !c.phone && (
+                      <p className="mt-0.5 text-[0.75rem] text-muted">
+                        📵 No mobile number found for this contact.
+                      </p>
+                    )}
                   </div>
                   <div className="flex shrink-0 flex-col gap-1">
                     {c.source === "signalhire" && !hasContactDetail(c) && (
@@ -220,11 +246,24 @@ export function ContactsPanel({
                         <Button
                           variant="secondary"
                           size="sm"
-                          onClick={() => findPhone.mutate(c.id)}
+                          onClick={() => {
+                            // Clear the stale "no match" note the moment a
+                            // fresh search starts, not just when it resolves.
+                            setNoMatchIds((prev) => {
+                              const next = new Set(prev);
+                              next.delete(c.id);
+                              return next;
+                            });
+                            findPhone.mutate(c.id);
+                          }}
                           disabled={findPhone.isPending}
                           title="Look up a mobile phone number via FullEnrich (up to 10 credits, only charged on a match)"
                         >
-                          {findPhone.isPending && findPhone.variables === c.id ? "Looking up…" : "📱 Find phone"}
+                          {findPhone.isPending && findPhone.variables === c.id
+                            ? "Looking up…"
+                            : noMatchIds.has(c.id)
+                              ? "📱 Try again"
+                              : "📱 Find phone"}
                         </Button>
                       )}
                   </div>

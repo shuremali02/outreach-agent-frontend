@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useUpdateLead, useCallOutcome } from "@/hooks/use-leads";
+import { useUpdateLead, useCallOutcome, useAddNote } from "@/hooks/use-leads";
 import { LinkedInResearchPanel, HunterDecisionMakers, SiteScanPanel } from "@/components/enrichment";
 import { LeadCard } from "@/components/leads/lead-card";
 import { PhoneBadge } from "@/components/leads/phone-badge";
@@ -97,6 +97,14 @@ export function Battlecard({ lead }: { lead: Lead }) {
     onSuccess: () => setEmailMarked(true),
   });
   const [note, setNote] = useState("");
+  // The note field only ever got saved bundled with a disposition (Voicemail/
+  // Dead Line/etc.) -- there was no way to log what was actually said mid-
+  // call without also ending the call with a specific outcome. This appends
+  // it independently, right now, same append-only mechanism Contacts'
+  // "➕ Add Note" uses (crud/leads.py add_note()) -- so the next rep who
+  // opens this lead can see what the previous call covered even if this one
+  // doesn't get disposed with a note attached.
+  const addNote = useAddNote();
   const [objectionsOpen, setObjectionsOpen] = useState(false);
   // Every card in the Call Desk queue renders fully expanded (unlike the
   // Contacts desk, where a card's contents only mount once expanded), so
@@ -332,12 +340,24 @@ export function Battlecard({ lead }: { lead: Lead }) {
           </div>
 
           <Field label={BATTLECARD.noteLabel}>
-            <Input
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder={BATTLECARD.notePlaceholder}
-              maxLength={4000}
-            />
+            <div className="flex gap-2">
+              <Input
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder={BATTLECARD.notePlaceholder}
+                maxLength={4000}
+              />
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={addNote.isPending || !note.trim()}
+                onClick={() =>
+                  addNote.mutate({ id: lead.id, text: note }, { onSuccess: () => setNote("") })
+                }
+              >
+                {addNote.isPending ? "Adding…" : BATTLECARD.addNote}
+              </Button>
+            </div>
           </Field>
 
           {booked && (
