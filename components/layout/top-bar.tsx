@@ -2,7 +2,9 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { NAV_ITEMS } from "@/lib/constants";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AddLeadPopover } from "./add-lead-popover";
 
@@ -13,6 +15,23 @@ export function TopBar() {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const qc = useQueryClient();
+  // On every page (this bar is shared across the whole workspace layout) --
+  // reps were reloading the entire browser tab just to see new data another
+  // rep/job had already written to the DB. React Query already holds
+  // everything cached client-side; invalidating with no key filter marks
+  // every active query stale and refetches it, same end result as a full
+  // reload but without losing scroll position, open cards, or in-progress
+  // form fields elsewhere on the page.
+  const [refreshing, setRefreshing] = useState(false);
+  async function handleRefresh() {
+    setRefreshing(true);
+    try {
+      await qc.invalidateQueries();
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   const current = NAV_ITEMS.find((n) => n.href === pathname)?.name ?? "Workspace";
   const canSearch = SEARCHABLE.includes(pathname);
@@ -68,6 +87,9 @@ export function TopBar() {
             className="w-72"
           />
         )}
+        <Button variant="secondary" size="sm" onClick={handleRefresh} disabled={refreshing}>
+          {refreshing ? "⏳ Refreshing…" : "🔄 Refresh"}
+        </Button>
         <AddLeadPopover />
       </div>
     </div>
