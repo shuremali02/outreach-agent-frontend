@@ -1,17 +1,17 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useLeads, useUpdateLead, useAddNote } from "@/hooks/use-leads";
+import { useLeads, useUpdateLead } from "@/hooks/use-leads";
 import { LeadCard } from "@/components/leads/lead-card";
+import { NotesPanel } from "@/components/leads/notes-panel";
 // CategoryPills/CountryPills/SourcePills no longer used here -- this page's
 // filters were converted to dropdowns to match Cold Call Desk/Pipeline (see
 // docs.md). The components themselves are kept, unused, in case a pill-style
 // filter is wanted again somewhere.
 import { LinkedInResearchPanel, HunterDecisionMakers, SiteScanPanel } from "@/components/enrichment";
-import { MailtoButton } from "@/components/common/mailto-button";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input, Textarea, Select, Field } from "@/components/ui/input";
+import { Input, Select, Field } from "@/components/ui/input";
 import { TerminalPill } from "@/components/ui/tag";
 import {
   COUNTRIES,
@@ -137,51 +137,6 @@ function ClassificationPanel({ lead }: { lead: Lead }) {
       >
         💾 Save Lead Details
       </Button>
-    </div>
-  );
-}
-
-function NotesPanel({ lead }: { lead: Lead }) {
-  const addNote = useAddNote();
-  const [draft, setDraft] = useState("");
-
-  return (
-    <div className="flex flex-col gap-3">
-      <h4 className="text-[1rem] font-semibold">📝 Notes &amp; Actions</h4>
-      {/*
-        Read-only log, not an editable textarea -- the old "Save Notes"
-        button PATCHed this whole field back verbatim, which silently
-        erased a call-disposition note appended elsewhere (Cold Call Desk)
-        while this card sat open with stale local state (confirmed live
-        2026-09-18). Notes are now append-only everywhere, matching how
-        call-disposition notes already worked -- see crud/leads.py
-        add_note() / apply_call_outcome().
-      */}
-      {lead.notes && (
-        <p className="whitespace-pre-line rounded-[8px] bg-input px-3 py-2 text-[0.85rem]">
-          {lead.notes}
-        </p>
-      )}
-      <Field label="Add a Note">
-        <Textarea rows={3} value={draft} onChange={(e) => setDraft(e.target.value)} />
-      </Field>
-      <Button
-        variant="primary"
-        size="sm"
-        disabled={addNote.isPending || !draft.trim()}
-        onClick={() =>
-          addNote.mutate({ id: lead.id, text: draft }, { onSuccess: () => setDraft("") })
-        }
-      >
-        {addNote.isPending ? "Adding…" : "➕ Add Note"}
-      </Button>
-      <MailtoButton
-        email={lead.contact_email}
-        subject={lead.subject}
-        body={lead.body}
-        label="📧 Open in Email App"
-        block
-      />
     </div>
   );
 }

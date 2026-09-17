@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useLeads, useUpdateLead } from "@/hooks/use-leads";
 import { Button } from "@/components/ui/button";
+import { MeetingDetailDialog } from "./meeting-detail-dialog";
 import { EMPTY_STATES, MEETING_ACTIONS, MEETINGS_CALENDAR } from "@/lib/constants";
 import type { Lead } from "@/types";
 
@@ -36,14 +37,23 @@ function MeetingEntry({ lead }: { lead: Lead }) {
 
   return (
     <div className="group/meeting flex items-center justify-between gap-1">
-      <p className="min-w-0 flex-1 truncate text-[0.72rem]" title={lead.company_name}>
-        <span className="font-medium">{lead.company_name}</span>
-        {" · "}
-        {new Date(lead.meeting_at).toLocaleTimeString("en-US", {
-          hour: "numeric",
-          minute: "2-digit",
-        })}
-      </p>
+      <MeetingDetailDialog
+        lead={lead}
+        trigger={
+          <button
+            type="button"
+            className="min-w-0 flex-1 cursor-pointer truncate text-left text-[0.72rem] hover:underline"
+            title={lead.company_name}
+          >
+            <span className="font-medium">{lead.company_name}</span>
+            {" · "}
+            {new Date(lead.meeting_at).toLocaleTimeString("en-US", {
+              hour: "numeric",
+              minute: "2-digit",
+            })}
+          </button>
+        }
+      />
       <div className="flex shrink-0 gap-0.5 opacity-0 group-hover/meeting:opacity-100">
         <button
           type="button"
@@ -187,7 +197,10 @@ export function MeetingsCalendar({ initialLeads }: { initialLeads: Lead[] }) {
                 <div
                   key={key}
                   className="min-h-[100px] border-b border-r border-border p-1.5 last:border-r-0"
-                  style={{ opacity: inMonth ? 1 : 0.45 }}
+                  style={{
+                    opacity: inMonth ? 1 : 0.45,
+                    backgroundColor: dayMeetings.length > 0 ? "var(--warn-tint)" : undefined,
+                  }}
                 >
                   <p className="mb-1 text-[0.75rem] text-muted">{d.getDate()}</p>
                   <div className="flex flex-col gap-0.5">
