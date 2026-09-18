@@ -1,8 +1,12 @@
 "use client";
 
 import * as Dialog from "@radix-ui/react-dialog";
+import { useState } from "react";
+import { useUpdateLead } from "@/hooks/use-leads";
 import { NotesPanel } from "@/components/leads/notes-panel";
-import { countryLabel } from "@/lib/constants";
+import { PhoneNumberList } from "@/components/leads/phone-number-list";
+import { Button } from "@/components/ui/button";
+import { MEETING_OUTCOMES, STAGE_LABELS, countryLabel } from "@/lib/constants";
 import { currency, displayDomain, externalUrl, hasUsableEmail } from "@/lib/format";
 import type { Lead } from "@/types";
 
@@ -14,6 +18,14 @@ import type { Lead } from "@/types";
  * fields Contacts already shows, in a centered popup instead of the
  * Collapsible card layout, since a calendar cell has no room for an inline
  * expansion.
+ *
+ * The outcome buttons moved here from the calendar cell itself (confirmed
+ * live 2026-09-18 -- the user found them cluttering the day-cell row), then
+ * expanded from a binary Done/Cancel to the 4-way MEETING_OUTCOMES picker
+ * the same day (a "Done" that always meant Proposal Sent was wrong for a
+ * meeting that went nowhere). Picking one just PATCHes pipeline_stage --
+ * the lead stays on the calendar either way, since the calendar no longer
+ * filters by stage.
  */
 export function MeetingDetailDialog({
   lead,
@@ -22,8 +34,16 @@ export function MeetingDetailDialog({
   lead: Lead;
   trigger: React.ReactNode;
 }) {
+  const [open, setOpen] = useState(false);
+  const update = useUpdateLead();
+
+  function setOutcome(outcome: (typeof MEETING_OUTCOMES)[number]) {
+    if (!confirm(outcome.confirm(lead.company_name))) return;
+    update.mutate({ id: lead.id, input: { pipeline_stage: outcome.stage } }, { onSuccess: () => setOpen(false) });
+  }
+
   return (
-    <Dialog.Root>
+    <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Trigger asChild>{trigger}</Dialog.Trigger>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/50" />
@@ -72,7 +92,7 @@ export function MeetingDetailDialog({
             {hasUsableEmail(lead.contact_email) && (
               <p className="text-[0.85rem] text-muted">✉️ {lead.contact_email}</p>
             )}
-            {lead.contact_phone && <p className="text-[0.85rem] text-muted">📞 {lead.contact_phone}</p>}
+            {lead.contact_phone && <PhoneNumberList phones={lead.contact_phone} />}
             <p className="text-[0.85rem] text-muted">
               🌍 {lead.country ? countryLabel(lead.country) : "Not specified"} · {currency(lead.deal_value)} ·{" "}
               {lead.industry_tag}
@@ -84,6 +104,25 @@ export function MeetingDetailDialog({
             )}
 
             <NotesPanel lead={lead} />
+
+            <div className="border-t border-border pt-3">
+              <p className="mb-2 text-[0.78rem] font-medium text-muted">
+                Current stage: {STAGE_LABELS[lead.pipeline_stage]}
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                {MEETING_OUTCOMES.map((outcome) => (
+                  <Button
+                    key={outcome.stage}
+                    variant="secondary"
+                    size="sm"
+                    disabled={update.isPending || lead.pipeline_stage === outcome.stage}
+                    onClick={() => setOutcome(outcome)}
+                  >
+                    {outcome.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
           </div>
         </Dialog.Content>
       </Dialog.Portal>

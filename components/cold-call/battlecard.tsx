@@ -6,11 +6,12 @@ import { useUpdateLead, useCallOutcome, useAddNote } from "@/hooks/use-leads";
 import { LinkedInResearchPanel, HunterDecisionMakers, SiteScanPanel } from "@/components/enrichment";
 import { LeadCard } from "@/components/leads/lead-card";
 import { PhoneBadge } from "@/components/leads/phone-badge";
+import { PhoneNumberList } from "@/components/leads/phone-number-list";
 import { Button } from "@/components/ui/button";
 import { Input, Field } from "@/components/ui/input";
 import { enrichmentApi, leadsApi } from "@/lib/api";
 import {
-  addedAt, currency, externalUrl, hasUsableEmail, leadSource, telUrl, mailtoUrl,
+  addedAt, currency, externalUrl, hasUsableEmail, leadSource, mailtoUrl,
   linkedInXrayUrl,
 } from "@/lib/format";
 import {
@@ -81,7 +82,17 @@ function EditContact({ lead }: { lead: Lead }) {
   );
 }
 
-export function Battlecard({ lead }: { lead: Lead }) {
+export function Battlecard({
+  lead,
+  onActionTaken,
+}: {
+  lead: Lead;
+  /** Called right after any disposition succeeds -- see ColdCallView's
+   * `dismiss`, which hides this lead from the queue immediately so a rep
+   * gets clear feedback the click registered instead of the card just
+   * sitting there unchanged. */
+  onActionTaken?: (leadId: number) => void;
+}) {
   const qc = useQueryClient();
   const record = useCallOutcome();
   const generate = useMutation({
@@ -148,7 +159,12 @@ export function Battlecard({ lead }: { lead: Lead }) {
     }
     record.mutate(
       { id: lead.id, outcome, notes: note },
-      { onSuccess: () => setNote("") },
+      {
+        onSuccess: () => {
+          setNote("");
+          onActionTaken?.(lead.id);
+        },
+      },
     );
   }
 
@@ -166,6 +182,7 @@ export function Battlecard({ lead }: { lead: Lead }) {
           setNote("");
           setBookingPrompt(false);
           setBooked(true);
+          onActionTaken?.(lead.id);
           bookedTimer.current = setTimeout(() => setBooked(false), 4000);
         },
       },
@@ -216,12 +233,7 @@ export function Battlecard({ lead }: { lead: Lead }) {
         <div className="flex flex-col gap-3">
           <h4 className="text-[0.95rem] font-semibold">📞 Direct Outbound Line</h4>
           {lead.contact_phone ? (
-            <a
-              href={telUrl(lead.contact_phone)}
-              className="block rounded-[8px] bg-success px-3 py-2.5 text-center font-mono text-[1.15rem] font-bold text-white no-underline shadow-[var(--shadow-call)]"
-            >
-              📞 Call {lead.contact_phone}
-            </a>
+            <PhoneNumberList phones={lead.contact_phone} size="button" />
           ) : (
             <p
               className="rounded-[8px] px-3 py-2 text-[0.85rem]"

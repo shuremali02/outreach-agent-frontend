@@ -114,6 +114,13 @@ ALLOWED = {
     "Every meeting your team has booked, laid out on the calendar.",
     "When is the meeting?",
     "✅ Confirm booking",
+    # MEETING_OUTCOMES (lib/constants.ts) -- the 4-way outcome picker a rep
+    # uses to tag a meeting after it happens (2026-09-18, replaced a binary
+    # Done/Cancel). app.py never tracked meeting outcomes at all.
+    "✅ Client Closed",
+    "📄 Send Proposal",
+    "🔁 Needs Follow-up",
+    "❌ Not Interested",
     # New Country filter (lib/constants.ts COUNTRIES, pipeline-view.tsx) --
     # app.py had no country field at all, so none of this has a Streamlit
     # counterpart. Only the multi-word country names get flagged (is_prose
@@ -180,6 +187,15 @@ ALLOWED = {
     # reading job.result) is the one source of truth for what actually
     # happened.
     "✅ Job finished.",
+    # follow-up-list.tsx: new Reason+Source filter combo on Follow-ups (per
+    # user request 2026-09-18) needed its own "no results" message, distinct
+    # from EMPTY_STATES.followUps ("queue itself is empty") -- no Streamlit
+    # counterpart, this filter combination didn't exist there.
+    "No follow-ups match this filter combination. Try 'All Reasons' or 'All Sources'.",
+    # add-lead-popover.tsx: "+ Add Another Contact" -- per user request
+    # 2026-09-18, same multi-contact idea CSV Import now has. No Streamlit
+    # counterpart, app.py's Add Lead form only ever had one contact.
+    "+ Add Another Contact",
     # ACTIVITY_SCROLLER "Today" card label -- clarifies this counts only
     # manually-added (Sales Team) leads, not AI/Maps/CSV-discovered ones.
     "Sales Team Leads",

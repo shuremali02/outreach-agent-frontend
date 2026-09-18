@@ -7,7 +7,7 @@ import { LinkedInResearchPanel, HunterDecisionMakers, SiteScanPanel } from "@/co
 import { MailtoButton } from "@/components/common/mailto-button";
 import { Textarea } from "@/components/ui/input";
 import { STAGE_LABELS } from "@/lib/constants";
-import { currency, externalUrl, displayDomain, hasUsableEmail } from "@/lib/format";
+import { currency, externalUrl, displayDomain, hasUsableEmail, telUrl } from "@/lib/format";
 import type { Lead } from "@/types";
 import { EMPTY_STATES } from "@/lib/constants";
 
@@ -45,7 +45,19 @@ export function PriorityOutreachList({ initialLeads }: { initialLeads: Lead[] })
 
               <p className="text-[0.85rem] text-muted">
                 {hasUsableEmail(lead.contact_email) && <>✉️ {lead.contact_email} · </>}
-                {lead.contact_phone && <>📞 {lead.contact_phone} · </>}
+                {lead.contact_phone && (
+                  // Dense one-line summary, not the main dialer -- links only
+                  // the first number (telUrl() already does this on its own
+                  // if there are several, comma-joined); full multi-number
+                  // Call/Copy list is on the Battlecard/Contacts/Meetings
+                  // detail views this card expands from.
+                  <>
+                    <a href={telUrl(lead.contact_phone)} className="text-accent underline">
+                      📞 {lead.contact_phone}
+                    </a>{" "}
+                    ·{" "}
+                  </>
+                )}
                 {lead.company_website && (
                   <a
                     href={externalUrl(lead.company_website)}

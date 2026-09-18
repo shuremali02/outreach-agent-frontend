@@ -4,6 +4,7 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useLeads, useUpdateLead, useDeleteLead } from "@/hooks/use-leads";
 import { LeadCard } from "@/components/leads/lead-card";
+import { PhoneNumberList } from "@/components/leads/phone-number-list";
 import { LinkedInResearchPanel, HunterDecisionMakers, SiteScanPanel } from "@/components/enrichment";
 import { MailtoButton } from "@/components/common/mailto-button";
 import { Button } from "@/components/ui/button";
@@ -286,7 +287,7 @@ export function PipelineView({
               {hasUsableEmail(lead.contact_email) && (
                 <p className="text-[0.85rem] text-muted">✉️ {lead.contact_email}</p>
               )}
-              {lead.contact_phone && <p className="text-[0.85rem] text-muted">📞 {lead.contact_phone}</p>}
+              {lead.contact_phone && <PhoneNumberList phones={lead.contact_phone} />}
 
               <LinkedInResearchPanel lead={lead} />
               <HunterDecisionMakers lead={lead} />

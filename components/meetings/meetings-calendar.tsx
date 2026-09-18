@@ -1,10 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useLeads, useUpdateLead } from "@/hooks/use-leads";
+import { useLeads } from "@/hooks/use-leads";
 import { Button } from "@/components/ui/button";
 import { MeetingDetailDialog } from "./meeting-detail-dialog";
-import { EMPTY_STATES, MEETING_ACTIONS, MEETINGS_CALENDAR } from "@/lib/constants";
+import { EMPTY_STATES, MEETINGS_CALENDAR, STAGE_LABELS } from "@/lib/constants";
 import type { Lead } from "@/types";
 
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -18,73 +18,78 @@ function dateKey(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
+/** Background/text pair for the stage pill on each calendar entry -- meeting_booked
+ *  (still awaiting an outcome) deliberately reuses the same amber the day cell
+ *  itself already uses, so "not yet decided" reads consistently; the other four
+ *  are the same win/loss/followup/proposal colors used elsewhere in the app
+ *  (Button's !text-success/!text-danger, follow-up list, etc). */
+const _STAGE_PILL: Record<Lead["pipeline_stage"], { bg: string; fg: string }> = {
+  new_lead: { bg: "var(--tag)", fg: "var(--muted)" },
+  draft_ready: { bg: "var(--tag)", fg: "var(--muted)" },
+  contacted: { bg: "var(--tag)", fg: "var(--muted)" },
+  followup_due: { bg: "var(--info-tint)", fg: "var(--info)" },
+  meeting_booked: { bg: "var(--warn-tint)", fg: "var(--warn)" },
+  proposal_sent: { bg: "var(--info-tint)", fg: "var(--info)" },
+  won: { bg: "var(--success-tint)", fg: "var(--success)" },
+  lost: { bg: "var(--danger-tint)", fg: "var(--danger)" },
+};
+
 /**
- * One meeting's row inside a day cell, with Done/Cancel quick actions so a
- * rep can close it out right here instead of navigating to Pipeline. Both
- * just PATCH pipeline_stage via the existing useUpdateLead hook.
+ * One meeting's row inside a day cell -- opens the detail popup, which now
+ * carries the outcome-picker actions too (moved there 2026-09-18: cluttered
+ * this row and "didn't look good" per the user, especially with several
+ * meetings stacked in one cell). Meetings now persist on the calendar past
+ * meeting_booked (see MeetingsCalendar below), so the current stage is shown
+ * as a small pill right on the entry -- confirmed live 2026-09-18, the user
+ * wants the stage visible on the card itself, not just discoverable by
+ * opening the popup.
  */
 function MeetingEntry({ lead }: { lead: Lead }) {
-  const update = useUpdateLead();
-
-  function markDone() {
-    if (!confirm(MEETING_ACTIONS.doneConfirm(lead.company_name))) return;
-    update.mutate({ id: lead.id, input: { pipeline_stage: "proposal_sent" } });
-  }
-  function cancelMeeting() {
-    if (!confirm(MEETING_ACTIONS.cancelConfirm(lead.company_name))) return;
-    update.mutate({ id: lead.id, input: { pipeline_stage: "lost" } });
-  }
-
+  const pill = _STAGE_PILL[lead.pipeline_stage];
   return (
-    <div className="group/meeting flex items-center justify-between gap-1">
-      <MeetingDetailDialog
-        lead={lead}
-        trigger={
-          <button
-            type="button"
-            className="min-w-0 flex-1 cursor-pointer truncate text-left text-[0.72rem] hover:underline"
-            title={lead.company_name}
-          >
+    <MeetingDetailDialog
+      lead={lead}
+      trigger={
+        <button
+          type="button"
+          className="flex w-full min-w-0 flex-col items-start gap-0.5 text-left text-[0.72rem] hover:underline"
+          title={lead.company_name}
+        >
+          <span className="min-w-0 max-w-full truncate">
             <span className="font-medium">{lead.company_name}</span>
             {" · "}
             {new Date(lead.meeting_at).toLocaleTimeString("en-US", {
               hour: "numeric",
               minute: "2-digit",
             })}
-          </button>
-        }
-      />
-      <div className="flex shrink-0 gap-0.5 opacity-0 group-hover/meeting:opacity-100">
-        <button
-          type="button"
-          title={MEETING_ACTIONS.done}
-          onClick={markDone}
-          disabled={update.isPending}
-          className="cursor-pointer text-[0.7rem] text-success"
-        >
-          {MEETING_ACTIONS.done}
+          </span>
+          <span
+            className="rounded-[4px] px-1 py-[1px] text-[0.62rem] font-medium leading-tight no-underline"
+            style={{ background: pill.bg, color: pill.fg }}
+          >
+            {STAGE_LABELS[lead.pipeline_stage]}
+          </span>
         </button>
-        <button
-          type="button"
-          title={MEETING_ACTIONS.cancel}
-          onClick={cancelMeeting}
-          disabled={update.isPending}
-          className="cursor-pointer text-[0.7rem] text-danger"
-        >
-          {MEETING_ACTIONS.cancel}
-        </button>
-      </div>
-    </div>
+      }
+    />
   );
 }
 
 /**
- * Month-grid view of every booked meeting. Editing a meeting's time still
- * happens from the Pipeline lead card (components/pipeline/pipeline-view.tsx
- * ManageDeal); closing one out (Done/Cancel) can happen right here.
+ * Month-grid view of every meeting ever booked, regardless of current
+ * pipeline_stage. Editing a meeting's time still happens from the Pipeline
+ * lead card (components/pipeline/pipeline-view.tsx ManageDeal); picking an
+ * outcome (Client Closed / Not Interested / Follow-up / Proposal Sent) can
+ * happen right here, and no longer removes the meeting from the grid --
+ * confirmed live 2026-09-18: marking a meeting "Done" used to move it out of
+ * meeting_booked and make it vanish from the calendar entirely, which the
+ * user explicitly does not want ("chali gai jani nhi chhiye na"). The
+ * calendar is a record of every meeting that happened, not just the ones
+ * still awaiting an outcome, so this no longer filters by stage at all --
+ * only by meeting_at being set.
  */
 export function MeetingsCalendar({ initialLeads }: { initialLeads: Lead[] }) {
-  const { data: allLeads = [] } = useLeads({ stage: "meeting_booked" }, initialLeads);
+  const { data: allLeads = [] } = useLeads({}, initialLeads);
   // A lead can reach meeting_booked without a time (e.g. dragged there
   // directly via the Pipeline stage dropdown) -- those simply don't render
   // on the grid, which is correct: there is nowhere to put them.

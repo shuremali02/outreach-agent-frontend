@@ -6,8 +6,14 @@ import { LeadCard } from "@/components/leads/lead-card";
 import { Button } from "@/components/ui/button";
 import { Field, Select, Textarea } from "@/components/ui/input";
 import { MailtoButton } from "@/components/common/mailto-button";
-import { DISPOSITIONS, FOLLOWUP_STAGES, STAGE_LABELS } from "@/lib/constants";
-import { hasUsableEmail } from "@/lib/format";
+import {
+  ALL_SOURCES,
+  DISPOSITIONS,
+  FOLLOWUP_STAGES,
+  LEAD_SOURCE_LABELS,
+  STAGE_LABELS,
+} from "@/lib/constants";
+import { hasUsableEmail, leadSource } from "@/lib/format";
 import type { Lead } from "@/types";
 import { EMPTY_STATES, LEAD_CARD } from "@/lib/constants";
 
@@ -19,12 +25,14 @@ const OUTCOME_LABELS: Record<string, string> = Object.fromEntries(
 const ALL_REASONS = "All Reasons";
 
 /**
- * dead_number/wrong_number route to pipeline_stage "lost" (crud/leads.py
- * _OUTCOME_STAGE) -- a lead with either outcome never lands in a Follow-up
+ * dead_number/not_interested/wrong_number route to pipeline_stage "lost",
+ * and meeting_booked routes to its own "meeting_booked" stage (crud/leads.py
+ * _OUTCOME_STAGE) -- a lead with any of these never lands in a Follow-up
  * stage, so offering them here would just be a filter option that always
- * returns nothing. Per user request 2026-09-17.
+ * returns nothing. Per user request 2026-09-17 (dead_number/wrong_number)
+ * and 2026-09-18 (the other two, found while adding the Source filter).
  */
-const NOT_A_FOLLOWUP_REASON = new Set(["dead_number", "wrong_number"]);
+const NOT_A_FOLLOWUP_REASON = new Set(["dead_number", "not_interested", "wrong_number", "meeting_booked"]);
 const FOLLOWUP_REASONS = DISPOSITIONS.filter((d) => !NOT_A_FOLLOWUP_REASON.has(d.outcome));
 
 /** The pre-composed 2nd-touch draft from app.py, with the calendar link inlined. */
@@ -127,9 +135,19 @@ export function FollowUpList({
   // matching how Pipeline/Contacts' Category/Country/Source filters always
   // show their full option list too.
   const [reason, setReason] = useState(ALL_REASONS);
+  // Source filter, matching Pipeline/Cold Call Desk's own: "which Sales
+  // Team lead went to voicemail" needs both filters combined, per user
+  // request 2026-09-18. leadSource() is derived client-side from
+  // source_prompt, same as those two -- never a real backend filter.
+  const [source, setSource] = useState(ALL_SOURCES);
   const leads = useMemo(
-    () => stageLeads.filter((l) => reason === ALL_REASONS || l.last_call_outcome === reason),
-    [stageLeads, reason],
+    () =>
+      stageLeads.filter(
+        (l) =>
+          (reason === ALL_REASONS || l.last_call_outcome === reason) &&
+          (source === ALL_SOURCES || leadSource(l.source_prompt) === source),
+      ),
+    [stageLeads, reason, source],
   );
 
   if (stageLeads.length === 0) {
@@ -142,16 +160,33 @@ export function FollowUpList({
 
   return (
     <>
-      <Field label="Reason Filter" className="mb-4 max-w-xs">
-        <Select value={reason} onChange={(e) => setReason(e.target.value)}>
-          <option value={ALL_REASONS}>{ALL_REASONS}</option>
-          {FOLLOWUP_REASONS.map((d) => (
-            <option key={d.outcome} value={d.outcome}>
-              {d.label}
-            </option>
-          ))}
-        </Select>
-      </Field>
+      <div className="mb-4 grid grid-cols-2 gap-4 max-w-xl">
+        <Field label="Reason Filter">
+          <Select value={reason} onChange={(e) => setReason(e.target.value)}>
+            <option value={ALL_REASONS}>{ALL_REASONS}</option>
+            {FOLLOWUP_REASONS.map((d) => (
+              <option key={d.outcome} value={d.outcome}>
+                {d.label}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field label="Source Filter">
+          <Select value={source} onChange={(e) => setSource(e.target.value)}>
+            <option value={ALL_SOURCES}>{ALL_SOURCES}</option>
+            {Object.entries(LEAD_SOURCE_LABELS).map(([id, label]) => (
+              <option key={id} value={id}>
+                {label}
+              </option>
+            ))}
+          </Select>
+        </Field>
+      </div>
+      {leads.length === 0 && (
+        <p className="rounded-[8px] px-3 py-2 text-[0.9rem]" style={{ background: "var(--info-tint)", color: "var(--info)" }}>
+          {EMPTY_STATES.followUpsFiltered}
+        </p>
+      )}
       {leads.map((lead) => (
         <FollowUpCard key={lead.id} lead={lead} calendarLink={calendarLink} />
       ))}

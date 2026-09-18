@@ -110,7 +110,11 @@ export function mailtoUrl(email: string, subject: string, body: string): string 
 }
 
 export function telUrl(phone: string): string {
-  return `tel:${phone.replace(/[^\d+]/g, "")}`;
+  // A contact/lead's phone field can now hold several comma-joined numbers
+  // (see lead_engine.py's _all_phones() / import_september_leads.py) --
+  // dial only the first one, not every digit run together.
+  const first = phone.split(",")[0] || "";
+  return `tel:${first.replace(/[^\d+]/g, "")}`;
 }
 
 /** Google X-Ray fallback when no LinkedIn URL is on file. */

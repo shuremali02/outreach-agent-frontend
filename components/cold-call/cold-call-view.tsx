@@ -34,6 +34,18 @@ export function ColdCallView({ initialLeads, q }: { initialLeads: Lead[]; q: str
   // filtered client-side same as category/country here.
   const [source, setSource] = useState(ALL_SOURCES);
 
+  // Confirmed live 2026-09-18: a disposition on a lead already in the
+  // Follow-up section (e.g. a 2nd Voicemail) keeps it at followup_due --
+  // same section, same position, nothing visibly changes -- so a rep had no
+  // way to tell the click actually registered, and sometimes pressed it
+  // again. Any disposition now hides that lead from this view immediately,
+  // regardless of which stage it lands in server-side; a real refetch would
+  // otherwise just bring an unresolved follow-up right back.
+  const [dismissed, setDismissed] = useState<Set<number>>(new Set());
+  function dismiss(leadId: number) {
+    setDismissed((prev) => (prev.has(leadId) ? prev : new Set(prev).add(leadId)));
+  }
+
   /** app.py: draft_ready|followup_due, excluding dead numbers. */
   const queue = useMemo(
     () =>
@@ -48,12 +60,13 @@ export function ColdCallView({ initialLeads, q }: { initialLeads: Lead[]; q: str
     () =>
       queue.filter(
         (l) =>
+          !dismissed.has(l.id) &&
           (category === ALL_CATEGORIES || l.industry_tag === category) &&
           (country === ALL_COUNTRIES ||
             (country === UNKNOWN_COUNTRY ? !l.country : l.country === country)) &&
           (source === ALL_SOURCES || leadSource(l.source_prompt) === source),
       ),
-    [queue, category, country, source],
+    [queue, dismissed, category, country, source],
   );
 
   // Split, not one flat list: a lead already called once (voicemail/callback
@@ -152,7 +165,7 @@ export function ColdCallView({ initialLeads, q }: { initialLeads: Lead[]; q: str
             {COLD_CALL_QUEUE.newHeading(newLeads.length)}
           </h3>
           {newLeads.map((lead) => (
-            <Battlecard key={lead.id} lead={lead} />
+            <Battlecard key={lead.id} lead={lead} onActionTaken={dismiss} />
           ))}
         </div>
       )}
@@ -163,7 +176,7 @@ export function ColdCallView({ initialLeads, q }: { initialLeads: Lead[]; q: str
             {COLD_CALL_QUEUE.followUpHeading(followUps.length)}
           </h3>
           {followUps.map((lead) => (
-            <Battlecard key={lead.id} lead={lead} />
+            <Battlecard key={lead.id} lead={lead} onActionTaken={dismiss} />
           ))}
         </div>
       )}

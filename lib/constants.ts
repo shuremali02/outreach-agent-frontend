@@ -88,6 +88,15 @@ export function countryLabel(code: string): string {
   return COUNTRIES.find((c) => c.id === code)?.label ?? code;
 }
 
+/**
+ * Add a Lead popover's own Country dropdown -- deliberately just these 3,
+ * per user request 2026-09-18 (the team only manually adds US/UK/Canada
+ * leads). Pipeline/Contacts/Cold Call Desk/Follow-ups' filter dropdowns
+ * keep the full COUNTRIES list above so leads already in the CRM from any
+ * other country (Pakistan, UAE, etc.) stay filterable.
+ */
+export const ADD_LEAD_COUNTRIES = COUNTRIES.filter((c) => ["US", "GB", "CA"].includes(c.id));
+
 export const ALL_SOURCES = "All Sources";
 
 /**
@@ -113,7 +122,7 @@ export const NAV_ITEMS = [
   { name: "Pipeline", icon: "💼", href: "/pipeline", badge: null },
   { name: "Contacts", icon: "👥", href: "/contacts", badge: null },
   { name: "Follow-ups", icon: "📅", href: "/follow-ups", badge: "followups_due" },
-  { name: "Meetings", icon: "🗓️", href: "/meetings", badge: null },
+  { name: "Meetings", icon: "🗓️", href: "/meetings", badge: "meetings_count" },
   { name: "AI Lead Finder", icon: "🔍", href: "/lead-finder", badge: null },
 ] as const;
 
@@ -518,18 +527,43 @@ export const MEETINGS_CALENDAR = {
 } as const;
 
 /**
- * components/meetings/meetings-calendar.tsx -- per-meeting quick actions so a
- * rep can close out a meeting without opening Pipeline. "Done" moves the lead
- * to Proposal Sent (the next stage after a meeting actually happens); "Cancel"
- * moves it to Closed Lost (client said no meeting after all). Both just PATCH
- * pipeline_stage via the existing useUpdateLead hook -- no new endpoint.
+ * components/meetings/meeting-detail-dialog.tsx -- what a rep picks once a
+ * meeting has actually happened. Replaces the old binary Done/Cancel
+ * (confirmed live 2026-09-18: "Done" always sent the lead to Proposal Sent,
+ * which was wrong for a meeting that didn't go anywhere -- the user wanted
+ * the real range of outcomes a meeting can have). Meetings no longer leave
+ * the calendar when one of these is picked (see meetings-calendar.tsx /
+ * meetings/page.tsx dropping the stage filter) -- the calendar is a record
+ * of every meeting that happened, tagged with its outcome, not just the
+ * still-open ones. Each entry just PATCHes pipeline_stage via the existing
+ * useUpdateLead hook -- no new endpoint.
  */
-export const MEETING_ACTIONS = {
-  done: "✅ Done",
-  cancel: "✖ Cancel",
-  doneConfirm: (company: string) => `Mark the meeting with ${company} as done? This moves the lead to Proposal Sent.`,
-  cancelConfirm: (company: string) => `Cancel the meeting with ${company}? This moves the lead to Closed Lost.`,
-} as const;
+export const MEETING_OUTCOMES: {
+  stage: PipelineStage;
+  label: string;
+  confirm: (company: string) => string;
+}[] = [
+  {
+    stage: "won",
+    label: "✅ Client Closed",
+    confirm: (company) => `Mark ${company} as closed/won? This moves the lead to Deal Won.`,
+  },
+  {
+    stage: "proposal_sent",
+    label: "📄 Send Proposal",
+    confirm: (company) => `Mark ${company} as ready for a proposal? This moves the lead to Proposal Sent.`,
+  },
+  {
+    stage: "followup_due",
+    label: "🔁 Needs Follow-up",
+    confirm: (company) => `Mark ${company} as needing a follow-up call? This moves the lead to Follow-up Due.`,
+  },
+  {
+    stage: "lost",
+    label: "❌ Not Interested",
+    confirm: (company) => `Mark ${company} as not interested? This moves the lead to Closed Lost.`,
+  },
+];
 
 /**
  * components/today/activity-scroller.tsx -- replaces the Google-Sheet-backed
@@ -580,6 +614,10 @@ export const EMPTY_STATES = {
     `No leads found under '${category}'. Use 'AI Lead Finder' or 'Add a Lead' to discover companies for this category.`,
   followUps:
     "No active follow-ups due right now. When you mark leads as 'Outreach Sent', they will appear here.",
+  // Distinct from the message above -- that one means the queue itself is
+  // empty; this means follow-ups exist but none match the Reason/Source
+  // filter combination picked.
+  followUpsFiltered: "No follow-ups match this filter combination. Try 'All Reasons' or 'All Sources'.",
   problems: "No problems recorded in this category. All clear!",
   comments:
     "No discussions yet. Share your thoughts, objection rebuttals, or solutions below!",

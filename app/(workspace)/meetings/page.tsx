@@ -8,7 +8,9 @@ import { PAGE_HEADERS } from "@/lib/constants";
 export const dynamic = "force-dynamic";
 
 export default async function MeetingsPage() {
-  const leads = await leadsApi.list({ stage: "meeting_booked" });
+  // No stage filter -- the calendar shows every meeting ever booked, not
+  // just ones still sitting in meeting_booked (see meetings-calendar.tsx).
+  const leads = await leadsApi.list({});
 
   return (
     <div>

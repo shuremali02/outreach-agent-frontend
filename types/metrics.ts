@@ -12,6 +12,9 @@ export interface CrmMetrics {
   /** Derived for the sidebar badge: draft_ready|followup_due and not dead. */
   call_ready_count: number;
   open_problems_count: number;
+  /** Sidebar badge: pipeline_stage=meeting_booked AND meeting_at set --
+   * matches meetings-calendar.tsx's own filter exactly. */
+  meetings_count: number;
 }
 
 /** Per-week / aggregate block from team_analytics.py. */

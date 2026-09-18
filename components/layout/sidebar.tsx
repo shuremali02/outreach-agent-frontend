@@ -24,7 +24,9 @@ export function Sidebar({
   const pathname = usePathname();
   const { data: metrics } = useMetrics(initialMetrics);
 
-  /** app.py only rendered counts for these three tabs. */
+  /** app.py only rendered counts for Cold Call/Problem/Follow-ups; Meetings'
+   * badge (meetings_count) was added later per user request 2026-09-18, no
+   * Streamlit counterpart. */
   function badgeFor(key: string | null): number | null {
     if (!key || !metrics) return null;
     const value = metrics[key as keyof CrmMetrics];

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { enrichmentApi } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { PhoneNumberList } from "@/components/leads/phone-number-list";
 import { displayDomain } from "@/lib/format";
 import type { Lead, LeadContact } from "@/types";
 import { EMPTY_STATES } from "@/lib/constants";
@@ -203,7 +204,9 @@ export function ContactsPanel({
                       </p>
                     )}
                     {c.phone && (
-                      <p className="mt-0.5 text-[0.78rem] text-muted">{c.phone}</p>
+                      <div className="mt-0.5">
+                        <PhoneNumberList phones={c.phone} />
+                      </div>
                     )}
                     {c.linkedin && (
                       <a

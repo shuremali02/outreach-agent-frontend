@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useLeads, useUpdateLead } from "@/hooks/use-leads";
 import { LeadCard } from "@/components/leads/lead-card";
 import { NotesPanel } from "@/components/leads/notes-panel";
+import { PhoneNumberList } from "@/components/leads/phone-number-list";
 // CategoryPills/CountryPills/SourcePills no longer used here -- this page's
 // filters were converted to dropdowns to match Cold Call Desk/Pipeline (see
 // docs.md). The components themselves are kept, unused, in case a pill-style
@@ -298,7 +299,7 @@ export function ContactsView({ initialLeads, q }: { initialLeads: Lead[]; q: str
               {hasUsableEmail(lead.contact_email) && (
                 <p className="text-[0.85rem] text-muted">✉️ {lead.contact_email}</p>
               )}
-              {lead.contact_phone && <p className="text-[0.85rem] text-muted">📞 {lead.contact_phone}</p>}
+              {lead.contact_phone && <PhoneNumberList phones={lead.contact_phone} />}
               <p className="text-[0.85rem] text-muted">
                 🌍 {lead.country ? countryLabel(lead.country) : "Not specified"}
               </p>

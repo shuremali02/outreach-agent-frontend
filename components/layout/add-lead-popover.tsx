@@ -4,10 +4,18 @@ import * as Popover from "@radix-ui/react-popover";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { leadsApi } from "@/lib/api";
-import { COUNTRIES, MEETING_BOOKING, PIPELINE_STAGES, STANDARD_CATEGORIES } from "@/lib/constants";
+import { ADD_LEAD_COUNTRIES, MEETING_BOOKING, PIPELINE_STAGES, STANDARD_CATEGORIES } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { Input, Textarea, Select, Field } from "@/components/ui/input";
-import type { CreateLeadInput, PipelineStage } from "@/types";
+import type { CreateLeadInput, ExtraContactInput, PipelineStage } from "@/types";
+
+/** A fresh, empty row for "+ Add Another Contact" -- a stable per-row id
+ * (not the array index) keeps React's reconciliation correct if a middle
+ * row gets removed. */
+let nextContactRowId = 1;
+function emptyContactRow(): ExtraContactInput & { _rowId: number } {
+  return { _rowId: nextContactRowId++, name: "", role: "", email: "", phone: "", linkedin: "" };
+}
 
 const EMPTY: CreateLeadInput = {
   company_name: "",
@@ -37,6 +45,9 @@ export function AddLeadPopover() {
   // just when editing an existing lead (see docs.md 2026-09-16).
   const [meetingDate, setMeetingDate] = useState("");
   const [meetingTime, setMeetingTime] = useState("");
+  // "+ Add Another Contact" -- extra people at the same company, each
+  // becomes a lead_contacts child row (see api/leads.py create_lead()).
+  const [extraContacts, setExtraContacts] = useState<(ExtraContactInput & { _rowId: number })[]>([]);
   const qc = useQueryClient();
 
   const create = useMutation({
@@ -47,11 +58,16 @@ export function AddLeadPopover() {
       setForm(EMPTY);
       setMeetingDate("");
       setMeetingTime("");
+      setExtraContacts([]);
       setError(null);
       setOpen(false);
     },
     onError: (e: Error) => setError(e.message),
   });
+
+  function setContactRow(rowId: number, field: keyof ExtraContactInput, value: string) {
+    setExtraContacts((rows) => rows.map((r) => (r._rowId === rowId ? { ...r, [field]: value } : r)));
+  }
 
   function set<K extends keyof CreateLeadInput>(key: K, value: CreateLeadInput[K]) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -73,7 +89,11 @@ export function AddLeadPopover() {
         <Popover.Content
           align="end"
           sideOffset={8}
-          className="z-50 w-[420px] rounded-[12px] border border-border bg-card p-5 shadow-[var(--shadow-overlay)]"
+          // Confirmed live 2026-09-18: with 2+ "+ Add Another Contact" rows
+          // the form grows taller than the viewport, and this had no
+          // max-height/overflow of its own -- the extra rows were just
+          // clipped, with nothing on the page able to scroll to reach them.
+          className="z-50 max-h-[85vh] w-[420px] overflow-y-auto rounded-[12px] border border-border bg-card p-5 shadow-[var(--shadow-overlay)]"
         >
           <form
             onSubmit={(e) => {
@@ -95,6 +115,11 @@ export function AddLeadPopover() {
                 ...(meetingDate && meetingTime
                   ? { meeting_at: `${meetingDate}T${meetingTime}:00` }
                   : {}),
+                // Blank rows (rep clicked "+" but never filled it in) are
+                // dropped silently rather than blocking submit.
+                extra_contacts: extraContacts
+                  .filter((r) => r.name.trim())
+                  .map(({ _rowId, ...rest }) => rest),
               });
             }}
             className="flex flex-col gap-3"
@@ -145,6 +170,61 @@ export function AddLeadPopover() {
                 />
               </Field>
             </div>
+
+            {extraContacts.map((row, i) => (
+              <div key={row._rowId} className="rounded-[8px] border border-border p-3">
+                <div className="mb-2 flex items-center justify-between">
+                  <p className="text-[0.78rem] font-semibold text-muted">Contact {i + 2}</p>
+                  <button
+                    type="button"
+                    onClick={() => setExtraContacts((rows) => rows.filter((r) => r._rowId !== row._rowId))}
+                    className="cursor-pointer text-[0.78rem] text-danger"
+                  >
+                    ✕ Remove
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Name">
+                    <Input value={row.name} onChange={(e) => setContactRow(row._rowId, "name", e.target.value)} />
+                  </Field>
+                  <Field label="Role / Title">
+                    <Input value={row.role} onChange={(e) => setContactRow(row._rowId, "role", e.target.value)} />
+                  </Field>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-3">
+                  <Field label="Email">
+                    <Input
+                      type="email"
+                      value={row.email}
+                      onChange={(e) => setContactRow(row._rowId, "email", e.target.value)}
+                    />
+                  </Field>
+                  <Field label="Phone">
+                    <Input
+                      type="tel"
+                      value={row.phone}
+                      onChange={(e) => setContactRow(row._rowId, "phone", e.target.value)}
+                    />
+                  </Field>
+                </div>
+                <div className="mt-3">
+                  <Field label="LinkedIn URL">
+                    <Input
+                      value={row.linkedin}
+                      onChange={(e) => setContactRow(row._rowId, "linkedin", e.target.value)}
+                    />
+                  </Field>
+                </div>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => setExtraContacts((rows) => [...rows, emptyContactRow()])}
+              className="cursor-pointer text-left text-[0.8rem] font-semibold text-accent"
+            >
+              + Add Another Contact
+            </button>
+
             <div className="grid grid-cols-2 gap-3">
               <Field label="Estimated Deal Value ($)">
                 <Input
@@ -211,7 +291,7 @@ export function AddLeadPopover() {
                   <option value="" disabled>
                     Select a country
                   </option>
-                  {COUNTRIES.map((c) => (
+                  {ADD_LEAD_COUNTRIES.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.label}
                     </option>

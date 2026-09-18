@@ -190,6 +190,17 @@ export interface CreateLeadInput {
   reason?: string;
   /** ISO datetime -- only meaningful when pipeline_stage is "meeting_booked". */
   meeting_at?: string;
+  /** "+ Add Another Contact" rows -- each becomes a lead_contacts child row,
+   * same as a CSV import with several people at one company. */
+  extra_contacts?: ExtraContactInput[];
+}
+
+export interface ExtraContactInput {
+  name: string;
+  role?: string;
+  email?: string;
+  phone?: string;
+  linkedin?: string;
 }
 
 /**
