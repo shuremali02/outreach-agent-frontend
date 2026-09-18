@@ -76,6 +76,11 @@ function EditContact({ lead }: { lead: Lead }) {
           >
             {BATTLECARD.saveContact}
           </Button>
+          {update.isError && (
+            <p className="text-[0.78rem] text-danger">
+              {update.error instanceof Error ? update.error.message : "Failed to save contact info. Try again."}
+            </p>
+          )}
         </div>
       )}
     </div>
@@ -276,6 +281,11 @@ export function Battlecard({
                 </button>
               </div>
             )}
+            {markEmailSent.isError && (
+              <p className="text-[0.75rem] text-danger">
+                {markEmailSent.error instanceof Error ? markEmailSent.error.message : BATTLECARD.markEmailSentFailed}
+              </p>
+            )}
             <a
               href={lead.contact_linkedin || linkedInXrayUrl(lead.contact_name, lead.company_name)}
               target="_blank"
@@ -327,6 +337,11 @@ export function Battlecard({
               {generate.isPending ? BATTLECARD.generatingBattlecard : BATTLECARD.generateBattlecard}
             </Button>
           </div>
+          {generate.isError && (
+            <p className="text-[0.8rem] text-danger">
+              {generate.error instanceof Error ? generate.error.message : BATTLECARD.generateFailed}
+            </p>
+          )}
           <p
             className="rounded-[8px] bg-tag px-4 py-3 text-[0.95rem] leading-[1.55]"
             style={{ border: "1.5px solid var(--accent)" }}
@@ -371,6 +386,11 @@ export function Battlecard({
               </Button>
             </div>
           </Field>
+          {addNote.isError && (
+            <p className="text-[0.8rem] text-danger">
+              {addNote.error instanceof Error ? addNote.error.message : BATTLECARD.addNoteFailed}
+            </p>
+          )}
 
           {booked && (
             <p className="text-[0.9rem] font-semibold text-success">
@@ -379,6 +399,11 @@ export function Battlecard({
           )}
 
           <p className="date-eyebrow !mb-1.5 mt-2">{BATTLECARD.dispositionsHeading}</p>
+          {record.isError && (
+            <p className="text-[0.8rem] text-danger">
+              {record.error instanceof Error ? record.error.message : BATTLECARD.recordFailed}
+            </p>
+          )}
           {bookingPrompt ? (
             <div className="flex flex-col gap-2 rounded-[8px] border border-accent bg-input px-3 py-3">
               <p className="text-[0.85rem] font-semibold">{MEETING_BOOKING.prompt}</p>

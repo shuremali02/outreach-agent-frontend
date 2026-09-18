@@ -33,6 +33,11 @@ export function StageSelect({
           </option>
         ))}
       </Select>
+      {update.isError && (
+        <span className="mt-1 block text-[0.75rem] text-danger">
+          {update.error instanceof Error ? update.error.message : "Failed to save the stage change. Try again."}
+        </span>
+      )}
     </label>
   );
 }

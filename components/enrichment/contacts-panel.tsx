@@ -168,7 +168,18 @@ export function ContactsPanel({
         </p>
       )}
 
-      {!isLoading && contacts.length === 0 && (findPeople.isSuccess || findPeople.isError) && (
+      {/* Split from a combined isSuccess||isError check (confirmed live
+          2026-09-18): a genuine "searched and found nobody" result and a
+          failed request (network error, backend 500) used to render the
+          exact same generic warning, so a rep had no way to tell "nothing
+          here" from "broke, try again." */}
+      {findPeople.isError && (
+        <p className="text-[0.78rem] text-danger">
+          {findPeople.error instanceof Error ? findPeople.error.message : "Find decision makers failed"}
+        </p>
+      )}
+
+      {!isLoading && contacts.length === 0 && findPeople.isSuccess && (
         <p
           className="rounded-[8px] px-3 py-2 text-[0.8rem]"
           style={{ background: "var(--warn-tint)", color: "var(--warn)" }}

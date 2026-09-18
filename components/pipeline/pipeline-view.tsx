@@ -144,6 +144,11 @@ function ManageDeal({ lead }: { lead: Lead }) {
         >
           {update.isPending ? "Saving…" : "💾 Save Updates"}
         </Button>
+        {update.isError && (
+          <p className="text-[0.8rem] text-danger">
+            {update.error instanceof Error ? update.error.message : "Failed to save updates. Try again."}
+          </p>
+        )}
 
         <Button
           variant="danger"
@@ -155,6 +160,11 @@ function ManageDeal({ lead }: { lead: Lead }) {
         >
           🗑️ Remove
         </Button>
+        {remove.isError && (
+          <p className="text-[0.8rem] text-danger">
+            {remove.error instanceof Error ? remove.error.message : "Failed to remove this lead. Try again."}
+          </p>
+        )}
 
         {/* Uses the EDITED subject/body, as app.py did. */}
         <MailtoButton

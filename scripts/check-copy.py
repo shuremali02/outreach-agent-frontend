@@ -99,6 +99,28 @@ ALLOWED = {
     # a third manual per-contact provider alongside Reveal/ContactOut. No
     # Streamlit analogue.
     "Find phone failed",
+    "Find decision makers failed",
+    # Mutation-failure fallback text added 2026-09-18 across several
+    # components (battlecard.tsx, contacts-view.tsx, follow-up-list.tsx,
+    # stage-select.tsx, meeting-detail-dialog.tsx, pipeline-view.tsx,
+    # lib/constants.ts BATTLECARD.*Failed / SITE_SCAN.enrichFailed) -- a
+    # save/update/disposition/note/enrich mutation with no onError handler
+    # used to fail silently (button just reverted to idle, no feedback at
+    # all). Real backend error text is shown when available; these are only
+    # the fallback if the thrown error somehow isn't an Error instance. No
+    # Streamlit analogue -- app.py's synchronous st.error() calls covered
+    # every one of these paths already.
+    "Failed to save contact info. Try again.",
+    "Failed to save updates. Try again.",
+    "Failed to update this lead. Try again.",
+    "Failed to save the stage change. Try again.",
+    "Failed to save this outcome. Try again.",
+    "Failed to remove this lead. Try again.",
+    "Enrichment failed. Try again in a moment.",
+    "Failed to generate the battlecard. Try again.",
+    "Failed to mark email sent. Try again.",
+    "Failed to record this outcome. Try again.",
+    "Failed to save note. Try again.",
     "Look up a mobile phone number via FullEnrich (up to 10 credits, only charged on a match)",
     # Explicit "no match" feedback -- a miss is a normal 200, not an error,
     # so without this a rep saw nothing happen and could reasonably retry,

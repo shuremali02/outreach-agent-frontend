@@ -411,6 +411,16 @@ export const BATTLECARD = {
   dispositionsHeading: "⚡ 1-Click Call Outcome Dispositions",
   booked: (company: string, value: string) =>
     `🎉 BOOM! Meeting booked for ${company} (${value})!`,
+  // Fallbacks only -- the mutation's own error.message is shown when present
+  // (see battlecard.tsx). Confirmed live 2026-09-18: record/generate/
+  // markEmailSent/addNote had no error branch at all, so a failed request
+  // (a disposition, a meeting booking, generating a script, marking an
+  // email sent, saving a call note) silently reverted to the idle button
+  // with zero feedback that anything had gone wrong.
+  recordFailed: "Failed to record this outcome. Try again.",
+  generateFailed: "Failed to generate the battlecard. Try again.",
+  markEmailSentFailed: "Failed to mark email sent. Try again.",
+  addNoteFailed: "Failed to save note. Try again.",
 } as const;
 
 /** app.py:1876-1881 — used when phone_script is missing or under 15 chars. */
@@ -722,4 +732,9 @@ export const SITE_SCAN = {
   weakSignals: (signals: string) => `Mentions (not confirmed 3D): ${signals}`,
   productLabel: "Product:",
   enrichComplete: "Enrichment complete.",
+  // Fallback only -- normally enrich.error carries the real ApiRequestError
+  // message (see site-scan-panel.tsx). Confirmed live 2026-09-18: the Deep
+  // Enrich button had no error branch at all, so a failed mutation silently
+  // reverted to the idle button with no feedback whatsoever.
+  enrichFailed: "Enrichment failed. Try again in a moment.",
 } as const;

@@ -138,6 +138,11 @@ function ClassificationPanel({ lead }: { lead: Lead }) {
       >
         💾 Save Lead Details
       </Button>
+      {update.isError && (
+        <p className="text-[0.8rem] text-danger">
+          {update.error instanceof Error ? update.error.message : "Failed to save updates. Try again."}
+        </p>
+      )}
     </div>
   );
 }

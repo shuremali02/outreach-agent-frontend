@@ -18,7 +18,7 @@ import {
   INGEST_TABS,
   INGEST_TITLE,
 } from "@/lib/constants";
-import type { ImportJobResult, Job } from "@/types";
+import type { DiscoverJobResult, ImportJobResult, Job } from "@/types";
 
 function useJobRunner() {
   const qc = useQueryClient();
@@ -113,13 +113,32 @@ export function IngestDrawer() {
                 {ai.running ? "Discovering…" : AI_DISCOVERY.button}
               </Button>
               <JobProgress job={ai.job} />
-              {ai.job?.status === "done" && (
-                <p className="text-[0.85rem] text-success">
-                  {(ai.job.result as { saved?: number } | undefined)?.saved
-                    ? AI_DISCOVERY.success((ai.job.result as { saved: number }).saved)
-                    : AI_DISCOVERY.empty}
-                </p>
-              )}
+              {ai.job?.status === "done" &&
+                (() => {
+                  const result = ai.job!.result as DiscoverJobResult | undefined;
+                  // Same check as discovery-form.tsx's DiscoverSummary --
+                  // this tab used to always print the green success/empty
+                  // text on "done", even when the whole Gemini+Groq cascade
+                  // failed and result.error carried the real reason
+                  // (confirmed live 2026-09-18 via a Cold Call Desk run that
+                  // hit 504/503/503/503/429 across every model and showed
+                  // the misleading "Found no new companies" message).
+                  if (result?.error && !result.saved) {
+                    return (
+                      <p
+                        className="rounded-[8px] px-3 py-2 text-[0.85rem]"
+                        style={{ background: "var(--danger-tint)", color: "var(--danger)" }}
+                      >
+                        {result.error}
+                      </p>
+                    );
+                  }
+                  return (
+                    <p className="text-[0.85rem] text-success">
+                      {result?.saved ? AI_DISCOVERY.success(result.saved) : AI_DISCOVERY.empty}
+                    </p>
+                  );
+                })()}
             </Tabs.Content>
 
             <Tabs.Content value="csv" className="flex flex-col gap-3">

@@ -112,6 +112,11 @@ function FollowUpCard({ lead, calendarLink }: { lead: Lead; calendarLink: string
             ✅ Mark as Meeting Booked
           </Button>
         </div>
+        {update.isError && (
+          <p className="text-[0.8rem] text-danger">
+            {update.error instanceof Error ? update.error.message : "Failed to update this lead. Try again."}
+          </p>
+        )}
       </div>
     </LeadCard>
   );

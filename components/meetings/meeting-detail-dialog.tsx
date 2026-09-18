@@ -122,6 +122,11 @@ export function MeetingDetailDialog({
                   </Button>
                 ))}
               </div>
+              {update.isError && (
+                <p className="mt-2 text-[0.78rem] text-danger">
+                  {update.error instanceof Error ? update.error.message : "Failed to save this outcome. Try again."}
+                </p>
+              )}
             </div>
           </div>
         </Dialog.Content>

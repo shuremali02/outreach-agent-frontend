@@ -125,6 +125,11 @@ export function SiteScanPanel({ lead }: { lead: Lead }) {
       {enrich.isSuccess && (
         <p className="text-[0.8rem] text-success">{SITE_SCAN.enrichComplete}</p>
       )}
+      {enrich.isError && (
+        <p className="text-[0.8rem] text-danger">
+          {enrich.error instanceof Error ? enrich.error.message : SITE_SCAN.enrichFailed}
+        </p>
+      )}
 
       {effective && (
         <>
