@@ -34,6 +34,8 @@ export interface MapsQualifyInput {
   scan?: boolean;
   /** ISO 3166-1 alpha-2, "" = worldwide. Sent to Google Places as regionCode. */
   country?: string;
+  /** Keep Places results that have a phone but no website as call-only leads. */
+  keep_call_only?: boolean;
 }
 
 export interface ImportInput {

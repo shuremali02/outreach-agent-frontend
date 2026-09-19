@@ -75,6 +75,8 @@ export interface Lead {
    * region; a UAE company can have a US-format cell number). "" until known.
    */
   country: string;
+  /** IANA timezone of whoever answers contact_phone ("" = unknown), derived from its area code. */
+  call_tz: string;
   signalhire_uid: string;
   /** URLs the discovery agent actually read, so a lead can be audited. */
   discovery_citations: string[];

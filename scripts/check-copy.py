@@ -121,6 +121,61 @@ ALLOWED = {
     "Failed to mark email sent. Try again.",
     "Failed to record this outcome. Try again.",
     "Failed to save note. Try again.",
+    # Core plan Phase 1 (core-plan.md): Google Maps "call-only" checkbox in
+    # Lead Finder (lib/constants.ts MAPS_FINDER.callOnly*). app.py never
+    # sourced from Maps at all.
+    "Also keep businesses with a phone but no website (call-only)",
+    "Saved without a website scan and dialled on Google's listed business line (switchboard).",
+    # Core plan Phase 3: Cold Call Desk line filter, "open now" card and the
+    # local-time badge (COLD_CALL_QUEUE.*, components/leads/local-time-badge.tsx).
+    # app.py never knew a lead's timezone, so none of this has a Streamlit
+    # counterpart.
+    "🟢 Direct lines",
+    "🟡 Switchboard (gatekeeper)",
+    "⚪ No usable number",
+    "Open Now (Local Time)",
+    "🕘 Re-sort by local time",
+    "Leads whose local time is inside business hours come first. Order only refreshes when you click this, so cards don't jump while you work.",
+    # Core plan Phase 6/9: per-contact free LinkedIn search in the contacts
+    # panel (lib/constants.ts CONTACT_LOOKUP). No Streamlit analogue.
+    "🔎 Find LinkedIn (free)",
+    "Free web search for this person's LinkedIn profile. No credits are spent.",
+    "🔎 No LinkedIn profile found for this person.",
+    "LinkedIn search failed. Try again.",
+    "Tip: run Find LinkedIn (free) first. A LinkedIn URL gives Find phone the best chance of a match.",
+    # 2026-09-19: in-app confirmation dialogs (components/ui/confirm-dialog.tsx)
+    # replacing the browser's confirm(), and snackbars (components/ui/toast.tsx)
+    # for every action -- the team lead could not tell what "Closed Lost" did.
+    # lib/constants.ts MEETING_OUTCOMES.confirm*/TOASTS.*, pipeline-view.tsx
+    # Remove. app.py used st.success()/st.rerun() inline and had no dialogs.
+    "The lead is NOT deleted. It stays in your CRM under Pipeline → Deal Won.",
+    "The lead is NOT deleted. It stays in your CRM under Pipeline → Proposal Sent.",
+    "The lead is NOT deleted. It moves to the Follow-ups page so you can call again.",
+    "The lead is NOT deleted. It stays in your CRM under Pipeline → Closed Lost, and you can move it back any time.",
+    "Yes, mark Client Closed",
+    "Yes, mark Send Proposal",
+    "Yes, needs follow-up",
+    "Yes, not interested",
+    "Yes, delete permanently",
+    # Follow-ups find-it tools (lib/constants.ts FOLLOWUPS_VIEW). No Streamlit analogue.
+    "Search Follow-ups",
+    "Company, contact or email…",
+    "Recently updated first",
+    "Yes, dead line",
+    "Yes, no interest",
+    "Yes, wrong number",
+    "Yes, move to Closed Lost",
+    "Enrichment finished",
+    "Site scan finished",
+    "No decision makers found for this company",
+    "That did not work. Please try again.",
+    "Reveal requested. The details arrive in a few seconds.",
+    "LinkedIn research found no matching person",
+    "Dismiss notification",
+    "🕘 Local time unknown",
+    "This number has no single timezone (toll-free or a multi-zone area code)",
+    "Inside local business hours",
+    "Outside local business hours",
     "Look up a mobile phone number via FullEnrich (up to 10 credits, only charged on a match)",
     # Explicit "no match" feedback -- a miss is a normal 200, not an error,
     # so without this a rep saw nothing happen and could reasonably retry,

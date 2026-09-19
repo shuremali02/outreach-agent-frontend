@@ -4,13 +4,15 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { enrichmentApi } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
 import { linkedInXrayUrl, linkedInDirectSearchUrl } from "@/lib/format";
 import type { Lead } from "@/types";
-import { LINKEDIN_PANEL } from "@/lib/constants";
+import { LINKEDIN_PANEL, TOASTS } from "@/lib/constants";
 
 /** render_linkedin_research_and_reveal_ui — used on Today, Cold Call, Pipeline, Contacts. */
 export function LinkedInResearchPanel({ lead }: { lead: Lead }) {
   const qc = useQueryClient();
+  const toast = useToast();
   const [note, setNote] = useState<{ kind: "ok" | "warn"; text: string } | null>(null);
 
   const research = useMutation({
@@ -18,12 +20,20 @@ export function LinkedInResearchPanel({ lead }: { lead: Lead }) {
     onSuccess: (res) => {
       if (res.success) {
         setNote({ kind: "ok", text: `Found ${res.contact_name} — ${res.contact_role}` });
+        toast.success(TOASTS.linkedInResearched(res.contact_name));
         qc.invalidateQueries({ queryKey: ["leads"] });
+        // The backend also saves the found person as a contact (so Find phone
+        // can run on it) -- refresh that list too.
+        qc.invalidateQueries({ queryKey: ["lead-contacts", lead.id] });
       } else {
         setNote({ kind: "warn", text: res.reason });
+        toast.info(TOASTS.linkedInResearchNone);
       }
     },
-    onError: (e: Error) => setNote({ kind: "warn", text: e.message }),
+    onError: (e: Error) => {
+      setNote({ kind: "warn", text: e.message });
+      toast.error(e.message);
+    },
   });
 
   return (

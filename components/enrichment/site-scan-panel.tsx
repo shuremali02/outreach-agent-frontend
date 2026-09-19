@@ -5,10 +5,11 @@ import { useEffect, useState } from "react";
 import { enrichmentApi } from "@/lib/api";
 import { useJob } from "@/hooks/use-job";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
 import { VerdictBanner } from "./verdict-banner";
 import { ScreenshotViewer } from "./screenshot-viewer";
 import type { Lead, ScanResult } from "@/types";
-import { EMPTY_STATES, SITE_SCAN } from "@/lib/constants";
+import { EMPTY_STATES, SITE_SCAN, TOASTS } from "@/lib/constants";
 
 /**
  * render_site_scan_ui — Scan site + Deep enrich, the verdict banner, product
@@ -19,6 +20,7 @@ import { EMPTY_STATES, SITE_SCAN } from "@/lib/constants";
  */
 export function SiteScanPanel({ lead }: { lead: Lead }) {
   const qc = useQueryClient();
+  const toast = useToast();
   const [jobId, setJobId] = useState<string | null>(null);
 
   const start = useMutation({
@@ -28,12 +30,20 @@ export function SiteScanPanel({ lead }: { lead: Lead }) {
 
   const enrich = useMutation({
     mutationFn: () => enrichmentApi.deepEnrich(lead.id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["leads"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["leads"] });
+      toast.success(TOASTS.enrichDone);
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : TOASTS.actionFailed),
   });
 
   const findWebsite = useMutation({
     mutationFn: () => enrichmentApi.findWebsite(lead.id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["leads"] }),
+    onSuccess: (updated) => {
+      qc.invalidateQueries({ queryKey: ["leads"] });
+      if (updated?.company_website) toast.success(TOASTS.websiteFound(lead.company_name));
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : TOASTS.actionFailed),
   });
 
   const { data: job } = useJob(jobId);
@@ -44,8 +54,11 @@ export function SiteScanPanel({ lead }: { lead: Lead }) {
   // Effect only touches an external system (the query cache), never local state.
   const scanDone = job?.status === "done";
   useEffect(() => {
-    if (scanDone) qc.invalidateQueries({ queryKey: ["leads"] });
-  }, [scanDone, qc]);
+    if (scanDone) {
+      qc.invalidateQueries({ queryKey: ["leads"] });
+      toast.success(TOASTS.scanDone);
+    }
+  }, [scanDone, qc, toast]);
 
   // Fall back to the columns already persisted on the lead, as app.py did.
   const effective: ScanResult | null =

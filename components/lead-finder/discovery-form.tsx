@@ -54,6 +54,7 @@ export function DiscoveryForm() {
   // Google Maps sourcing.
   const [mapsQuery, setMapsQuery] = useState("");
   const [category, setCategory] = useState<string>(STANDARD_CATEGORIES[0]);
+  const [keepCallOnly, setKeepCallOnly] = useState(false);
 
   // Country constraint -- shared by both tabs. "" = no constraint (worldwide
   // for Maps, unconstrained for the AI prompt).
@@ -69,6 +70,7 @@ export function DiscoveryForm() {
       source === "maps"
         ? jobsApi.qualifyMaps({
             maps_query: mapsQuery, industry_tag: category, max_leads: count, country,
+            keep_call_only: keepCallOnly,
           })
         // Plain discovery, not the qualify funnel: one Gemini pass, saved
         // straight away, no per-company scan/contact-verify/reject stage.
@@ -166,6 +168,18 @@ export function DiscoveryForm() {
                 </Select>
               </Field>
             </div>
+            <label
+              className="flex cursor-pointer items-center gap-2 text-[0.85rem]"
+              title={MAPS_FINDER.callOnlyHelp}
+            >
+              <input
+                type="checkbox"
+                checked={keepCallOnly}
+                onChange={(e) => setKeepCallOnly(e.target.checked)}
+                className="accent-[var(--accent)]"
+              />
+              {MAPS_FINDER.callOnlyLabel}
+            </label>
           </>
         )}
 

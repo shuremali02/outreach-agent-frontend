@@ -4,8 +4,9 @@ import * as Popover from "@radix-ui/react-popover";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { leadsApi } from "@/lib/api";
-import { ADD_LEAD_COUNTRIES, MEETING_BOOKING, PIPELINE_STAGES, STANDARD_CATEGORIES } from "@/lib/constants";
+import { ADD_LEAD_COUNTRIES, MEETING_BOOKING, PIPELINE_STAGES, STANDARD_CATEGORIES, TOASTS } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
 import { Input, Textarea, Select, Field } from "@/components/ui/input";
 import type { CreateLeadInput, ExtraContactInput, PipelineStage } from "@/types";
 
@@ -49,10 +50,12 @@ export function AddLeadPopover() {
   // becomes a lead_contacts child row (see api/leads.py create_lead()).
   const [extraContacts, setExtraContacts] = useState<(ExtraContactInput & { _rowId: number })[]>([]);
   const qc = useQueryClient();
+  const toast = useToast();
 
   const create = useMutation({
     mutationFn: (input: CreateLeadInput) => leadsApi.create(input),
-    onSuccess: () => {
+    onSuccess: (lead) => {
+      toast.success(TOASTS.leadAdded(lead.company_name));
       qc.invalidateQueries({ queryKey: ["leads"] });
       qc.invalidateQueries({ queryKey: ["metrics"] });
       setForm(EMPTY);

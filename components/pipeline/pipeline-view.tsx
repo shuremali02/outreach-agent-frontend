@@ -8,6 +8,8 @@ import { PhoneNumberList } from "@/components/leads/phone-number-list";
 import { LinkedInResearchPanel, HunterDecisionMakers, SiteScanPanel } from "@/components/enrichment";
 import { MailtoButton } from "@/components/common/mailto-button";
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/components/ui/confirm-dialog";
+import { useToast } from "@/components/ui/toast";
 import { Input, Textarea, Select, Field } from "@/components/ui/input";
 import {
   COUNTRIES,
@@ -16,10 +18,12 @@ import {
   PIPELINE_STAGES,
   STAGE_LABELS,
   STANDARD_CATEGORIES,
+  TOASTS,
   ALL_CATEGORIES,
   ALL_COUNTRIES,
   ALL_SOURCES,
   UNKNOWN_COUNTRY,
+  LOST_STAGE_CONFIRM,
   countryLabel,
 } from "@/lib/constants";
 import { addedAt, currency, externalUrl, displayDomain, hasUsableEmail, leadSource } from "@/lib/format";
@@ -29,6 +33,8 @@ import { EMPTY_STATES } from "@/lib/constants";
 function ManageDeal({ lead }: { lead: Lead }) {
   const update = useUpdateLead();
   const remove = useDeleteLead();
+  const confirm = useConfirm();
+  const toast = useToast();
 
   const [subject, setSubject] = useState(lead.subject);
   const [body, setBody] = useState(lead.body);
@@ -124,23 +130,38 @@ function ManageDeal({ lead }: { lead: Lead }) {
           variant="primary"
           size="sm"
           disabled={update.isPending || (stage === "meeting_booked" && !(meetingDate && meetingTime))}
-          onClick={() =>
-            update.mutate({
-              id: lead.id,
-              input: {
-                subject,
-                body,
-                deal_value: dealValue,
-                pipeline_stage: stage,
-                contact_phone: phone,
-                contact_linkedin: linkedin,
-                country,
-                ...(meetingDate && meetingTime
-                  ? { meeting_at: `${meetingDate}T${meetingTime}:00` }
-                  : {}),
+          onClick={async () => {
+            if (stage === "lost" && lead.pipeline_stage !== "lost") {
+              const ok = await confirm({
+                title: LOST_STAGE_CONFIRM.title(lead.company_name),
+                description: LOST_STAGE_CONFIRM.body,
+                confirmLabel: LOST_STAGE_CONFIRM.confirmLabel,
+                tone: "danger",
+              });
+              if (!ok) return;
+            }
+            update.mutate(
+              {
+                id: lead.id,
+                input: {
+                  subject,
+                  body,
+                  deal_value: dealValue,
+                  pipeline_stage: stage,
+                  contact_phone: phone,
+                  contact_linkedin: linkedin,
+                  country,
+                  ...(meetingDate && meetingTime
+                    ? { meeting_at: `${meetingDate}T${meetingTime}:00` }
+                    : {}),
+                },
               },
-            })
-          }
+              {
+                onSuccess: () => toast.success(TOASTS.saved(lead.company_name)),
+                onError: (e) => toast.error(e instanceof Error ? e.message : TOASTS.actionFailed),
+              },
+            );
+          }}
         >
           {update.isPending ? "Saving…" : "💾 Save Updates"}
         </Button>
@@ -154,8 +175,19 @@ function ManageDeal({ lead }: { lead: Lead }) {
           variant="danger"
           size="sm"
           disabled={remove.isPending}
-          onClick={() => {
-            if (confirm(`Remove ${lead.company_name} from the CRM?`)) remove.mutate(lead.id);
+          onClick={async () => {
+            const ok = await confirm({
+              title: `Remove ${lead.company_name} from the CRM?`,
+              description:
+                "This DELETES the lead and its contacts permanently -- it cannot be undone.\n\nJust not interested? Set the stage to Closed Lost instead; the lead stays in your CRM.",
+              confirmLabel: "Yes, delete permanently",
+              tone: "danger",
+            });
+            if (!ok) return;
+            remove.mutate(lead.id, {
+              onSuccess: () => toast.success(TOASTS.leadRemoved(lead.company_name)),
+              onError: (e) => toast.error(e instanceof Error ? e.message : TOASTS.actionFailed),
+            });
           }}
         >
           🗑️ Remove
@@ -295,7 +327,7 @@ export function PipelineView({
               )}
               <p className="text-[0.85rem]">👤 {lead.contact_name || "—"}</p>
               {hasUsableEmail(lead.contact_email) && (
-                <p className="text-[0.85rem] text-muted">✉️ {lead.contact_email}</p>
+                <p className="text-[1rem] font-medium text-text">✉️ {lead.contact_email}</p>
               )}
               {lead.contact_phone && <PhoneNumberList phones={lead.contact_phone} />}
 

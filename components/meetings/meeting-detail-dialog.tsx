@@ -6,7 +6,9 @@ import { useUpdateLead } from "@/hooks/use-leads";
 import { NotesPanel } from "@/components/leads/notes-panel";
 import { PhoneNumberList } from "@/components/leads/phone-number-list";
 import { Button } from "@/components/ui/button";
-import { MEETING_OUTCOMES, STAGE_LABELS, countryLabel } from "@/lib/constants";
+import { useConfirm } from "@/components/ui/confirm-dialog";
+import { useToast } from "@/components/ui/toast";
+import { MEETING_OUTCOMES, STAGE_LABELS, TOASTS, countryLabel } from "@/lib/constants";
 import { currency, displayDomain, externalUrl, hasUsableEmail } from "@/lib/format";
 import type { Lead } from "@/types";
 
@@ -36,10 +38,27 @@ export function MeetingDetailDialog({
 }) {
   const [open, setOpen] = useState(false);
   const update = useUpdateLead();
+  const confirm = useConfirm();
+  const toast = useToast();
 
-  function setOutcome(outcome: (typeof MEETING_OUTCOMES)[number]) {
-    if (!confirm(outcome.confirm(lead.company_name))) return;
-    update.mutate({ id: lead.id, input: { pipeline_stage: outcome.stage } }, { onSuccess: () => setOpen(false) });
+  async function setOutcome(outcome: (typeof MEETING_OUTCOMES)[number]) {
+    const ok = await confirm({
+      title: outcome.confirmTitle(lead.company_name),
+      description: outcome.confirmBody,
+      confirmLabel: outcome.confirmLabel,
+      tone: outcome.stage === "lost" ? "danger" : "default",
+    });
+    if (!ok) return;
+    update.mutate(
+      { id: lead.id, input: { pipeline_stage: outcome.stage } },
+      {
+        onSuccess: () => {
+          toast.success(outcome.done(lead.company_name));
+          setOpen(false);
+        },
+        onError: (e) => toast.error(e instanceof Error ? e.message : TOASTS.actionFailed),
+      },
+    );
   }
 
   return (
@@ -90,7 +109,7 @@ export function MeetingDetailDialog({
               {lead.contact_role && <span className="text-muted"> · {lead.contact_role}</span>}
             </p>
             {hasUsableEmail(lead.contact_email) && (
-              <p className="text-[0.85rem] text-muted">✉️ {lead.contact_email}</p>
+              <p className="text-[1rem] font-medium text-text">✉️ {lead.contact_email}</p>
             )}
             {lead.contact_phone && <PhoneNumberList phones={lead.contact_phone} />}
             <p className="text-[0.85rem] text-muted">

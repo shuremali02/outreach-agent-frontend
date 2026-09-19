@@ -72,15 +72,21 @@ function PhoneRow({ number, big }: { number: string; big: boolean }) {
   }
 
   return (
-    <div className="flex items-center gap-1.5">
-      <a href={telUrl(number)} className="font-mono text-[0.78rem] text-accent underline">
+    // Plain sans at reading size and full-contrast text colour: the previous
+    // 12px monospace in the accent colour on the beige theme was, per the team
+    // lead (2026-09-19), "not understandable at all". tabular-nums keeps digits aligned.
+    <div className="flex items-center gap-2">
+      <a
+        href={telUrl(number)}
+        className="text-[1rem] font-semibold tabular-nums text-text underline decoration-accent decoration-2 underline-offset-4 hover:text-accent"
+      >
         📞 {number}
       </a>
       <button
         type="button"
         onClick={copy}
         title="Copy number"
-        className="cursor-pointer text-[0.72rem] text-muted hover:text-accent"
+        className="cursor-pointer text-[0.95rem] text-muted hover:text-accent"
       >
         {copied ? "✅" : "📋"}
       </button>

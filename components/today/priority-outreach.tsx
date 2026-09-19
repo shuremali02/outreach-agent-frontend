@@ -88,17 +88,22 @@ export function PriorityOutreachList({ initialLeads }: { initialLeads: Lead[] })
                 </div>
               )}
 
-              <div>
-                <p className="metric-label">Draft Body</p>
-                <Textarea defaultValue={lead.body} rows={6} readOnly />
-              </div>
+              {/* Discovery no longer writes an email draft (core-plan Phase 7);
+                  a lead only gets one once it reaches Follow-ups, so an empty
+                  body means "no draft yet", not an empty box to show. */}
+              {lead.body && (
+                <div>
+                  <p className="metric-label">Draft Body</p>
+                  <Textarea defaultValue={lead.body} rows={6} readOnly />
+                </div>
+              )}
             </div>
 
             <div className="flex flex-col gap-3">
               <p className="text-[0.78rem] text-muted">
                 Current stage: {STAGE_LABELS[lead.pipeline_stage]}
               </p>
-              <StageSelect leadId={lead.id} value={lead.pipeline_stage} />
+              <StageSelect leadId={lead.id} value={lead.pipeline_stage} companyName={lead.company_name} />
               <MailtoButton
                 email={lead.contact_email}
                 subject={lead.subject}

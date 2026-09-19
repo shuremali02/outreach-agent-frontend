@@ -113,6 +113,12 @@ export const LEAD_SOURCE_LABELS: Record<LeadSource, string> = {
   other: "❔ Other",
 };
 
+/** Sidebar open/close button (components/layout/sidebar.tsx). No Streamlit analogue: st.sidebar collapses natively. */
+export const SIDEBAR_TOGGLE = {
+  collapse: "Close sidebar",
+  expand: "Open sidebar",
+} as const;
+
 /** Sidebar navigation — replaces the st.session_state["active_tab"] dispatch. */
 export const NAV_ITEMS = [
   { name: "Today", icon: "⊞", href: "/today", badge: null },
@@ -289,6 +295,11 @@ export const MAPS_FINDER = {
   note: "Businesses are sourced from Google Maps instead of AI web search, then scanned and verified the same way.",
   droppedNoWebsite: (n: number) =>
     `${n} more had no website listed on Google Maps and were skipped before qualification.`,
+  // Places results with a phone but no website: off = skipped (as before),
+  // on = saved as call-only leads dialled on the business line, no scan.
+  callOnlyLabel: "Also keep businesses with a phone but no website (call-only)",
+  callOnlyHelp:
+    "Saved without a website scan and dialled on Google's listed business line (switchboard).",
 } as const;
 
 export const DEFAULT_SHEET_URL =
@@ -362,6 +373,21 @@ export const FUNNEL_STEPS = [
 ] as const;
 
 /** app.py:1874-1892, 1955-2032 — the Cold Call Desk battlecard. */
+/**
+ * components/enrichment/contacts-panel.tsx -- per-contact "Find LinkedIn"
+ * (free web search) so the paid "Find phone" gets a LinkedIn URL to work from
+ * instead of a name guess. No Streamlit analogue (core-plan.md Phase 6/9).
+ */
+export const CONTACT_LOOKUP = {
+  findLinkedIn: "🔎 Find LinkedIn (free)",
+  findingLinkedIn: "Searching…",
+  findLinkedInHelp: "Free web search for this person's LinkedIn profile. No credits are spent.",
+  linkedInNotFound: "🔎 No LinkedIn profile found for this person.",
+  linkedInFailed: "LinkedIn search failed. Try again.",
+  phoneTipNoLinkedIn:
+    "Tip: run Find LinkedIn (free) first. A LinkedIn URL gives Find phone the best chance of a match.",
+} as const;
+
 export const BATTLECARD = {
   researchHeading: "🌐 Research & Channels",
   websiteLink: "↗ Website",
@@ -513,7 +539,24 @@ export const DISPOSITIONS = [
 export const COLD_CALL_QUEUE = {
   newHeading: (count: number) => `🆕 New Leads (${count})`,
   followUpHeading: (count: number) => `📞 Follow-ups Due (${count})`,
+  // Line filter + local-time ordering (2026-09-19). The queue puts leads
+  // whose LOCAL time is inside CALL_WINDOW first, then direct lines before
+  // switchboards. No Streamlit analogue -- app.py never knew a lead's timezone.
+  lineFilterLabel: "Line Filter",
+  lineOptions: [
+    { id: "all", label: "All lines" },
+    { id: "direct", label: "🟢 Direct lines" },
+    { id: "switchboard", label: "🟡 Switchboard (gatekeeper)" },
+    { id: "none", label: "⚪ No usable number" },
+  ],
+  openNowCard: "Open Now (Local Time)",
+  resort: "🕘 Re-sort by local time",
+  resortHelp:
+    "Leads whose local time is inside business hours come first. Order only refreshes when you click this, so cards don't jump while you work.",
 } as const;
+
+/** Local business-hours window used to decide who is "at their desk" right now. */
+export const CALL_WINDOW = { startHour: 9, endHour: 17 } as const;
 
 /**
  * components/cold-call/battlecard.tsx (the "🎯 Booked!" click -> date/time
@@ -551,29 +594,131 @@ export const MEETINGS_CALENDAR = {
 export const MEETING_OUTCOMES: {
   stage: PipelineStage;
   label: string;
-  confirm: (company: string) => string;
+  /** Confirmation dialog (components/ui/confirm-dialog.tsx). */
+  confirmTitle: (company: string) => string;
+  confirmBody: string;
+  confirmLabel: string;
+  /** Snackbar shown once the change is saved. */
+  done: (company: string) => string;
 }[] = [
   {
     stage: "won",
     label: "✅ Client Closed",
-    confirm: (company) => `Mark ${company} as closed/won? This moves the lead to Deal Won.`,
+    confirmTitle: (company) => `Mark ${company} as Client Closed?`,
+    confirmBody: "The lead is NOT deleted. It stays in your CRM under Pipeline → Deal Won.",
+    confirmLabel: "Yes, mark Client Closed",
+    done: (company) => `${company} marked as Client Closed`,
   },
   {
     stage: "proposal_sent",
     label: "📄 Send Proposal",
-    confirm: (company) => `Mark ${company} as ready for a proposal? This moves the lead to Proposal Sent.`,
+    confirmTitle: (company) => `Mark ${company} as Send Proposal?`,
+    confirmBody: "The lead is NOT deleted. It stays in your CRM under Pipeline → Proposal Sent.",
+    confirmLabel: "Yes, mark Send Proposal",
+    done: (company) => `${company} moved to Proposal Sent. Find it under Follow-ups.`,
   },
   {
     stage: "followup_due",
     label: "🔁 Needs Follow-up",
-    confirm: (company) => `Mark ${company} as needing a follow-up call? This moves the lead to Follow-up Due.`,
+    confirmTitle: (company) => `Mark ${company} as Needs Follow-up?`,
+    confirmBody: "The lead is NOT deleted. It moves to the Follow-ups page so you can call again.",
+    confirmLabel: "Yes, needs follow-up",
+    done: (company) => `${company} moved to Follow-ups. Find it there, newest first.`,
   },
   {
     stage: "lost",
     label: "❌ Not Interested",
-    confirm: (company) => `Mark ${company} as not interested? This moves the lead to Closed Lost.`,
+    confirmTitle: (company) => `Mark ${company} as Not Interested?`,
+    confirmBody:
+      "The lead is NOT deleted. It stays in your CRM under Pipeline → Closed Lost, and you can move it back any time.",
+    confirmLabel: "Yes, not interested",
+    done: (company) => `${company} moved to Closed Lost`,
   },
 ];
+
+/**
+ * Follow-ups page find-it tools (components/follow-ups/follow-up-list.tsx): search,
+ * stage filter with counts, and most-recently-updated-first so a lead just moved
+ * here (e.g. after a meeting) is at the top instead of buried. No Streamlit
+ * analogue -- app.py's list was short enough not to need it.
+ */
+export const FOLLOWUPS_VIEW = {
+  searchLabel: "Search Follow-ups",
+  searchPlaceholder: "Company, contact or email…",
+  allStages: (n: number) => `All Stages (${n})`,
+  sortLabel: "Sort By",
+  sortRecent: "Recently updated first",
+  sortOldest: "Oldest first",
+  showing: (shown: number, total: number) => `Showing ${shown} of ${total} follow-up leads`,
+  afterMeeting: (date: string) => `📅 Meeting ${date}`,
+} as const;
+
+/**
+ * Confirmation dialogs (components/ui/confirm-dialog.tsx) for anything that
+ * sends a lead to Closed Lost: the three Cold Call dispositions that do it
+ * (Dead Line / No Interest / Wrong Number) and choosing the Closed Lost stage.
+ * Each says plainly that the lead is NOT deleted and where it stays -- the
+ * team lead asked exactly that ("ye kahin to rahengi CRM me right?"), 2026-09-19.
+ */
+export const LOST_STAY_NOTE =
+  "The lead is NOT deleted. It stays in your CRM under Pipeline → Closed Lost, and you can move it back any time.";
+
+export const CLOSING_DISPOSITIONS: Record<
+  string,
+  { title: (company: string) => string; body: string; confirmLabel: string }
+> = {
+  dead_number: {
+    title: (company) => `Mark ${company}'s number as a Dead Line?`,
+    body: `The number is disconnected or bad, so the lead leaves this call queue.\n\n${LOST_STAY_NOTE}`,
+    confirmLabel: "Yes, dead line",
+  },
+  not_interested: {
+    title: (company) => `Mark ${company} as No Interest?`,
+    body: `They spoke with you and said no, so the lead leaves this call queue.\n\n${LOST_STAY_NOTE}`,
+    confirmLabel: "Yes, no interest",
+  },
+  wrong_number: {
+    title: (company) => `Mark ${company}'s number as a Wrong Number?`,
+    body: `This number does not reach the company, so the lead leaves this call queue.\n\n${LOST_STAY_NOTE}`,
+    confirmLabel: "Yes, wrong number",
+  },
+};
+
+export const LOST_STAGE_CONFIRM = {
+  title: (company: string) => `Move ${company} to Closed Lost?`,
+  body: LOST_STAY_NOTE,
+  confirmLabel: "Yes, move to Closed Lost",
+} as const;
+
+/**
+ * Snackbar copy (components/ui/toast.tsx) -- one short line per action, so the
+ * rep always sees that a click registered. No Streamlit analogue: app.py used
+ * st.success()/st.rerun() inline.
+ */
+export const TOASTS = {
+  disposition: (label: string, company: string) => `${label} saved for ${company}`,
+  meetingBooked: (company: string) => `Meeting booked for ${company}`,
+  noteAdded: (company: string) => `Note added to ${company}`,
+  emailMarked: (company: string) => `Email marked as sent for ${company}`,
+  battlecardReady: (company: string) => `AI battlecard ready for ${company}`,
+  saved: (company: string) => `Changes saved for ${company}`,
+  stageChanged: (company: string, stage: string) => `${company} moved to ${stage}`,
+  leadRemoved: (company: string) => `${company} was removed from the CRM`,
+  leadAdded: (company: string) => `${company} was added to the CRM`,
+  phoneFound: (name: string) => `Phone number found for ${name}`,
+  phoneNotFound: (name: string) => `No phone number found for ${name}`,
+  linkedInFound: (name: string) => `LinkedIn profile found for ${name}`,
+  linkedInNotFound: (name: string) => `No LinkedIn profile found for ${name}`,
+  peopleFound: (n: number) => `${n} decision maker${n === 1 ? "" : "s"} found`,
+  noPeopleFound: "No decision makers found for this company",
+  revealRequested: "Reveal requested. The details arrive in a few seconds.",
+  linkedInResearched: (name: string) => `LinkedIn research found ${name}`,
+  linkedInResearchNone: "LinkedIn research found no matching person",
+  websiteFound: (company: string) => `Website found for ${company}`,
+  enrichDone: "Enrichment finished",
+  scanDone: "Site scan finished",
+  actionFailed: "That did not work. Please try again.",
+} as const;
 
 /**
  * components/today/activity-scroller.tsx -- replaces the Google-Sheet-backed

@@ -12,6 +12,8 @@ import { PhoneNumberList } from "@/components/leads/phone-number-list";
 import { LinkedInResearchPanel, HunterDecisionMakers, SiteScanPanel } from "@/components/enrichment";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/components/ui/confirm-dialog";
+import { useToast } from "@/components/ui/toast";
 import { Input, Select, Field } from "@/components/ui/input";
 import { TerminalPill } from "@/components/ui/tag";
 import {
@@ -25,6 +27,8 @@ import {
   ALL_COUNTRIES,
   UNKNOWN_COUNTRY,
   LEAD_SOURCE_LABELS,
+  LOST_STAGE_CONFIRM,
+  TOASTS,
   countryLabel,
 } from "@/lib/constants";
 import { addedAt, currency, externalUrl, displayDomain, hasUsableEmail, contactLabel, leadSource } from "@/lib/format";
@@ -33,6 +37,8 @@ import { EMPTY_STATES } from "@/lib/constants";
 
 function ClassificationPanel({ lead }: { lead: Lead }) {
   const update = useUpdateLead();
+  const toast = useToast();
+  const confirm = useConfirm();
   const [category, setCategory] = useState(lead.industry_tag);
   const [stage, setStage] = useState<PipelineStage>(lead.pipeline_stage);
   const [phone, setPhone] = useState(lead.contact_phone);
@@ -119,22 +125,37 @@ function ClassificationPanel({ lead }: { lead: Lead }) {
         variant="primary"
         size="sm"
         disabled={update.isPending || (stage === "meeting_booked" && !(meetingDate && meetingTime))}
-        onClick={() =>
-          update.mutate({
-            id: lead.id,
-            input: {
-              industry_tag: category,
-              pipeline_stage: stage,
-              contact_phone: phone,
-              contact_linkedin: linkedin,
-              deal_value: dealValue,
-              country,
-              ...(meetingDate && meetingTime
-                ? { meeting_at: `${meetingDate}T${meetingTime}:00` }
-                : {}),
+        onClick={async () => {
+          if (stage === "lost" && lead.pipeline_stage !== "lost") {
+            const ok = await confirm({
+              title: LOST_STAGE_CONFIRM.title(lead.company_name),
+              description: LOST_STAGE_CONFIRM.body,
+              confirmLabel: LOST_STAGE_CONFIRM.confirmLabel,
+              tone: "danger",
+            });
+            if (!ok) return;
+          }
+          update.mutate(
+            {
+              id: lead.id,
+              input: {
+                industry_tag: category,
+                pipeline_stage: stage,
+                contact_phone: phone,
+                contact_linkedin: linkedin,
+                deal_value: dealValue,
+                country,
+                ...(meetingDate && meetingTime
+                  ? { meeting_at: `${meetingDate}T${meetingTime}:00` }
+                  : {}),
+              },
             },
-          })
-        }
+            {
+              onSuccess: () => toast.success(TOASTS.saved(lead.company_name)),
+              onError: (e) => toast.error(e instanceof Error ? e.message : TOASTS.actionFailed),
+            },
+          );
+        }}
       >
         💾 Save Lead Details
       </Button>
@@ -302,7 +323,7 @@ export function ContactsView({ initialLeads, q }: { initialLeads: Lead[]; q: str
                 {lead.contact_role && <span className="text-muted"> · {lead.contact_role}</span>}
               </p>
               {hasUsableEmail(lead.contact_email) && (
-                <p className="text-[0.85rem] text-muted">✉️ {lead.contact_email}</p>
+                <p className="text-[1rem] font-medium text-text">✉️ {lead.contact_email}</p>
               )}
               {lead.contact_phone && <PhoneNumberList phones={lead.contact_phone} />}
               <p className="text-[0.85rem] text-muted">

@@ -23,9 +23,9 @@
   --color-xray-bg: var(--xray-bg);
   --color-xray-text: var(--xray-text);
 
-  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
-  --font-serif: var(--font-playfair), Georgia, serif;
-  --font-mono: var(--font-jetbrains), "SF Mono", Consolas, Menlo, monospace;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
+  --font-serif: var(--font-inter), ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
+  --font-mono: var(--font-inter), ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
 
   --radius-card: 12px;
   --radius-panel: 10px;
@@ -39,10 +39,18 @@
     border-color: var(--border);
   }
 
+  /* 17px root (was 16px): every rem-based size in the app grows ~6% together, so
+     the many 12-13px labels become readable without touching each component. */
+  html {
+    font-size: 106.25%;
+  }
+
   body {
     background-color: var(--bg);
     color: var(--text);
-    font-family: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+    font-family: var(--font-inter), ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    text-rendering: optimizeLegibility;
   }
 
   h1,
@@ -51,9 +59,17 @@
   h4,
   h5,
   h6 {
-    font-family: var(--font-playfair), Georgia, serif;
+    font-family: var(--font-inter), ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
     color: var(--text);
-    letter-spacing: -0.02em;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  /* Any element using Tailwind's font-mono (phone numbers, amounts, code) now
+     renders in the same clear sans; tabular figures keep digits aligned. */
+  .font-mono {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0;
   }
 
   /* Focus ring — app.py used border-color:accent + 0 0 0 1px accent */
@@ -75,13 +91,13 @@
    --------------------------------------------------------------------------- */
 @layer components {
   .serif-title {
-    font-family: var(--font-playfair), Georgia, serif;
+    font-family: var(--font-inter), ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
     color: var(--text);
     letter-spacing: -0.02em;
   }
 
   .hero-heading {
-    font-family: var(--font-playfair), Georgia, serif;
+    font-family: var(--font-inter), ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
     font-size: 2.75rem;
     font-weight: 600;
     line-height: 1.15;
@@ -90,7 +106,7 @@
   }
 
   .date-eyebrow {
-    font-size: 0.75rem;
+    font-size: 0.8rem;
     font-weight: 700;
     letter-spacing: 0.12em;
     text-transform: uppercase;
@@ -121,7 +137,7 @@
   }
 
   .logo-text {
-    font-family: var(--font-playfair), Georgia, serif;
+    font-family: var(--font-inter), ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
     font-size: 1.5rem;
     font-weight: 700;
     color: var(--text);
@@ -192,7 +208,8 @@
   }
 
   .terminal-ticker {
-    font-family: var(--font-jetbrains), "SF Mono", Consolas, Menlo, monospace;
+    font-family: var(--font-inter), ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
+    font-variant-numeric: tabular-nums;
     font-size: 1.85rem;
     font-weight: 700;
     letter-spacing: -0.03em;
@@ -200,9 +217,10 @@
   }
 
   .terminal-pill {
-    font-family: var(--font-jetbrains), Consolas, monospace;
-    font-size: 0.72rem;
-    font-weight: 700;
+    font-family: var(--font-inter), ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
+    font-variant-numeric: tabular-nums;
+    font-size: 0.8rem;
+    font-weight: 600;
     padding: 3px 8px;
     border-radius: 4px;
     display: inline-block;
@@ -263,5 +281,28 @@
 
   .activity-scroll-row::-webkit-scrollbar {
     display: none;
+  }
+}
+
+/* components/ui/toast.tsx -- snackbar slide-in. Skipped entirely for users who
+   ask the OS for reduced motion. */
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.toast-enter {
+  animation: toast-in 0.18s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast-enter {
+    animation: none;
   }
 }

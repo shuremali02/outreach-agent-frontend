@@ -89,4 +89,13 @@ export const enrichmentApi = {
    */
   findPhone: (leadId: number, contactId: number) =>
     api.post<LeadContact[]>(`/leads/${leadId}/find-phone`, { contact_id: contactId }),
+
+  /**
+   * FREE: search the web for ONE named contact's LinkedIn profile (name and
+   * company must both appear in the result; the URL must not 404) and save it
+   * on the contact. Synchronous. A LinkedIn URL is the best input findPhone
+   * accepts, so this is the step to run before spending credits.
+   */
+  findLinkedIn: (leadId: number, contactId: number) =>
+    api.post<LeadContact[]>(`/leads/${leadId}/find-linkedin`, { contact_id: contactId }),
 };

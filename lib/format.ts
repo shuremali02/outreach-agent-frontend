@@ -152,3 +152,54 @@ export function slugify(text: string): string {
 export function contactLabel(lead: Pick<Lead, "contact_name" | "company_name">): string {
   return lead.contact_name || lead.company_name;
 }
+
+export interface LocalClock {
+  /** Weekday and inside [startHour, endHour) in that timezone. */
+  open: boolean;
+  /** e.g. "9:12 AM" */
+  time: string;
+  /** "Sat" / "Sun" when it is the weekend there (always closed), else "". */
+  weekend: string;
+  /** e.g. "Chicago" */
+  city: string;
+}
+
+/**
+ * The wall-clock time in `tz` at `at`, and whether it is business hours there
+ * (Mon-Fri, [startHour, endHour)). null for an unknown/invalid timezone --
+ * Intl throws RangeError on a bad IANA name, so never let that reach render.
+ */
+export function localClock(
+  tz: string,
+  at: Date,
+  startHour: number,
+  endHour: number,
+): LocalClock | null {
+  if (!tz) return null;
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz,
+      weekday: "short",
+      hour: "numeric",
+      minute: "2-digit",
+      hourCycle: "h23",
+    }).formatToParts(at);
+    const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+    const hour = Number(get("hour"));
+    const weekday = get("weekday");
+    const time = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz,
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(at);
+    const weekend = weekday === "Sat" || weekday === "Sun";
+    return {
+      open: !weekend && hour >= startHour && hour < endHour,
+      time,
+      weekend: weekend ? weekday : "",
+      city: (tz.split("/").pop() ?? tz).replace(/_/g, " "),
+    };
+  } catch {
+    return null;
+  }
+}

@@ -4,10 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { enrichmentApi } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
 import { PhoneNumberList } from "@/components/leads/phone-number-list";
 import { displayDomain } from "@/lib/format";
 import type { Lead, LeadContact } from "@/types";
-import { EMPTY_STATES } from "@/lib/constants";
+import { CONTACT_LOOKUP, EMPTY_STATES, TOASTS } from "@/lib/constants";
 
 /**
  * Provider-neutral replacement for the Hunter-only decision-maker list.
@@ -33,6 +34,9 @@ const SOURCE_LABEL: Record<string, string> = {
   apollo: "Apollo",
   manual: "manual",
   fullenrich: "FullEnrich",
+  google_maps: "Google Maps",
+  linkedin_search: "LinkedIn search",
+  contactout: "ContactOut",
 };
 
 function hasContactDetail(c: LeadContact): boolean {
@@ -70,6 +74,7 @@ export function ContactsPanel({
   autoSearchOnMount?: boolean;
 }) {
   const qc = useQueryClient();
+  const toast = useToast();
 
   const { data: contacts = [], isLoading } = useQuery({
     queryKey: ["lead-contacts", lead.id],
@@ -78,7 +83,12 @@ export function ContactsPanel({
 
   const findPeople = useMutation({
     mutationFn: () => enrichmentApi.findPeople(lead.id),
-    onSuccess: (rows) => qc.setQueryData(["lead-contacts", lead.id], rows),
+    onSuccess: (rows) => {
+      qc.setQueryData(["lead-contacts", lead.id], rows);
+      if (rows.length > 0) toast.success(TOASTS.peopleFound(rows.length));
+      else toast.info(TOASTS.noPeopleFound);
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : TOASTS.actionFailed),
   });
 
   const autoSearched = useRef(false);
@@ -105,9 +115,11 @@ export function ContactsPanel({
     mutationFn: (contactId: number) => enrichmentApi.reveal(lead.id, contactId),
     // The webhook fills the details in asynchronously; refetch shortly after.
     onSuccess: () => {
+      toast.info(TOASTS.revealRequested);
       const timer = setTimeout(() => qc.invalidateQueries({ queryKey: ["lead-contacts", lead.id] }), 4000);
       revealTimers.current.push(timer);
     },
+    onError: (e) => toast.error(e instanceof Error ? e.message : TOASTS.actionFailed),
   });
 
   // Synchronous, unlike reveal -- FullEnrich is polled to completion
@@ -135,7 +147,34 @@ export function ContactsPanel({
         else next.delete(contactId);
         return next;
       });
+      const who = updated?.name ?? "this contact";
+      if (updated?.phone) toast.success(TOASTS.phoneFound(who));
+      else toast.info(TOASTS.phoneNotFound(who));
     },
+    onError: (e) => toast.error(e instanceof Error ? e.message : TOASTS.actionFailed),
+  });
+
+  // Free LinkedIn search for one named contact. A miss is a normal 200 (the
+  // contact list comes back unchanged), so remember misses per contact to say
+  // "nothing found" instead of the button silently resetting.
+  const [noLinkedInIds, setNoLinkedInIds] = useState<Set<number>>(new Set());
+  const findLinkedIn = useMutation({
+    mutationFn: (contactId: number) => enrichmentApi.findLinkedIn(lead.id, contactId),
+    onSuccess: (rows, contactId) => {
+      qc.setQueryData(["lead-contacts", lead.id], rows);
+      qc.invalidateQueries({ queryKey: ["leads"] });
+      const updated = rows.find((r) => r.id === contactId);
+      setNoLinkedInIds((prev) => {
+        const next = new Set(prev);
+        if (updated && !updated.linkedin) next.add(contactId);
+        else next.delete(contactId);
+        return next;
+      });
+      const who = updated?.name ?? "this contact";
+      if (updated?.linkedin) toast.success(TOASTS.linkedInFound(who));
+      else toast.info(TOASTS.linkedInNotFound(who));
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : TOASTS.actionFailed),
   });
 
   const grouped = new Map<string, LeadContact[]>();
@@ -159,6 +198,12 @@ export function ContactsPanel({
       {reveal.isError && (
         <p className="text-[0.78rem] text-danger">
           {reveal.error instanceof Error ? reveal.error.message : "Reveal failed"}
+        </p>
+      )}
+
+      {findLinkedIn.isError && (
+        <p className="text-[0.78rem] text-danger">
+          {findLinkedIn.error instanceof Error ? findLinkedIn.error.message : CONTACT_LOOKUP.linkedInFailed}
         </p>
       )}
 
@@ -211,7 +256,7 @@ export function ContactsPanel({
                     </p>
                     {c.email && (
                       <p className="mt-0.5">
-                        <code className="font-mono text-[0.75rem] text-muted">{c.email}</code>
+                        <span className="text-[0.95rem] font-medium text-text">{c.email}</span>
                       </p>
                     )}
                     {c.phone && (
@@ -228,6 +273,12 @@ export function ContactsPanel({
                       >
                         LinkedIn
                       </a>
+                    )}
+                    {noLinkedInIds.has(c.id) && !c.linkedin && (
+                      <p className="mt-0.5 text-[0.75rem] text-muted">{CONTACT_LOOKUP.linkedInNotFound}</p>
+                    )}
+                    {!c.phone && !c.linkedin && looksLikePerson(c.name) && !noLinkedInIds.has(c.id) && (
+                      <p className="mt-0.5 text-[0.72rem] text-muted">{CONTACT_LOOKUP.phoneTipNoLinkedIn}</p>
                     )}
                     {noMatchIds.has(c.id) && !c.phone && (
                       <p className="mt-0.5 text-[0.75rem] text-muted">
@@ -253,6 +304,26 @@ export function ContactsPanel({
                         title="Spend one SignalHire credit for a direct email and phone"
                       >
                         {reveal.isPending && reveal.variables === c.id ? "Revealing…" : "🔓 Reveal"}
+                      </Button>
+                    )}
+                    {!c.linkedin && looksLikePerson(c.name) && (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => {
+                          setNoLinkedInIds((prev) => {
+                            const next = new Set(prev);
+                            next.delete(c.id);
+                            return next;
+                          });
+                          findLinkedIn.mutate(c.id);
+                        }}
+                        disabled={findLinkedIn.isPending}
+                        title={CONTACT_LOOKUP.findLinkedInHelp}
+                      >
+                        {findLinkedIn.isPending && findLinkedIn.variables === c.id
+                          ? CONTACT_LOOKUP.findingLinkedIn
+                          : CONTACT_LOOKUP.findLinkedIn}
                       </Button>
                     )}
                     {!c.phone &&

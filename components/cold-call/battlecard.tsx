@@ -5,10 +5,13 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useUpdateLead, useCallOutcome, useAddNote } from "@/hooks/use-leads";
 import { LinkedInResearchPanel, HunterDecisionMakers, SiteScanPanel } from "@/components/enrichment";
 import { LeadCard } from "@/components/leads/lead-card";
+import { LocalTimeBadge } from "@/components/leads/local-time-badge";
 import { PhoneBadge } from "@/components/leads/phone-badge";
 import { PhoneNumberList } from "@/components/leads/phone-number-list";
 import { Button } from "@/components/ui/button";
 import { Input, Field } from "@/components/ui/input";
+import { useConfirm } from "@/components/ui/confirm-dialog";
+import { useToast } from "@/components/ui/toast";
 import { enrichmentApi, leadsApi } from "@/lib/api";
 import {
   addedAt, currency, externalUrl, hasUsableEmail, leadSource, mailtoUrl,
@@ -16,10 +19,12 @@ import {
 } from "@/lib/format";
 import {
   BATTLECARD,
+  CLOSING_DISPOSITIONS,
   DISPOSITIONS,
   FALLBACK_OBJECTIONS,
   LEAD_SOURCE_LABELS,
   MEETING_BOOKING,
+  TOASTS,
   countryLabel,
   fallbackScript,
 } from "@/lib/constants";
@@ -34,6 +39,7 @@ function scriptFor(lead: Lead): string {
 
 function EditContact({ lead }: { lead: Lead }) {
   const update = useUpdateLead();
+  const toast = useToast();
   const [open, setOpen] = useState(false);
   const [phone, setPhone] = useState(lead.contact_phone);
   const [linkedin, setLinkedin] = useState(lead.contact_linkedin);
@@ -68,10 +74,16 @@ function EditContact({ lead }: { lead: Lead }) {
             size="sm"
             disabled={update.isPending}
             onClick={() =>
-              update.mutate({
-                id: lead.id,
-                input: { contact_phone: phone, contact_linkedin: linkedin },
-              })
+              update.mutate(
+                {
+                  id: lead.id,
+                  input: { contact_phone: phone, contact_linkedin: linkedin },
+                },
+                {
+                  onSuccess: () => toast.success(TOASTS.saved(lead.company_name)),
+                  onError: (e) => toast.error(e instanceof Error ? e.message : TOASTS.actionFailed),
+                },
+              )
             }
           >
             {BATTLECARD.saveContact}
@@ -99,10 +111,16 @@ export function Battlecard({
   onActionTaken?: (leadId: number) => void;
 }) {
   const qc = useQueryClient();
+  const toast = useToast();
+  const confirm = useConfirm();
   const record = useCallOutcome();
   const generate = useMutation({
     mutationFn: () => enrichmentApi.generateBattlecard(lead.id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["leads"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["leads"] });
+      toast.success(TOASTS.battlecardReady(lead.company_name));
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : TOASTS.actionFailed),
   });
   // "Open in Mail App" only opens a mailto: link -- no send confirmation
   // reaches the backend, so this is a separate, explicit, rep-confirmed
@@ -110,7 +128,11 @@ export function Battlecard({
   const [emailMarked, setEmailMarked] = useState(false);
   const markEmailSent = useMutation({
     mutationFn: () => leadsApi.markEmailSent(lead.id),
-    onSuccess: () => setEmailMarked(true),
+    onSuccess: () => {
+      setEmailMarked(true);
+      toast.success(TOASTS.emailMarked(lead.company_name));
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : TOASTS.actionFailed),
   });
   const [note, setNote] = useState("");
   // The note field only ever got saved bundled with a disposition (Voicemail/
@@ -157,18 +179,31 @@ export function Battlecard({
     };
   }, []);
 
-  function disposition(outcome: CallOutcome) {
+  async function disposition(outcome: CallOutcome) {
     if (outcome === "meeting_booked") {
       setBookingPrompt(true);
       return;
     }
+    const closing = CLOSING_DISPOSITIONS[outcome];
+    if (closing) {
+      const ok = await confirm({
+        title: closing.title(lead.company_name),
+        description: closing.body,
+        confirmLabel: closing.confirmLabel,
+        tone: "danger",
+      });
+      if (!ok) return;
+    }
+    const label = DISPOSITIONS.find((d) => d.outcome === outcome)?.label ?? outcome;
     record.mutate(
       { id: lead.id, outcome, notes: note },
       {
         onSuccess: () => {
+          toast.success(TOASTS.disposition(label, lead.company_name));
           setNote("");
           onActionTaken?.(lead.id);
         },
+        onError: (e) => toast.error(e instanceof Error ? e.message : TOASTS.actionFailed),
       },
     );
   }
@@ -184,12 +219,14 @@ export function Battlecard({
       },
       {
         onSuccess: () => {
+          toast.success(TOASTS.meetingBooked(lead.company_name));
           setNote("");
           setBookingPrompt(false);
           setBooked(true);
           onActionTaken?.(lead.id);
           bookedTimer.current = setTimeout(() => setBooked(false), 4000);
         },
+        onError: (e) => toast.error(e instanceof Error ? e.message : TOASTS.actionFailed),
       },
     );
   }
@@ -206,6 +243,7 @@ export function Battlecard({
           {currency(lead.deal_value)}
         </span>
         <PhoneBadge status={lead.phone_status} phone={lead.contact_phone} />
+        <LocalTimeBadge tz={lead.call_tz} hasPhone={Boolean(lead.contact_phone)} />
         <span className="stage-tag">{lead.industry_tag}</span>
       </div>
       <p className="mb-1 mt-1 text-[0.88rem] text-muted">
@@ -379,7 +417,16 @@ export function Battlecard({
                 size="sm"
                 disabled={addNote.isPending || !note.trim()}
                 onClick={() =>
-                  addNote.mutate({ id: lead.id, text: note }, { onSuccess: () => setNote("") })
+                  addNote.mutate(
+                    { id: lead.id, text: note },
+                    {
+                      onSuccess: () => {
+                        setNote("");
+                        toast.success(TOASTS.noteAdded(lead.company_name));
+                      },
+                      onError: (e) => toast.error(e instanceof Error ? e.message : TOASTS.actionFailed),
+                    },
+                  )
                 }
               >
                 {addNote.isPending ? "Adding…" : BATTLECARD.addNote}
