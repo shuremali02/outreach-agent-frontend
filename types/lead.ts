@@ -77,6 +77,9 @@ export interface Lead {
   country: string;
   /** IANA timezone of whoever answers contact_phone ("" = unknown), derived from its area code. */
   call_tz: string;
+  /** Who added / last touched the lead (user ids -- map to names with useUsers()). null = before login existed. */
+  created_by_user_id: number | null;
+  last_touched_by_user_id: number | null;
   signalhire_uid: string;
   /** URLs the discovery agent actually read, so a lead can be audited. */
   discovery_citations: string[];
@@ -195,6 +198,10 @@ export interface CreateLeadInput {
   /** "+ Add Another Contact" rows -- each becomes a lead_contacts child row,
    * same as a CSV import with several people at one company. */
   extra_contacts?: ExtraContactInput[];
+  /** "Team ko batao": an optional first note; @names in it notify those people. */
+  team_note?: string;
+  mentions?: number[];
+  mention_team?: boolean;
 }
 
 export interface ExtraContactInput {

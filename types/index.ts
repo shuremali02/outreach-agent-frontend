@@ -3,3 +3,4 @@ export * from "./problem";
 export * from "./metrics";
 export * from "./scan";
 export * from "./api";
+export * from "./auth";

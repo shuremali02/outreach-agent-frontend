@@ -4,7 +4,11 @@ import { useState } from "react";
 import { useAddNote } from "@/hooks/use-leads";
 import { MailtoButton } from "@/components/common/mailto-button";
 import { Button } from "@/components/ui/button";
-import { Field, Textarea } from "@/components/ui/input";
+import { Field } from "@/components/ui/input";
+import { MentionField } from "@/components/common/mention-field";
+import { useUsers } from "@/hooks/use-users";
+import { extractMentions } from "@/lib/mentions";
+import { MENTIONS } from "@/lib/constants";
 import type { Lead } from "@/types";
 
 /**
@@ -22,6 +26,7 @@ import type { Lead } from "@/types";
 export function NotesPanel({ lead }: { lead: Lead }) {
   const addNote = useAddNote();
   const [draft, setDraft] = useState("");
+  const { data: users = [] } = useUsers();
 
   return (
     <div className="flex flex-col gap-3">
@@ -32,14 +37,18 @@ export function NotesPanel({ lead }: { lead: Lead }) {
         </p>
       )}
       <Field label="Add a Note">
-        <Textarea rows={3} value={draft} onChange={(e) => setDraft(e.target.value)} />
+        <MentionField rows={3} value={draft} onChange={setDraft} />
+        <p className="mt-1 text-[0.75rem] text-muted">{MENTIONS.hint}</p>
       </Field>
       <Button
         variant="primary"
         size="sm"
         disabled={addNote.isPending || !draft.trim()}
         onClick={() =>
-          addNote.mutate({ id: lead.id, text: draft }, { onSuccess: () => setDraft("") })
+          addNote.mutate(
+            { id: lead.id, text: draft, mention: extractMentions(draft, users) },
+            { onSuccess: () => setDraft("") },
+          )
         }
       >
         {addNote.isPending ? "Adding…" : "➕ Add Note"}

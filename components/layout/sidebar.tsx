@@ -2,18 +2,39 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { NAV_ITEMS, SIDEBAR_TOGGLE } from "@/lib/constants";
 import { useMetrics } from "@/hooks/use-metrics";
 import { cn } from "@/lib/utils";
-import { Logo } from "./logo";
+import { Logo, LogoMark } from "./logo";
 import { ThemeToggle } from "./theme-toggle";
 import { SystemStatusPanel } from "./system-status";
 import type { CrmMetrics, SystemStatus } from "@/types";
 
 function Eyebrow({ children }: { children: React.ReactNode }) {
   return <p className="date-eyebrow !mb-2">{children}</p>;
+}
+
+const SIDEBAR_KEY = "elipse-sidebar";
+const SIDEBAR_EVENT = "elipse-sidebar-change";
+let sidebarMemory = false;
+
+function subscribeSidebar(onChange: () => void) {
+  window.addEventListener(SIDEBAR_EVENT, onChange);
+  window.addEventListener("storage", onChange); // another tab changed it
+  return () => {
+    window.removeEventListener(SIDEBAR_EVENT, onChange);
+    window.removeEventListener("storage", onChange);
+  };
+}
+function readSidebar(): boolean {
+  try {
+    sidebarMemory = localStorage.getItem(SIDEBAR_KEY) === "collapsed";
+  } catch {
+    /* storage blocked: fall back to what was chosen this visit */
+  }
+  return sidebarMemory;
 }
 
 export function Sidebar({
@@ -26,26 +47,18 @@ export function Sidebar({
   const pathname = usePathname();
   const { data: metrics } = useMetrics(initialMetrics);
 
-  // Open/close, remembered across visits (per browser). Read after mount, not in the
-  // initial state, so the server-rendered markup and the first client render match.
-  const [collapsed, setCollapsed] = useState(false);
-  useEffect(() => {
-    try {
-      setCollapsed(localStorage.getItem("elipse-sidebar") === "collapsed");
-    } catch {
-      /* storage blocked -- stays open, still works */
-    }
-  }, []);
+  // Open/close, remembered across visits (per browser). The server (and hydration) always renders it open,
+  // then the stored choice applies, so the markup matches.
+  const collapsed = useSyncExternalStore(subscribeSidebar, readSidebar, () => false);
   function toggle() {
-    setCollapsed((c) => {
-      const next = !c;
-      try {
-        localStorage.setItem("elipse-sidebar", next ? "collapsed" : "open");
-      } catch {
-        /* not persisted, still toggles */
-      }
-      return next;
-    });
+    const next = !collapsed;
+    sidebarMemory = next; // still toggles when storage is blocked, it just is not remembered
+    try {
+      localStorage.setItem(SIDEBAR_KEY, next ? "collapsed" : "open");
+    } catch {
+      /* not persisted */
+    }
+    window.dispatchEvent(new Event(SIDEBAR_EVENT));
   }
 
   /** app.py only rendered counts for Cold Call/Problem/Follow-ups; Meetings'
@@ -65,7 +78,7 @@ export function Sidebar({
       )}
     >
       <div className={cn("mb-2 flex items-center", collapsed ? "justify-center" : "justify-between")}>
-        {collapsed ? <span className="logo-oval" aria-hidden /> : <Logo />}
+        {collapsed ? <LogoMark /> : <Logo />}
         <button
           type="button"
           onClick={toggle}

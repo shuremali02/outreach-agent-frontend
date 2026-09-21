@@ -4,6 +4,7 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useLeads, useUpdateLead, useDeleteLead } from "@/hooks/use-leads";
 import { LeadCard } from "@/components/leads/lead-card";
+import { LeadWho } from "@/components/leads/lead-who";
 import { PhoneNumberList } from "@/components/leads/phone-number-list";
 import { LinkedInResearchPanel, HunterDecisionMakers, SiteScanPanel } from "@/components/enrichment";
 import { MailtoButton } from "@/components/common/mailto-button";
@@ -24,6 +25,8 @@ import {
   ALL_SOURCES,
   UNKNOWN_COUNTRY,
   LOST_STAGE_CONFIRM,
+  FOLLOWUPS_VIEW,
+  PIPELINE_MEETING_FILTER,
   countryLabel,
 } from "@/lib/constants";
 import { addedAt, currency, externalUrl, displayDomain, hasUsableEmail, leadSource } from "@/lib/format";
@@ -232,9 +235,17 @@ export function PipelineView({
   // column, so unlike Stage/Category/Country it's never sent to the server
   // -- filtered client-side over whatever the server already returned.
   const [source, setSource] = useState(ALL_SOURCES);
+  // Leads that already had a meeting (meeting_at set) and have moved on -- they stay in the pipeline under
+  // their stage; this just lets the team pick them out ("gaya kahan?", 2026-09-21).
+  const [metOnly, setMetOnly] = useState(false);
   const leads = useMemo(
-    () => fetchedLeads.filter((l) => source === ALL_SOURCES || leadSource(l.source_prompt) === source),
-    [fetchedLeads, source],
+    () =>
+      fetchedLeads.filter(
+        (l) =>
+          (source === ALL_SOURCES || leadSource(l.source_prompt) === source) &&
+          (!metOnly || Boolean(l.meeting_at)),
+      ),
+    [fetchedLeads, source, metOnly],
   );
 
   function setParam(key: string, value: string) {
@@ -247,7 +258,7 @@ export function PipelineView({
 
   return (
     <>
-      <div className="mb-4 grid grid-cols-4 gap-4">
+      <div className="mb-4 grid grid-cols-5 gap-4">
         <Field label="Stage Filter">
           <Select value={stage} onChange={(e) => setParam("stage", e.target.value)}>
             <option value="all">All Stages</option>
@@ -289,6 +300,12 @@ export function PipelineView({
             ))}
           </Select>
         </Field>
+        <Field label={PIPELINE_MEETING_FILTER.label}>
+          <Select value={metOnly ? "met" : "all"} onChange={(e) => setMetOnly(e.target.value === "met")}>
+            <option value="all">{PIPELINE_MEETING_FILTER.all}</option>
+            <option value="met">{PIPELINE_MEETING_FILTER.met}</option>
+          </Select>
+        </Field>
       </div>
 
       {leads.length === 0 && <p className="text-muted">{EMPTY_STATES.pipeline}</p>}
@@ -304,10 +321,18 @@ export function PipelineView({
                 — {currency(lead.deal_value)} · {lead.industry_tag} (
                 {STAGE_LABELS[lead.pipeline_stage]})
               </span>
+              {lead.meeting_at && lead.pipeline_stage !== "meeting_booked" && (
+                <span className="ml-2 rounded-[6px] bg-input px-1.5 py-0.5 text-[0.75rem] font-semibold text-muted">
+                  {FOLLOWUPS_VIEW.afterMeeting(
+                    new Date(lead.meeting_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+                  )}
+                </span>
+              )}
               {/* Ali (Sales Rep, 2026-09-15): leads couldn't be verified
                   without knowing when/how they were added. */}
               <span className="ml-2 text-[0.75rem] text-muted">
                 🕒 {addedAt(lead.created_at)} · {LEAD_SOURCE_LABELS[leadSource(lead.source_prompt)]}
+                <LeadWho lead={lead} />
               </span>
             </span>
           }

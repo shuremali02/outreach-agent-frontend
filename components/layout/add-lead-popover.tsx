@@ -4,10 +4,13 @@ import * as Popover from "@radix-ui/react-popover";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { leadsApi } from "@/lib/api";
-import { ADD_LEAD_COUNTRIES, MEETING_BOOKING, PIPELINE_STAGES, STANDARD_CATEGORIES, TOASTS } from "@/lib/constants";
+import { ADD_LEAD_COUNTRIES, ADD_LEAD_TEAM, MEETING_BOOKING, MENTIONS, PIPELINE_STAGES, STANDARD_CATEGORIES, TOASTS } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { Input, Textarea, Select, Field } from "@/components/ui/input";
+import { MentionField } from "@/components/common/mention-field";
+import { useUsers } from "@/hooks/use-users";
+import { extractMentions } from "@/lib/mentions";
 import type { CreateLeadInput, ExtraContactInput, PipelineStage } from "@/types";
 
 /** A fresh, empty row for "+ Add Another Contact" -- a stable per-row id
@@ -51,6 +54,7 @@ export function AddLeadPopover() {
   const [extraContacts, setExtraContacts] = useState<(ExtraContactInput & { _rowId: number })[]>([]);
   const qc = useQueryClient();
   const toast = useToast();
+  const { data: users = [] } = useUsers();
 
   const create = useMutation({
     mutationFn: (input: CreateLeadInput) => leadsApi.create(input),
@@ -115,6 +119,7 @@ export function AddLeadPopover() {
               }
               create.mutate({
                 ...form,
+                ...extractMentions(form.team_note ?? "", users),
                 ...(meetingDate && meetingTime
                   ? { meeting_at: `${meetingDate}T${meetingTime}:00` }
                   : {}),
@@ -308,6 +313,17 @@ export function AddLeadPopover() {
                 value={form.reason}
                 onChange={(e) => set("reason", e.target.value)}
               />
+            </Field>
+
+            <Field label={ADD_LEAD_TEAM.label}>
+              <MentionField
+                rows={2}
+                value={form.team_note ?? ""}
+                onChange={(v) => set("team_note", v)}
+                placeholder={ADD_LEAD_TEAM.placeholder}
+                maxLength={1000}
+              />
+              <p className="mt-1 text-[0.75rem] text-muted">{MENTIONS.hint}</p>
             </Field>
 
             {error && <p className="text-[0.8rem] text-danger">{error}</p>}

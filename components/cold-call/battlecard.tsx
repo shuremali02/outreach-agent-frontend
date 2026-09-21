@@ -5,11 +5,15 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useUpdateLead, useCallOutcome, useAddNote } from "@/hooks/use-leads";
 import { LinkedInResearchPanel, HunterDecisionMakers, SiteScanPanel } from "@/components/enrichment";
 import { LeadCard } from "@/components/leads/lead-card";
+import { LeadWho } from "@/components/leads/lead-who";
 import { LocalTimeBadge } from "@/components/leads/local-time-badge";
 import { PhoneBadge } from "@/components/leads/phone-badge";
 import { PhoneNumberList } from "@/components/leads/phone-number-list";
 import { Button } from "@/components/ui/button";
 import { Input, Field } from "@/components/ui/input";
+import { MentionField } from "@/components/common/mention-field";
+import { useUsers } from "@/hooks/use-users";
+import { extractMentions } from "@/lib/mentions";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import { enrichmentApi, leadsApi } from "@/lib/api";
@@ -20,6 +24,7 @@ import {
 import {
   BATTLECARD,
   CLOSING_DISPOSITIONS,
+  MENTIONS,
   DISPOSITIONS,
   FALLBACK_OBJECTIONS,
   LEAD_SOURCE_LABELS,
@@ -135,6 +140,7 @@ export function Battlecard({
     onError: (e) => toast.error(e instanceof Error ? e.message : TOASTS.actionFailed),
   });
   const [note, setNote] = useState("");
+  const { data: users = [] } = useUsers();
   // The note field only ever got saved bundled with a disposition (Voicemail/
   // Dead Line/etc.) -- there was no way to log what was actually said mid-
   // call without also ending the call with a specific outcome. This appends
@@ -196,7 +202,7 @@ export function Battlecard({
     }
     const label = DISPOSITIONS.find((d) => d.outcome === outcome)?.label ?? outcome;
     record.mutate(
-      { id: lead.id, outcome, notes: note },
+      { id: lead.id, outcome, notes: note, mention: extractMentions(note, users) },
       {
         onSuccess: () => {
           toast.success(TOASTS.disposition(label, lead.company_name));
@@ -215,6 +221,7 @@ export function Battlecard({
         id: lead.id,
         outcome: "meeting_booked",
         notes: note,
+        mention: extractMentions(note, users),
         meetingAt: `${meetingDate}T${meetingTime}:00`,
       },
       {
@@ -259,6 +266,7 @@ export function Battlecard({
         {" · "}
         {LEAD_SOURCE_LABELS[leadSource(lead.source_prompt)]}
         {lead.country && ` · ${countryLabel(lead.country)}`}
+        <LeadWho lead={lead} />
       </p>
     </div>
   );
@@ -406,19 +414,21 @@ export function Battlecard({
 
           <Field label={BATTLECARD.noteLabel}>
             <div className="flex gap-2">
-              <Input
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder={BATTLECARD.notePlaceholder}
-                maxLength={4000}
-              />
+              <div className="min-w-0 flex-1">
+                <MentionField
+                  value={note}
+                  onChange={setNote}
+                  placeholder={BATTLECARD.notePlaceholder}
+                  maxLength={4000}
+                />
+              </div>
               <Button
                 variant="secondary"
                 size="sm"
                 disabled={addNote.isPending || !note.trim()}
                 onClick={() =>
                   addNote.mutate(
-                    { id: lead.id, text: note },
+                    { id: lead.id, text: note, mention: extractMentions(note, users) },
                     {
                       onSuccess: () => {
                         setNote("");
@@ -432,6 +442,7 @@ export function Battlecard({
                 {addNote.isPending ? "Adding…" : BATTLECARD.addNote}
               </Button>
             </div>
+            <p className="mt-1 text-[0.75rem] text-muted">{MENTIONS.hint}</p>
           </Field>
           {addNote.isError && (
             <p className="text-[0.8rem] text-danger">

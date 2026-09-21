@@ -18,6 +18,15 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "elipse / studio — CRM",
   description: "3D configurator prospecting, enrichment and cold-call battlecards.",
+  // The Elipse mark, in the colour that shows on the browser's own tab bar: black on a light browser
+  // theme, white on a dark one (this follows the browser/OS theme, not the app's theme toggle).
+  icons: {
+    icon: [
+      { url: "/favicon-on-light.png", type: "image/png", sizes: "64x64", media: "(prefers-color-scheme: light)" },
+      { url: "/favicon-on-dark.png", type: "image/png", sizes: "64x64", media: "(prefers-color-scheme: dark)" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", type: "image/png", sizes: "180x180" }],
+  },
 };
 
 /**

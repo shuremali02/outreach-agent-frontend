@@ -1,3 +1,4 @@
+import { clearSession, getToken } from "@/lib/auth";
 import type { ApiError } from "@/types";
 
 /**
@@ -55,6 +56,8 @@ function describeError(body: unknown): string | undefined {
   if (Array.isArray(detail)) {
     const parts = detail
       .map((d) => {
+        // "Value error, <sentence>" comes from a validator we wrote for people to read: show the sentence alone.
+        if (d.msg.startsWith("Value error, ")) return d.msg.slice("Value error, ".length);
         const field = d.loc.filter((p) => p !== "body").join(".");
         return field ? `${field}: ${d.msg}` : d.msg;
       })
@@ -72,12 +75,24 @@ async function request<T>(
   const base = baseUrl();
   const url = `${base}${withQuery(path, query)}`;
 
+  // Who is calling. In the browser: the signed-in user's token (so the backend records who did
+  // what). On the server (a page's initial data fetch): the server-to-server API_KEY, which is
+  // never set in the browser bundle -- process.env.API_KEY is undefined there, by design.
+  const auth: Record<string, string> = {};
+  if (typeof window !== "undefined") {
+    const token = getToken();
+    if (token) auth.Authorization = `Bearer ${token}`;
+  } else if (process.env.API_KEY) {
+    auth["X-API-Key"] = process.env.API_KEY;
+  }
+
   let res: Response;
   try {
     res = await fetch(url, {
       ...rest,
       headers: {
         "Content-Type": "application/json",
+        ...auth,
         ...(rest.headers ?? {}),
       },
       // Always read through; the query cache decides what is fresh.
@@ -95,6 +110,17 @@ async function request<T>(
         "NEXT_PUBLIC_API_URL in .env.local uses 127.0.0.1, not localhost.",
       0,
     );
+  }
+
+  // The browser is not (or no longer) signed in: drop any stale session and go to the login page.
+  // Covers an expired token AND the case where the backend already requires sign-in but this browser
+  // never signed in (otherwise every request would just fail with no way to recover). /login itself
+  // only calls public endpoints, so this cannot loop.
+  if (res.status === 401 && typeof window !== "undefined" && window.location.pathname !== "/login") {
+    clearSession();
+    // A full page load on purpose: it drops cached queries and in-memory state from the signed-out session.
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+    window.location.href = `/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`;
   }
 
   if (!res.ok) {

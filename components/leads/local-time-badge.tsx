@@ -1,3 +1,6 @@
+"use client";
+
+import { useNow } from "@/hooks/use-now";
 import { CALL_WINDOW } from "@/lib/constants";
 import { localClock } from "@/lib/format";
 
@@ -9,7 +12,10 @@ import { localClock } from "@/lib/format";
  * can tell "no zone" from "badge missing". No number at all: nothing.
  */
 export function LocalTimeBadge({ tz, hasPhone }: { tz: string; hasPhone: boolean }) {
-  const clock = localClock(tz, new Date(), CALL_WINDOW.startHour, CALL_WINDOW.endHour);
+  // A ticking clock: the time used to be read once per render, so a page left open showed stale times.
+  const now = useNow();
+  if (now === null) return null;
+  const clock = localClock(tz, new Date(now), CALL_WINDOW.startHour, CALL_WINDOW.endHour);
   if (!clock) {
     if (!hasPhone) return null;
     return (

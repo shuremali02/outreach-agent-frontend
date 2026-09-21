@@ -9,7 +9,10 @@ import {
 } from "@/hooks/use-problems";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input, Textarea, Field } from "@/components/ui/input";
+import { Input, Field } from "@/components/ui/input";
+import { MentionField } from "@/components/common/mention-field";
+import { useUsers } from "@/hooks/use-users";
+import { extractMentions } from "@/lib/mentions";
 import { CommentThread } from "./comment-thread";
 import { isHighPriority, HIGH_PRIORITY, NORMAL_PRIORITY } from "@/types";
 import type { ProblemFilter } from "@/types";
@@ -35,6 +38,7 @@ export function ProblemDesk({ defaultExpanded = false }: { defaultExpanded?: boo
 
   const { data: problems = [], isLoading } = useProblems(filter);
   const create = useCreateProblem();
+  const { data: users = [] } = useUsers();
   const setStatus = useSetProblemStatus();
   const remove = useDeleteProblem();
 
@@ -83,7 +87,7 @@ export function ProblemDesk({ defaultExpanded = false }: { defaultExpanded?: boo
               e.preventDefault();
               if (!title.trim()) return;
               create.mutate(
-                { title, description, priority, reported_by: reportedBy },
+                { title, description, priority, reported_by: reportedBy, ...extractMentions(`${title} ${description}`, users) },
                 {
                   onSuccess: () => {
                     setTitle("");
@@ -119,7 +123,7 @@ export function ProblemDesk({ defaultExpanded = false }: { defaultExpanded?: boo
             </div>
             <div className="mt-3 grid grid-cols-[3fr_1.5fr] gap-3">
               <Field label="Details">
-                <Textarea rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
+                <MentionField rows={3} value={description} onChange={setDescription} />
               </Field>
               <Field label="Reported By">
                 <Input value={reportedBy} onChange={(e) => setReportedBy(e.target.value)} maxLength={120} />

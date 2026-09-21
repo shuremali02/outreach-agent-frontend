@@ -1,5 +1,6 @@
 import { QuoteStrip } from "@/components/today/quote-strip";
 import { ActivityScroller } from "@/components/today/activity-scroller";
+import { TeamTodayTable } from "@/components/today/team-today";
 import { PriorityOutreachList } from "@/components/today/priority-outreach";
 import { ProblemDesk } from "@/components/problems/problem-desk";
 import { MetricCard } from "@/components/metrics/metric-card";
@@ -16,10 +17,12 @@ export default async function TodayPage() {
   // 3-week blocks, never a "today" row, so it could never answer what this
   // page now needs. Sales Terminal (app/(workspace)/terminal/page.tsx) still
   // fetches metricsApi.team() on its own for the full historical view.
-  const [leads, metrics, activity] = await Promise.all([
+  const [leads, metrics, activity, teamToday] = await Promise.all([
     leadsApi.list(),
     metricsApi.crm(),
     metricsApi.activity(),
+    // Older backend without the per-person endpoint: skip the table rather than break the page.
+    metricsApi.teamToday().catch(() => null),
   ]);
 
   return (
@@ -28,6 +31,8 @@ export default async function TodayPage() {
       <QuoteStrip />
 
       <ActivityScroller data={activity} />
+
+      {teamToday && <TeamTodayTable data={teamToday} />}
 
       <ProblemDesk />
 

@@ -1,4 +1,4 @@
-import { TerminalView } from "@/components/terminal/terminal-view";
+import { TerminalTabs } from "@/components/terminal/terminal-tabs";
 import { metricsApi } from "@/lib/api";
 
 // See follow-ups/page.tsx -- no dynamic API here either, so this would fail
@@ -6,6 +6,10 @@ import { metricsApi } from "@/lib/api";
 export const dynamic = "force-dynamic";
 
 export default async function TerminalPage() {
-  const team = await metricsApi.team();
-  return <TerminalView initialData={team} />;
+  // Each source can fail on its own (Google Sheet down / older backend): show what loads.
+  const [weeks, sheet] = await Promise.all([
+    metricsApi.teamWeeks().catch(() => null),
+    metricsApi.team().catch(() => null),
+  ]);
+  return <TerminalTabs weeks={weeks} sheet={sheet} />;
 }

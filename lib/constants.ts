@@ -113,6 +113,121 @@ export const LEAD_SOURCE_LABELS: Record<LeadSource, string> = {
   other: "❔ Other",
 };
 
+/**
+ * Team activity (auth-plan.md): Today's per-person table, the Sales Terminal's Weekly Report and the
+ * Recent Activity feed. No Streamlit analogue -- app.py had one shared login-less view.
+ */
+export const TEAM_ACTIVITY = {
+  todayHeading: "👥 Team, Today",
+  weeklyTab: "📅 Weekly Report",
+  sheetTab: "📊 Google Sheet history",
+  person: "Person",
+  columns: {
+    calls: "Calls",
+    connected: "Connected",
+    voicemail: "Voicemail",
+    receptionist: "Reception",
+    decision_maker: "Decision Maker",
+    meetings: "Meetings",
+    followups: "Follow-ups",
+    emails: "Emails",
+    leads_added: "Leads Added",
+    disconnected: "Dead Lines",
+  },
+  unassignedNote:
+    "\"Unassigned\" is activity recorded before sign-in existed. It is counted in the team total.",
+  noneYet: "No activity yet today. Rows appear as people sign in and start calling.",
+  weekNotStarted: (start: string) => `Week 1 starts on ${start}. Weekly rows appear from then.`,
+  inProgress: "in progress",
+  callsChange: (n: number) => `${n > 0 ? "+" : ""}${n} calls vs last week`,
+  beforeTracking: "Before tracking started (no per-person data)",
+  feedHeading: "Recent Activity",
+  allPeople: "Everyone",
+  feedEmpty: "Nothing recorded yet.",
+  feedFilter: "Show activity for",
+  sheetUnavailable: "The Google Sheet history is not available right now.",
+  event: {
+    email_sent: "✉️ Marked an email as sent",
+    note_added: "📝 Added a note",
+    stage_change: (stage: string) => `➡️ Moved to ${stage}`,
+  },
+} as const;
+
+/**
+ * Sign-in page and user menu (components/auth/login-view.tsx, components/layout/user-menu.tsx).
+ * No Streamlit analogue: app.py had no login (auth-plan.md).
+ */
+export const LOGIN = {
+  title: "Sign in",
+  subtitle: "Sign in with your approved team email.",
+  backendDown: "Can't reach the server right now. Try again in a moment.",
+  loading: "Loading…",
+  signingIn: "Signing you in…",
+  failed: "Sign-in failed. Please try again.",
+  devHeading: "Local testing only: sign in by email (no Google)",
+  devButton: "Sign in (test)",
+  tabSignIn: "Sign in",
+  tabCreate: "Create account",
+  createTitle: "Create your account",
+  createSubtitle: "Only approved team emails can create an account.",
+  nameLabel: "Your name",
+  emailLabel: "Email",
+  passwordLabel: "Password",
+  confirmLabel: "Confirm password",
+  codeLabel: "Invite code",
+  signInButton: "Sign in",
+  createButton: "Create account",
+  or: "or",
+  welcomeBack: "Welcome back",
+  switchToCreate: "New here? Create an account",
+  switchToSignIn: "Already have an account? Sign in",
+  signInInstead: "Sign in instead",
+  showPassword: "Show password",
+  hidePassword: "Hide password",
+  passwordRulesLabel: "Password requirements",
+  strength: ["Too weak", "Weak", "Fair", "Good", "Strong"],
+  passwordsMatch: "Passwords match",
+  namePlaceholder: "e.g. Ayesha Khan",
+  codeHint: "Ask your admin for the team invite code.",
+  submitting: "Please wait…",
+  panelHeading: "Your team's calling desk, in one place.",
+  panelPoints: [
+    "Every call, note and stage change is saved under the person who did it.",
+    "A daily and weekly report for each person on the team.",
+    "@mention a teammate on any lead and they get a notification.",
+  ],
+} as const;
+
+export const USER_MENU = { signOut: "Sign out" } as const;
+
+/**
+ * @mentions and the notification bell (components/common/mention-field.tsx,
+ * components/layout/notification-bell.tsx). No Streamlit analogue (auth-plan.md section 12).
+ * A mention only notifies -- it never assigns the lead.
+ */
+export const MENTIONS = {
+  teamLabel: "Everyone on the team",
+  teamHint: "Notifies every signed-in teammate",
+  hint: "Type @ to mention a teammate, or @team for everyone. They get a notification.",
+} as const;
+
+export const NOTIFICATIONS = {
+  bell: "Notifications",
+  title: "Notifications",
+  empty: "Nothing yet. When someone mentions you, it shows up here.",
+  markAll: "Mark all read",
+  loadFailed: "Could not load notifications.",
+  onLead: (company: string) => `on ${company}`,
+  onProblem: (title: string) => `in Problem Desk: ${title}`,
+  mentionedYou: (who: string, where: string) => `${who} mentioned you ${where}`.trim(),
+  manyNew: (n: number) => `You have ${n} unread notifications.`,
+} as const;
+
+export const ADD_LEAD_TEAM = {
+  label: "Tell the team (optional)",
+  placeholder: "e.g. @Ilhan please try this one, owner wants a quote",
+} as const;
+
 /** Sidebar open/close button (components/layout/sidebar.tsx). No Streamlit analogue: st.sidebar collapses natively. */
 export const SIDEBAR_TOGGLE = {
   collapse: "Close sidebar",
@@ -615,15 +730,15 @@ export const MEETING_OUTCOMES: {
     confirmTitle: (company) => `Mark ${company} as Send Proposal?`,
     confirmBody: "The lead is NOT deleted. It stays in your CRM under Pipeline → Proposal Sent.",
     confirmLabel: "Yes, mark Send Proposal",
-    done: (company) => `${company} moved to Proposal Sent. Find it under Follow-ups.`,
+    done: (company) => `${company} moved to Proposal Sent. Find it under Follow-ups → After meetings.`,
   },
   {
     stage: "followup_due",
     label: "🔁 Needs Follow-up",
     confirmTitle: (company) => `Mark ${company} as Needs Follow-up?`,
-    confirmBody: "The lead is NOT deleted. It moves to the Follow-ups page so you can call again.",
+    confirmBody: "The lead is NOT deleted. It moves to Follow-ups → After meetings so you can call again, and stays in Pipeline.",
     confirmLabel: "Yes, needs follow-up",
-    done: (company) => `${company} moved to Follow-ups. Find it there, newest first.`,
+    done: (company) => `${company} moved to Follow-ups → After meetings, newest first.`,
   },
   {
     stage: "lost",
@@ -651,6 +766,22 @@ export const FOLLOWUPS_VIEW = {
   sortOldest: "Oldest first",
   showing: (shown: number, total: number) => `Showing ${shown} of ${total} follow-up leads`,
   afterMeeting: (date: string) => `📅 Meeting ${date}`,
+  /** Two lists on one page: leads already met vs leads still being chased. Team lead request 2026-09-21. */
+  tabMeetings: (n: number) => `After meetings (${n})`,
+  tabCalls: (n: number) => `Call follow-ups (${n})`,
+  noteMeetings: "Leads you have already met. They stay in your Pipeline under their stage; move them on from here.",
+  noteCalls: "Leads still being chased by phone or email. No meeting yet.",
+  emptyMeetings:
+    "No leads are waiting after a meeting. On the Meetings page, pick Needs Follow-up or Send Proposal once a meeting is done and the lead shows up here.",
+  emptyCalls: "No call follow-ups right now.",
+  movePipeline: "Move in Pipeline",
+} as const;
+
+/** Pipeline: show the leads that already had a meeting (they sit under their stage like any other lead). */
+export const PIPELINE_MEETING_FILTER = {
+  label: "Meeting Filter",
+  all: "All leads",
+  met: "After a meeting",
 } as const;
 
 /**

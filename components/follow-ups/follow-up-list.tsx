@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { Field, Input, Select, Textarea } from "@/components/ui/input";
 import { MailtoButton } from "@/components/common/mailto-button";
+import { StageSelect } from "@/components/leads/stage-select";
+import { cn } from "@/lib/utils";
 import {
   ALL_SOURCES,
   DISPOSITIONS,
@@ -97,6 +99,15 @@ function FollowUpCard({ lead, calendarLink }: { lead: Lead; calendarLink: string
           <Textarea rows={8} value={draft} onChange={(e) => setDraft(e.target.value)} />
         </div>
 
+        <div className="max-w-xs">
+          <StageSelect
+            leadId={lead.id}
+            value={lead.pipeline_stage}
+            label={FOLLOWUPS_VIEW.movePipeline}
+            companyName={lead.company_name}
+          />
+        </div>
+
         <div className="grid grid-cols-2 gap-3">
           <MailtoButton
             email={lead.contact_email}
@@ -141,6 +152,15 @@ export function FollowUpList({
   const { data: allLeads = [] } = useLeads({}, initialLeads);
   const stageLeads = allLeads.filter((l) => FOLLOWUP_STAGES.includes(l.pipeline_stage));
 
+  // Two lists, not one: a lead you have already MET (meeting_at is set and it has moved on to a follow-up
+  // stage) is a different job from a voicemail to chase, and the team lead asked for it to show separately
+  // ("Meeting - Follow up ... alag se show hona chahiye", 2026-09-21). Both stay in Pipeline under their stage.
+  const meetingLeads = stageLeads.filter((l) => Boolean(l.meeting_at));
+  const callLeads = stageLeads.filter((l) => !l.meeting_at);
+  const [pickedView, setPickedView] = useState<"meetings" | "calls" | null>(null);
+  const view = pickedView ?? (meetingLeads.length > 0 ? "meetings" : "calls");
+  const viewLeads = view === "meetings" ? meetingLeads : callLeads;
+
   // Find-it tools. This page holds every lead in Follow-up Due / Proposal Sent /
   // Outreach Sent -- hundreds -- and used to list them by when the lead was
   // CREATED, so a lead you had just moved here after a meeting was buried in the
@@ -151,7 +171,7 @@ export function FollowUpList({
   const [sortRecent, setSortRecent] = useState(true);
   const stageCounts = FOLLOWUP_STAGES.map((st) => ({
     id: st,
-    count: stageLeads.filter((l) => l.pipeline_stage === st).length,
+    count: viewLeads.filter((l) => l.pipeline_stage === st).length,
   }));
 
   // Reason filter: pipeline_stage alone can't say WHY a lead landed here --
@@ -169,10 +189,12 @@ export function FollowUpList({
   const [source, setSource] = useState(ALL_SOURCES);
   const leads = useMemo(() => {
     const q = search.trim().toLowerCase();
-    const filtered = stageLeads.filter(
+    const filtered = allLeads.filter(
       (l) =>
+        FOLLOWUP_STAGES.includes(l.pipeline_stage) &&
+        Boolean(l.meeting_at) === (view === "meetings") &&
         (stageFilter === "all" || l.pipeline_stage === stageFilter) &&
-        (reason === ALL_REASONS || l.last_call_outcome === reason) &&
+        (view === "meetings" || reason === ALL_REASONS || l.last_call_outcome === reason) &&
         (source === ALL_SOURCES || leadSource(l.source_prompt) === source) &&
         (!q ||
           l.company_name.toLowerCase().includes(q) ||
@@ -182,7 +204,7 @@ export function FollowUpList({
     return [...filtered].sort((a, b) =>
       sortRecent ? b.updated_at.localeCompare(a.updated_at) : a.updated_at.localeCompare(b.updated_at),
     );
-  }, [stageLeads, stageFilter, reason, source, search, sortRecent]);
+  }, [allLeads, view, stageFilter, reason, source, search, sortRecent]);
 
   if (stageLeads.length === 0) {
     return (
@@ -194,19 +216,43 @@ export function FollowUpList({
 
   return (
     <>
-      <div className="mb-3 max-w-xl">
-        <Field label={FOLLOWUPS_VIEW.searchLabel}>
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={FOLLOWUPS_VIEW.searchPlaceholder}
-          />
-        </Field>
+      {/* Top bar: tabs on the left, search on the right. */}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div role="tablist" aria-label="Follow-up lists" className="inline-grid grid-cols-2 gap-1 rounded-[10px] bg-input p-1">
+          {(["meetings", "calls"] as const).map((v) => (
+            <button
+              key={v}
+              type="button"
+              role="tab"
+              aria-selected={view === v}
+              onClick={() => {
+                setPickedView(v);
+                setStageFilter("all");
+              }}
+              className={cn(
+                "cursor-pointer rounded-[8px] px-4 py-2 text-[0.9rem] font-semibold transition-colors",
+                view === v ? "bg-card text-text shadow-sm" : "text-muted hover:text-text",
+              )}
+            >
+              {v === "meetings" ? FOLLOWUPS_VIEW.tabMeetings(meetingLeads.length) : FOLLOWUPS_VIEW.tabCalls(callLeads.length)}
+            </button>
+          ))}
+        </div>
+        <Input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder={FOLLOWUPS_VIEW.searchPlaceholder}
+          aria-label={FOLLOWUPS_VIEW.searchLabel}
+          className="w-full sm:w-80"
+        />
       </div>
-      <div className="mb-3 grid grid-cols-2 gap-4 max-w-xl">
-        <Field label="Stage Filter">
+
+      {/* All filters on one row. */}
+      <div className="mb-2 flex flex-wrap items-end gap-3">
+        <Field label="Stage Filter" className="min-w-[10rem] flex-1">
           <Select value={stageFilter} onChange={(e) => setStageFilter(e.target.value)}>
-            <option value="all">{FOLLOWUPS_VIEW.allStages(stageLeads.length)}</option>
+            <option value="all">{FOLLOWUPS_VIEW.allStages(viewLeads.length)}</option>
             {stageCounts.map((st) => (
               <option key={st.id} value={st.id}>
                 {STAGE_LABELS[st.id]} ({st.count})
@@ -214,25 +260,19 @@ export function FollowUpList({
             ))}
           </Select>
         </Field>
-        <Field label={FOLLOWUPS_VIEW.sortLabel}>
-          <Select value={sortRecent ? "recent" : "oldest"} onChange={(e) => setSortRecent(e.target.value === "recent")}>
-            <option value="recent">{FOLLOWUPS_VIEW.sortRecent}</option>
-            <option value="oldest">{FOLLOWUPS_VIEW.sortOldest}</option>
-          </Select>
-        </Field>
-      </div>
-      <div className="mb-4 grid grid-cols-2 gap-4 max-w-xl">
-        <Field label="Reason Filter">
-          <Select value={reason} onChange={(e) => setReason(e.target.value)}>
-            <option value={ALL_REASONS}>{ALL_REASONS}</option>
-            {FOLLOWUP_REASONS.map((d) => (
-              <option key={d.outcome} value={d.outcome}>
-                {d.label}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label="Source Filter">
+        {view === "calls" && (
+          <Field label="Reason Filter" className="min-w-[10rem] flex-1">
+            <Select value={reason} onChange={(e) => setReason(e.target.value)}>
+              <option value={ALL_REASONS}>{ALL_REASONS}</option>
+              {FOLLOWUP_REASONS.map((d) => (
+                <option key={d.outcome} value={d.outcome}>
+                  {d.label}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        )}
+        <Field label="Source Filter" className="min-w-[10rem] flex-1">
           <Select value={source} onChange={(e) => setSource(e.target.value)}>
             <option value={ALL_SOURCES}>{ALL_SOURCES}</option>
             {Object.entries(LEAD_SOURCE_LABELS).map(([id, label]) => (
@@ -242,11 +282,26 @@ export function FollowUpList({
             ))}
           </Select>
         </Field>
+        <Field label={FOLLOWUPS_VIEW.sortLabel} className="min-w-[10rem] flex-1">
+          <Select value={sortRecent ? "recent" : "oldest"} onChange={(e) => setSortRecent(e.target.value === "recent")}>
+            <option value="recent">{FOLLOWUPS_VIEW.sortRecent}</option>
+            <option value="oldest">{FOLLOWUPS_VIEW.sortOldest}</option>
+          </Select>
+        </Field>
       </div>
-      <p className="mb-3 text-[0.85rem] text-muted">{FOLLOWUPS_VIEW.showing(leads.length, stageLeads.length)}</p>
+
+      <p className="mb-4 text-[0.85rem] text-muted">
+        {view === "meetings" ? FOLLOWUPS_VIEW.noteMeetings : FOLLOWUPS_VIEW.noteCalls}
+        {" · "}
+        {FOLLOWUPS_VIEW.showing(leads.length, viewLeads.length)}
+      </p>
       {leads.length === 0 && (
         <p className="rounded-[8px] px-3 py-2 text-[0.9rem]" style={{ background: "var(--info-tint)", color: "var(--info)" }}>
-          {EMPTY_STATES.followUpsFiltered}
+          {viewLeads.length === 0
+            ? view === "meetings"
+              ? FOLLOWUPS_VIEW.emptyMeetings
+              : FOLLOWUPS_VIEW.emptyCalls
+            : EMPTY_STATES.followUpsFiltered}
         </p>
       )}
       {leads.map((lead) => (

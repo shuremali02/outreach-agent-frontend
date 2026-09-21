@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { leadsApi } from "@/lib/api";
+import type { MentionPayload } from "@/lib/mentions";
 import type { CallOutcome, Lead, LeadFilters, UpdateLeadInput } from "@/types";
 
 export function leadsKey(filters: LeadFilters = {}) {
@@ -57,9 +58,9 @@ export function useCallOutcome() {
   const invalidate = useInvalidate();
   return useMutation({
     mutationFn: ({
-      id, outcome, notes, meetingAt,
-    }: { id: number; outcome: CallOutcome; notes?: string; meetingAt?: string }) =>
-      leadsApi.recordOutcome(id, outcome, notes ?? "", meetingAt),
+      id, outcome, notes, meetingAt, mention,
+    }: { id: number; outcome: CallOutcome; notes?: string; meetingAt?: string; mention?: MentionPayload }) =>
+      leadsApi.recordOutcome(id, outcome, notes ?? "", meetingAt, mention),
     onSuccess: invalidate,
   });
 }
@@ -68,7 +69,8 @@ export function useCallOutcome() {
 export function useAddNote() {
   const invalidate = useInvalidate();
   return useMutation({
-    mutationFn: ({ id, text }: { id: number; text: string }) => leadsApi.addNote(id, text),
+    mutationFn: ({ id, text, mention }: { id: number; text: string; mention?: MentionPayload }) =>
+      leadsApi.addNote(id, text, mention),
     onSuccess: invalidate,
   });
 }

@@ -127,13 +127,22 @@
     padding: 0.5rem 0 1.5rem 0;
   }
 
-  .logo-oval {
-    width: 22px;
-    height: 14px;
-    border: 2px solid var(--accent);
-    border-radius: 50%;
-    transform: rotate(-15deg);
-    display: inline-block;
+  /* Dark theme is the default; <html data-theme="light"> is set by the script in app/layout.tsx. */
+  .logo-mark {
+    flex: none;
+    object-fit: contain;
+  }
+  .logo-mark--light {
+    display: none;
+  }
+  .logo-mark--dark {
+    display: block;
+  }
+  html[data-theme="light"] .logo-mark--light {
+    display: block;
+  }
+  html[data-theme="light"] .logo-mark--dark {
+    display: none;
   }
 
   .logo-text {

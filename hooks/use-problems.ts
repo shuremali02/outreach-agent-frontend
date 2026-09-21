@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { problemsApi } from "@/lib/api";
-import type { CreateProblemInput, ProblemFilter, ProblemStatus } from "@/types";
+import type { CreateCommentInput, CreateProblemInput, ProblemFilter, ProblemStatus } from "@/types";
 
 /** Maps the 4 filter buttons onto db.get_sales_problems() arguments. */
 export function filterArgs(filter: ProblemFilter) {
@@ -69,7 +69,7 @@ export function useComments(problemId: number, enabled: boolean) {
 export function useAddComment(problemId: number) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: { author_name: string; comment_text: string }) =>
+    mutationFn: (input: CreateCommentInput) =>
       problemsApi.addComment(problemId, input),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["comments", problemId] });

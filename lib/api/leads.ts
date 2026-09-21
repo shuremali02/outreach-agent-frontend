@@ -1,4 +1,5 @@
 import { api } from "./client";
+import type { MentionPayload } from "@/lib/mentions";
 import type { CallOutcome, CreateLeadInput, Lead, LeadFilters, UpdateLeadInput } from "@/types";
 
 export const leadsApi = {
@@ -19,8 +20,13 @@ export const leadsApi = {
    * Omitted (not just empty) for every other outcome so it never reaches the
    * backend's extra="forbid" CallOutcomeInput as an unexpected populated field.
    */
-  recordOutcome: (id: number, outcome: CallOutcome, rep_notes = "", meeting_at?: string) =>
-    api.post<Lead>(`/leads/${id}/outcome`, { outcome, rep_notes, meeting_at }),
+  recordOutcome: (
+    id: number,
+    outcome: CallOutcome,
+    rep_notes = "",
+    meeting_at?: string,
+    mention?: MentionPayload,
+  ) => api.post<Lead>(`/leads/${id}/outcome`, { outcome, rep_notes, meeting_at, ...mention }),
   /** "✅ Mark Email Sent" -- see app/api/leads.py mark_email_sent(). */
   markEmailSent: (id: number) => api.post<void>(`/leads/${id}/email-sent`),
   /**
@@ -30,7 +36,8 @@ export const leadsApi = {
    * note appended elsewhere while the Contacts card sat open (confirmed
    * live 2026-09-18).
    */
-  addNote: (id: number, text: string) => api.post<Lead>(`/leads/${id}/notes`, { text }),
+  addNote: (id: number, text: string, mention?: MentionPayload) =>
+    api.post<Lead>(`/leads/${id}/notes`, { text, ...mention }),
 };
 
 import type { DecisionMaker, LeadContact, LinkedInResearch, Job } from "@/types";

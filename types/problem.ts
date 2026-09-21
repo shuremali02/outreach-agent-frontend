@@ -45,9 +45,14 @@ export interface CreateProblemInput {
   description?: string;
   priority?: ProblemPriority;
   reported_by?: string;
+  /** @mentions picked in the text (see lib/mentions.ts). */
+  mentions?: number[];
+  mention_team?: boolean;
 }
 
 export interface CreateCommentInput {
   author_name: string;
   comment_text: string;
+  mentions?: number[];
+  mention_team?: boolean;
 }

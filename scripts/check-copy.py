@@ -284,13 +284,81 @@ ALLOWED = {
     "Select a category",
     "Select a country",
     "Select an Industry Category and a Country before saving.",
+    # Sign-in, per-person team activity and @mentions/notifications: app.py had no login, no users and
+    # no per-person tracking, so none of this copy has a Streamlit counterpart (auth-plan.md).
+    "Sign in with your approved team email.",
+    "Only approved team emails can create an account.",
+    "Create your account",
+    "Create account",
+    "Confirm password",
+    "The two passwords do not match.",
+    "New here? Create an account",
+    "Already have an account? Sign in",
+    "Can't reach the server right now. Try again in a moment.",
+    "Signing you in…",
+    "Sign-in failed. Please try again.",
+    "Local testing only: sign in by email (no Google)",
+    "Sign in (test)",
+    "No activity yet today. Rows appear as people sign in and start calling.",
+    "Before tracking started (no per-person data)",
+    "is activity recorded before sign-in existed. It is counted in the team total.",
+    "Nothing recorded yet.",
+    "Recent Activity",
+    "Show activity for",
+    "📅 Weekly Report",
+    "📊 Google Sheet history",
+    "The Google Sheet history is not available right now.",
+    "✉️ Marked an email as sent",
+    "📝 Added a note",
+    "Everyone on the team",
+    "Notifies every signed-in teammate",
+    "Type @ to mention a teammate, or @team for everyone. They get a notification.",
+    "Nothing yet. When someone mentions you, it shows up here.",
+    "Could not load notifications.",
+    "Tell the team (optional)",
+    "e.g. @Ilhan please try this one, owner wants a quote",
+    # Sign-in / create-account form: field errors (zod, lib/validation/auth.ts), the password checklist and the
+    # login side panel. Same no-Streamlit-analogue reason as the block above.
+    "Enter a valid email address.",
+    "Enter your email address.",
+    "Enter your name (at least 2 characters).",
+    "Enter your password.",
+    "Enter the invite code.",
+    "Type the password again.",
+    "That name is too long.",
+    "That password is too long.",
+    "Use only letters, spaces and . , ' - in your name.",
+    "One uppercase letter (A-Z)",
+    "One lowercase letter (a-z)",
+    "One number (0-9)",
+    "an uppercase letter",
+    "a lowercase letter",
+    "Password requirements",
+    "Passwords match",
+    "Sign in instead",
+    "e.g. Ayesha Khan",
+    "Ask your admin for the team invite code.",
+    "Your team's calling desk, in one place.",
+    "Every call, note and stage change is saved under the person who did it.",
+    "A daily and weekly report for each person on the team.",
+    # Post-meeting follow-ups shown separately + the Pipeline meeting filter (team lead, 2026-09-21). app.py had
+    # one flat follow-up list and no meeting date at all.
+    "Follow-up lists",
+    "The lead is NOT deleted. It moves to Follow-ups → After meetings so you can call again, and stays in Pipeline.",
+    "After a meeting",
+    "Meeting Filter",
+    "Move in Pipeline",
+    "Leads still being chased by phone or email. No meeting yet.",
+    "Leads you have already met. They stay in your Pipeline under their stage; move them on from here.",
+    "No call follow-ups right now.",
+    "No leads are waiting after a meeting. On the Meetings page, pick Needs Follow-up or Send Proposal once a meeting is done and the lead shows up here.",
 }
 
 CLASS_HINT = re.compile(
     r"\b(flex|grid|rounded|border|bg-|text-\[|text-muted|text-accent|text-white|px-|py-|pt-|pb-|"
     r"mt-|mb-|ml-|gap-|font-|hover:|focus:|data-\[|min-w|max-w|overflow|absolute|relative|items-|"
     r"justify-|cursor-|shadow-\[|w-full|h-\[|shrink|truncate|whitespace|leading-|tracking-|"
-    r"accent-|opacity-|z-\d|sm:|md:|lg:|block text|solid var\()"
+    r"accent-|opacity-|z-\d|sm:|md:|lg:|block text|solid var\(|animate-)"
 )
 CODE_FRAG = re.compile(
     r"[{}<>=|]|&&|\?\s|\bconst\b|\bclassName\b|noopener|noreferrer|\bsp\.|\bp\.\w|\$\{"
@@ -333,8 +401,9 @@ def candidates(src: str) -> set[str]:
     # Single-line JSX text nodes.
     found |= set(re.findall(r">([^<>{}\n]{14,300})<", src))
     # Multi-line JSX text nodes: a run of plain lines between tags. Without this
-    # a paraphrase that happens to sit on its own line slips through.
-    for block in re.findall(r">\n((?:\s*[^<>{}\n][^<>{}\n]*\n)+)\s*</", src):
+    # a paraphrase that happens to sit on its own line slips through. (The first char excludes
+    # whitespace so it cannot overlap \s* -- that overlap backtracked exponentially on some files.)
+    for block in re.findall(r">\n((?:\s*[^<>{}\s][^<>{}\n]*\n)+)\s*</", src):
         joined = " ".join(line.strip() for line in block.splitlines() if line.strip())
         if joined:
             found.add(joined)

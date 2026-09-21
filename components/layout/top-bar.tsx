@@ -7,6 +7,8 @@ import { NAV_ITEMS } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AddLeadPopover } from "./add-lead-popover";
+import { NotificationBell } from "./notification-bell";
+import { UserMenu } from "./user-menu";
 
 /** Routes where a global search actually filters something. */
 const SEARCHABLE = ["/pipeline", "/contacts", "/cold-call"];
@@ -53,7 +55,9 @@ export function TopBar() {
   // silently overwritten by this effect rebuilding the URL from a stale
   // snapshot plus `q`.
   const searchParamsRef = useRef(searchParams);
-  searchParamsRef.current = searchParams;
+  useEffect(() => {
+    searchParamsRef.current = searchParams; // after each render, never during it
+  });
 
   // app.py threaded search_query into three filters but never assigned it —
   // this is that dead wiring, finished.
@@ -91,6 +95,8 @@ export function TopBar() {
           {refreshing ? "⏳ Refreshing…" : "🔄 Refresh"}
         </Button>
         <AddLeadPopover />
+        <NotificationBell />
+        <UserMenu />
       </div>
     </div>
   );

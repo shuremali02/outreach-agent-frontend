@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useLeads, useUpdateLead } from "@/hooks/use-leads";
 import { LeadCard } from "@/components/leads/lead-card";
+import { LeadWho } from "@/components/leads/lead-who";
 import { NotesPanel } from "@/components/leads/notes-panel";
 import { PhoneNumberList } from "@/components/leads/phone-number-list";
 // CategoryPills/CountryPills/SourcePills no longer used here -- this page's
@@ -301,6 +302,7 @@ export function ContactsView({ initialLeads, q }: { initialLeads: Lead[]; q: str
               </span>
               <span className="ml-2 text-[0.75rem] text-muted">
                 🕒 {addedAt(lead.created_at)} · {LEAD_SOURCE_LABELS[leadSource(lead.source_prompt)]}
+                <LeadWho lead={lead} />
               </span>
             </span>
           }

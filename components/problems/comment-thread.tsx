@@ -3,7 +3,10 @@
 import { useState } from "react";
 import { useAddComment, useComments } from "@/hooks/use-problems";
 import { Button } from "@/components/ui/button";
-import { Input, Textarea } from "@/components/ui/input";
+import { Input } from "@/components/ui/input";
+import { MentionField } from "@/components/common/mention-field";
+import { useUsers } from "@/hooks/use-users";
+import { extractMentions } from "@/lib/mentions";
 import { commentTime } from "@/lib/format";
 import { useStoredName } from "@/hooks/use-stored-name";
 import { PROBLEM_FORM } from "@/lib/constants";
@@ -15,6 +18,7 @@ export function CommentThread({ problemId, count }: { problemId: number; count: 
   const [open, setOpen] = useState(count > 0);
   const { data: comments = [] } = useComments(problemId, open);
   const add = useAddComment(problemId);
+  const { data: users = [] } = useUsers();
 
   const [author, setAuthor] = useStoredName(AUTHOR_KEY, "Bilal");
   const [text, setText] = useState("");
@@ -23,7 +27,10 @@ export function CommentThread({ problemId, count }: { problemId: number; count: 
     e.preventDefault();
     if (!text.trim()) return;
     setAuthor(author);
-    add.mutate({ author_name: author, comment_text: text }, { onSuccess: () => setText("") });
+    add.mutate(
+      { author_name: author, comment_text: text, ...extractMentions(text, users) },
+      { onSuccess: () => setText("") },
+    );
   }
 
   return (
@@ -55,9 +62,9 @@ export function CommentThread({ problemId, count }: { problemId: number; count: 
               maxLength={120}
             />
             <div className="flex flex-col gap-2">
-              <Textarea
+              <MentionField
                 value={text}
-                onChange={(e) => setText(e.target.value)}
+                onChange={setText}
                 rows={2}
                 placeholder={PROBLEM_FORM.commentPlaceholder}
                 aria-label="Comment"
