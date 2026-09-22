@@ -105,7 +105,8 @@ export function IngestDrawer() {
               />
               <Button
                 variant="primary"
-                disabled={ai.running || !aiPrompt.trim()}
+                loading={ai.running}
+                disabled={!aiPrompt.trim()}
                 onClick={() =>
                   ai.start.mutate(() => jobsApi.start("discover", { prompt: aiPrompt, max_leads: aiCount }))
                 }
@@ -170,7 +171,8 @@ export function IngestDrawer() {
               />
               <Button
                 variant="primary"
-                disabled={csv.running || !csvText}
+                loading={csv.running}
+                disabled={!csvText}
                 onClick={() =>
                   csv.start.mutate(() =>
                     jobsApi.start("import", {

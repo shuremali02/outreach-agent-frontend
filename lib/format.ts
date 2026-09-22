@@ -72,6 +72,31 @@ export function shortDate(iso: string): string {
 }
 
 /**
+ * Leads (Contacts) page's "Today's Leads" / "This Week's Leads" block, replacing the old "Active Sector
+ * Overview" card (user request, 2026-09-22 -- "yeh jo hai is ko hata do... todays leads or this week
+ * leads ki block bana kr woh show krwao"). Browser-local calendar day/week (Monday start), matching
+ * addedAt() above -- not app/crud/call_events.py's PKT sales-day definition, which is a different metric
+ * (call activity, not lead creation) with no filter-by-category/country/source equivalent on this page.
+ */
+export function isToday(iso: string): boolean {
+  const d = new Date(iso);
+  const now = new Date();
+  return (
+    d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate()
+  );
+}
+
+export function isThisWeek(iso: string): boolean {
+  const d = new Date(iso);
+  const now = new Date();
+  const day = now.getDay();
+  const mondayOffset = day === 0 ? -6 : 1 - day;
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() + mondayOffset);
+  const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 7);
+  return d >= start && d < end;
+}
+
+/**
  * Which channel found/added this lead, read off source_prompt -- exact
  * strings written by app/services/lead_engine.py ("CSV Batch Import"),
  * app/crud/leads.py create_lead() ("Manual entry"), and Google Maps sourcing

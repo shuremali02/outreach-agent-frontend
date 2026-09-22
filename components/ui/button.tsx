@@ -2,6 +2,7 @@ import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
+import { Loader } from "@/components/ui/loader";
 
 /**
  * Ported from the Streamlit button CSS:
@@ -34,17 +35,34 @@ export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   asChild?: boolean;
+  /**
+   * Shows an inline spinner and disables the button (user request, 2026-09-22 -- a slow backend gave no
+   * sign a click was still in flight, so the same button kept getting clicked). Pass a mutation's
+   * `isPending`. Not supported together with `asChild` (Radix Slot needs exactly one child element).
+   */
+  loading?: boolean;
 }
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, block, asChild = false, ...props }, ref) => {
+  ({ className, variant, size, block, asChild = false, loading = false, disabled, children, ...props }, ref) => {
     const Comp = asChild ? Slot : "button";
     return (
       <Comp
         ref={ref}
+        disabled={disabled || loading}
+        aria-busy={loading || undefined}
         className={cn(buttonVariants({ variant, size, block }), className)}
         {...props}
-      />
+      >
+        {loading && !asChild ? (
+          <>
+            <Loader />
+            {children}
+          </>
+        ) : (
+          children
+        )}
+      </Comp>
     );
   },
 );

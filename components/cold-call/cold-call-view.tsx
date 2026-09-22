@@ -13,7 +13,6 @@ import { TickerCard } from "@/components/metrics/ticker-card";
 import { Button } from "@/components/ui/button";
 import { Field, Select } from "@/components/ui/input";
 import {
-  CALL_QUEUE_STAGES,
   CALL_WINDOW,
   ALL_CATEGORIES,
   ALL_COUNTRIES,
@@ -23,6 +22,7 @@ import {
   COUNTRIES,
   LEAD_SOURCE_LABELS,
   COLD_CALL_QUEUE,
+  LAST_TOUCH,
 } from "@/lib/constants";
 import { currency, leadSource, localClock, num } from "@/lib/format";
 import type { Lead } from "@/types";
@@ -64,15 +64,13 @@ export function ColdCallView({ initialLeads, q }: { initialLeads: Lead[]; q: str
     setDismissed((prev) => (prev.has(leadId) ? prev : new Set(prev).add(leadId)));
   }
 
-  /** app.py: draft_ready|followup_due, excluding dead numbers. */
-  const queue = useMemo(
-    () =>
-      allLeads.filter(
-        (l) =>
-          CALL_QUEUE_STAGES.includes(l.pipeline_stage) && l.phone_status !== "dead_disconnected",
-      ),
-    [allLeads],
-  );
+  /**
+   * structure-plan.md Phase 3 -- the desk's own membership rule: a lead is here once Contacts explicitly
+   * sends it (sent_to_desk_at), full stop. Not stage-based any more. apply_call_outcome() (backend)
+   * clears sent_to_desk_at the moment a call outcome or Email Send takes a lead elsewhere (Wrong Number
+   * -> Contacts, Callback/Meeting/Closed -> Pipeline), so this list only ever needs the one field.
+   */
+  const queue = useMemo(() => allLeads.filter((l) => Boolean(l.sent_to_desk_at)), [allLeads]);
 
   const filtered = useMemo(
     () =>
@@ -103,24 +101,31 @@ export function ColdCallView({ initialLeads, q }: { initialLeads: Lead[]; q: str
     };
   }, [sortAt]);
 
-  // Split, not one flat list: a lead already called once (voicemail/callback
-  // -> followup_due) stays in this same queue forever, mixed in with leads
-  // that have never been called (draft_ready) -- with a large queue that
-  // makes a handful of brand-new leads impossible to spot. New leads sort
-  // newest-first so the latest batch is always at the top; follow-ups sort
-  // oldest-touched-first so the longest-overdue callback surfaces first.
+  // Three groups, not one flat list -- structure-plan.md Phase 3. No Answer stays in its normal
+  // (middle) position; Voicemail/Hang Up sink to the bottom, oldest-touched first within that group (the
+  // one waiting longest surfaces first, ready to try again); everything else on the desk (never called,
+  // or re-sent from Contacts after some other outcome) is "New". New leads sort newest-first so the
+  // latest batch is always at the top.
+  const triedOutcomes = new Set(["voicemail", "hang_up"]);
+  const noAnswerLeads = useMemo(
+    () =>
+      filtered
+        .filter((l) => l.last_call_outcome === "no_answer")
+        .sort((a, b) => rank(a) - rank(b) || a.updated_at.localeCompare(b.updated_at)),
+    [filtered, rank],
+  );
+  const triedLeads = useMemo(
+    () =>
+      filtered
+        .filter((l) => triedOutcomes.has(l.last_call_outcome))
+        .sort((a, b) => a.updated_at.localeCompare(b.updated_at)),
+    [filtered],
+  );
   const newLeads = useMemo(
     () =>
       filtered
-        .filter((l) => l.pipeline_stage === "draft_ready")
+        .filter((l) => l.last_call_outcome !== "no_answer" && !triedOutcomes.has(l.last_call_outcome))
         .sort((a, b) => rank(a) - rank(b) || b.created_at.localeCompare(a.created_at)),
-    [filtered, rank],
-  );
-  const followUps = useMemo(
-    () =>
-      filtered
-        .filter((l) => l.pipeline_stage === "followup_due")
-        .sort((a, b) => rank(a) - rank(b) || a.updated_at.localeCompare(b.updated_at)),
     [filtered, rank],
   );
 
@@ -245,12 +250,23 @@ export function ColdCallView({ initialLeads, q }: { initialLeads: Lead[]; q: str
         </div>
       )}
 
-      {followUps.length > 0 && (
+      {noAnswerLeads.length > 0 && (
+        <div className="mb-4">
+          <h3 className="mb-2 text-[1.05rem] font-semibold">
+            {COLD_CALL_QUEUE.followUpHeading(noAnswerLeads.length)}
+          </h3>
+          {noAnswerLeads.map((lead) => (
+            <Battlecard key={lead.id} lead={lead} onActionTaken={dismiss} />
+          ))}
+        </div>
+      )}
+
+      {triedLeads.length > 0 && (
         <div>
           <h3 className="mb-2 text-[1.05rem] font-semibold">
-            {COLD_CALL_QUEUE.followUpHeading(followUps.length)}
+            {LAST_TOUCH.lowPriorityHeading(triedLeads.length)}
           </h3>
-          {followUps.map((lead) => (
+          {triedLeads.map((lead) => (
             <Battlecard key={lead.id} lead={lead} onActionTaken={dismiss} />
           ))}
         </div>

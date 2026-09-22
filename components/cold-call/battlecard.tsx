@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useUpdateLead, useCallOutcome, useAddNote } from "@/hooks/use-leads";
+import { useUpdateLead, useCallOutcome, useAddNote, useCallPickedBy, useNeedsEmail } from "@/hooks/use-leads";
 import { LinkedInResearchPanel, HunterDecisionMakers, SiteScanPanel } from "@/components/enrichment";
 import { LeadCard } from "@/components/leads/lead-card";
 import { LeadWho } from "@/components/leads/lead-who";
@@ -10,7 +10,9 @@ import { LocalTimeBadge } from "@/components/leads/local-time-badge";
 import { PhoneBadge } from "@/components/leads/phone-badge";
 import { PhoneNumberList } from "@/components/leads/phone-number-list";
 import { Button } from "@/components/ui/button";
+import { Loader } from "@/components/ui/loader";
 import { Input, Field } from "@/components/ui/input";
+import { EditLeadDialog } from "@/components/leads/edit-lead-dialog";
 import { MentionField } from "@/components/common/mention-field";
 import { useUsers } from "@/hooks/use-users";
 import { extractMentions } from "@/lib/mentions";
@@ -26,6 +28,10 @@ import {
   CLOSING_DISPOSITIONS,
   MENTIONS,
   DISPOSITIONS,
+  CALL_PICKED_BY,
+  CALLBACK_BOOKING,
+  EMAIL_SEND,
+  LAST_TOUCH,
   FALLBACK_OBJECTIONS,
   LEAD_SOURCE_LABELS,
   MEETING_BOOKING,
@@ -77,7 +83,7 @@ function EditContact({ lead }: { lead: Lead }) {
           <Button
             variant="secondary"
             size="sm"
-            disabled={update.isPending}
+            loading={update.isPending}
             onClick={() =>
               update.mutate(
                 {
@@ -119,6 +125,8 @@ export function Battlecard({
   const toast = useToast();
   const confirm = useConfirm();
   const record = useCallOutcome();
+  const callPickedBy = useCallPickedBy();
+  const needsEmail = useNeedsEmail();
   const generate = useMutation({
     mutationFn: () => enrichmentApi.generateBattlecard(lead.id),
     onSuccess: () => {
@@ -175,10 +183,15 @@ export function Battlecard({
   const [meetingDate, setMeetingDate] = useState("");
   const [meetingTime, setMeetingTime] = useState("");
 
-  // A "meeting_booked" outcome moves the lead out of CALL_QUEUE_STAGES, so
-  // ColdCallView's queue filter drops it and this component unmounts almost
-  // immediately -- well within the 4s window. Clear the pending timer on
-  // unmount so it never calls setState after that.
+  // Same pattern as the meeting-booking prompt above -- Callback Scheduled asks for a date/time before
+  // recording anything (structure-plan.md Phase 3), a separate field (callback_at) from meeting_at.
+  const [callbackPrompt, setCallbackPrompt] = useState(false);
+  const [callbackDate, setCallbackDate] = useState("");
+  const [callbackTime, setCallbackTime] = useState("");
+
+  // A "meeting_booked" outcome clears sent_to_desk_at (structure-plan.md Phase 3), so ColdCallView's
+  // queue filter drops it and this component unmounts almost immediately -- well within the 4s window.
+  // Clear the pending timer on unmount so it never calls setState after that.
   useEffect(() => {
     return () => {
       if (bookedTimer.current) clearTimeout(bookedTimer.current);
@@ -188,6 +201,10 @@ export function Battlecard({
   async function disposition(outcome: CallOutcome) {
     if (outcome === "meeting_booked") {
       setBookingPrompt(true);
+      return;
+    }
+    if (outcome === "callback_scheduled") {
+      setCallbackPrompt(true);
       return;
     }
     const closing = CLOSING_DISPOSITIONS[outcome];
@@ -205,7 +222,12 @@ export function Battlecard({
       { id: lead.id, outcome, notes: note, mention: extractMentions(note, users) },
       {
         onSuccess: () => {
-          toast.success(TOASTS.disposition(label, lead.company_name));
+          // Wrong Number gets its own message (it goes back to Contacts, not just "saved").
+          toast.success(
+            outcome === "wrong_number"
+              ? TOASTS.wrongNumberSent(lead.company_name)
+              : TOASTS.disposition(label, lead.company_name),
+          );
           setNote("");
           onActionTaken?.(lead.id);
         },
@@ -242,6 +264,38 @@ export function Battlecard({
     setBookingPrompt(false);
   }
 
+  function confirmCallback() {
+    if (!callbackDate || !callbackTime) return;
+    record.mutate(
+      {
+        id: lead.id,
+        outcome: "callback_scheduled",
+        notes: note,
+        mention: extractMentions(note, users),
+        callbackAt: `${callbackDate}T${callbackTime}:00`,
+      },
+      {
+        onSuccess: () => {
+          toast.success(TOASTS.callbackScheduled(lead.company_name));
+          setNote("");
+          setCallbackPrompt(false);
+          onActionTaken?.(lead.id);
+        },
+        onError: (e) => toast.error(e instanceof Error ? e.message : TOASTS.actionFailed),
+      },
+    );
+  }
+
+  function cancelCallback() {
+    setCallbackPrompt(false);
+  }
+
+  // Voicemail/Hang Up/No Answer -- the mark + last-touch date shown in the summary (section 3 above).
+  const lastTouchLabel = ["voicemail", "hang_up", "no_answer"].includes(lead.last_call_outcome)
+    ? DISPOSITIONS.find((d) => d.outcome === lead.last_call_outcome)?.label
+    : undefined;
+  const pickedByLabel = CALL_PICKED_BY.options.find((o) => o.value === lead.call_picked_by)?.label;
+
   const summary = (
     <div>
       <div className="flex flex-wrap items-center gap-3">
@@ -268,6 +322,16 @@ export function Battlecard({
         {lead.country && ` · ${countryLabel(lead.country)}`}
         <LeadWho lead={lead} />
       </p>
+      {/* Voicemail/Hang Up/No Answer -- structure-plan.md Phase 3: the mark that makes it clear this
+          lead has already been tried, and when, so a rep doesn't call it again by mistake. */}
+      {lastTouchLabel && (
+        <p className="mt-1 text-[0.78rem] font-semibold text-muted">
+          {lastTouchLabel} · {LAST_TOUCH.label(addedAt(lead.updated_at))}
+        </p>
+      )}
+      {pickedByLabel && (
+        <p className="mt-0.5 text-[0.78rem] text-muted">{CALL_PICKED_BY.marked(pickedByLabel)}</p>
+      )}
     </div>
   );
 
@@ -321,8 +385,9 @@ export function Battlecard({
                   type="button"
                   onClick={() => markEmailSent.mutate()}
                   disabled={markEmailSent.isPending || emailMarked}
-                  className="cursor-pointer text-[0.75rem] text-muted hover:text-accent disabled:cursor-default"
+                  className="inline-flex cursor-pointer items-center gap-1 text-[0.75rem] text-muted hover:text-accent disabled:cursor-default"
                 >
+                  {markEmailSent.isPending && <Loader className="h-3 w-3" />}
                   {emailMarked ? BATTLECARD.emailMarkedSent : BATTLECARD.markEmailSent}
                 </button>
               </div>
@@ -378,7 +443,7 @@ export function Battlecard({
               variant="secondary"
               size="sm"
               onClick={() => generate.mutate()}
-              disabled={generate.isPending}
+              loading={generate.isPending}
             >
               {generate.isPending ? BATTLECARD.generatingBattlecard : BATTLECARD.generateBattlecard}
             </Button>
@@ -412,7 +477,51 @@ export function Battlecard({
             )}
           </div>
 
-          <Field label={BATTLECARD.noteLabel}>
+          {/* "Call picked by" -- structure-plan.md Phase 3. Tag only: no stage change, no queue move. */}
+          <div>
+            <p className="mb-1 text-[0.8rem] font-semibold text-muted">{CALL_PICKED_BY.heading}</p>
+            <div className="flex flex-wrap gap-2">
+              {CALL_PICKED_BY.options.map((o) => (
+                <Button
+                  key={o.value}
+                  variant={lead.call_picked_by === o.value ? "primary" : "secondary"}
+                  size="sm"
+                  loading={callPickedBy.isPending}
+                  onClick={() => callPickedBy.mutate({ id: lead.id, value: o.value })}
+                >
+                  {o.label}
+                </Button>
+              ))}
+            </div>
+            {callPickedBy.isError && (
+              <p className="mt-1 text-[0.75rem] text-danger">
+                {callPickedBy.error instanceof Error ? callPickedBy.error.message : CALL_PICKED_BY.failed}
+              </p>
+            )}
+          </div>
+
+          <Field
+            label={
+              <span className="flex items-center justify-between gap-2">
+                {BATTLECARD.noteLabel}
+                {/* Opens the full edit form in a popup right here, so structured fields -- an email
+                    given verbally on the call, for example -- get saved properly instead of typed into
+                    this notes box. structure-plan.md Phase 3; popup instead of a new tab per the user
+                    ("dusry tab pr na lekr jaye, wohin popup ho"). */}
+                <EditLeadDialog
+                  lead={lead}
+                  trigger={
+                    <button
+                      type="button"
+                      className="cursor-pointer text-[0.75rem] font-semibold text-accent underline"
+                    >
+                      ✏️ Edit
+                    </button>
+                  }
+                />
+              </span>
+            }
+          >
             <div className="flex gap-2">
               <div className="min-w-0 flex-1">
                 <MentionField
@@ -425,7 +534,8 @@ export function Battlecard({
               <Button
                 variant="secondary"
                 size="sm"
-                disabled={addNote.isPending || !note.trim()}
+                loading={addNote.isPending}
+                disabled={!note.trim()}
                 onClick={() =>
                   addNote.mutate(
                     { id: lead.id, text: note, mention: extractMentions(note, users) },
@@ -488,33 +598,89 @@ export function Battlecard({
                 <Button
                   variant="primary"
                   size="sm"
-                  disabled={!meetingDate || !meetingTime || record.isPending}
+                  loading={record.isPending}
+                  disabled={!meetingDate || !meetingTime}
                   onClick={confirmBooking}
                 >
                   {MEETING_BOOKING.confirm}
                 </Button>
               </div>
             </div>
-          ) : (
-            // 11 dispositions now (added Closed; Irrelevant renamed to Wrong
-            // Number) -- 4-wide (4+4+3) fits better than a 5-wide 5+5+1.
-            <div className="grid grid-cols-4 gap-2">
-              {DISPOSITIONS.map((d) => (
-                <Button
-                  key={d.outcome}
-                  // Orange only right after a meeting is actually booked (the
-                  // same 4s `booked` window the success toast above uses) --
-                  // not a permanent "this is the important button" highlight.
-                  variant={d.outcome === "meeting_booked" && booked ? "primary" : "secondary"}
-                  size="sm"
-                  title={d.help}
-                  disabled={record.isPending}
-                  onClick={() => disposition(d.outcome as CallOutcome)}
-                >
-                  {d.label}
+          ) : callbackPrompt ? (
+            <div className="flex flex-col gap-2 rounded-[8px] border border-accent bg-input px-3 py-3">
+              <p className="text-[0.85rem] font-semibold">{CALLBACK_BOOKING.prompt}</p>
+              <div className="grid grid-cols-2 gap-2">
+                <Field label={CALLBACK_BOOKING.dateLabel}>
+                  <Input type="date" value={callbackDate} onChange={(e) => setCallbackDate(e.target.value)} />
+                </Field>
+                <Field label={CALLBACK_BOOKING.timeLabel}>
+                  <Input type="time" value={callbackTime} onChange={(e) => setCallbackTime(e.target.value)} />
+                </Field>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <Button variant="secondary" size="sm" onClick={cancelCallback}>
+                  {CALLBACK_BOOKING.cancel}
                 </Button>
-              ))}
+                <Button
+                  variant="primary"
+                  size="sm"
+                  loading={record.isPending}
+                  disabled={!callbackDate || !callbackTime}
+                  onClick={confirmCallback}
+                >
+                  {CALLBACK_BOOKING.confirm}
+                </Button>
+              </div>
             </div>
+          ) : (
+            // 9 dispositions (Receptionist/Decision Maker moved to the "Call picked by" tag row above,
+            // structure-plan.md Phase 3) -- 3-wide (3x3) fits evenly.
+            <>
+              <div className="grid grid-cols-3 gap-2">
+                {DISPOSITIONS.map((d) => (
+                  <Button
+                    key={d.outcome}
+                    // Orange only right after a meeting is actually booked (the
+                    // same 4s `booked` window the success toast above uses) --
+                    // not a permanent "this is the important button" highlight.
+                    variant={d.outcome === "meeting_booked" && booked ? "primary" : "secondary"}
+                    size="sm"
+                    title={d.help}
+                    loading={record.isPending}
+                    onClick={() => disposition(d.outcome as CallOutcome)}
+                  >
+                    {d.label}
+                  </Button>
+                ))}
+              </div>
+              {/* "Email Send" sits with the other disposition buttons now, not off in the research column
+                  -- moved here per the user ("yeh voicemails deadline in sab buttons k sath he ayega").
+                  A flag ("this lead needs an email"), NOT a record that one went out (Mark Email Sent,
+                  in the research column above, is that). Moves the lead to Pipeline. */}
+              <Button
+                variant="secondary"
+                size="sm"
+                block
+                title={EMAIL_SEND.help}
+                loading={needsEmail.isPending}
+                onClick={() =>
+                  needsEmail.mutate(lead.id, {
+                    onSuccess: () => {
+                      toast.success(EMAIL_SEND.sent(lead.company_name));
+                      onActionTaken?.(lead.id);
+                    },
+                    onError: (e) => toast.error(e instanceof Error ? e.message : EMAIL_SEND.failed),
+                  })
+                }
+              >
+                {EMAIL_SEND.button}
+              </Button>
+              {needsEmail.isError && (
+                <p className="text-[0.8rem] text-danger">
+                  {needsEmail.error instanceof Error ? needsEmail.error.message : EMAIL_SEND.failed}
+                </p>
+              )}
+            </>
           )}
         </div>
       </div>

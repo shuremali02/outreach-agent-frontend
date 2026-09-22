@@ -27,6 +27,44 @@ SEARCH_DIRS = ["components", "app", "hooks", "lib"]
 
 # Copy with no Streamlit counterpart, each for a stated reason.
 ALLOWED = {
+    # CSS media-query syntax (app/layout.tsx metadata.icons), not user-visible prose -- never rendered
+    # anywhere, just picks which favicon file the browser loads for its own light/dark chrome.
+    "(prefers-color-scheme: dark)",
+    "(prefers-color-scheme: light)",
+    # Contacts "Send to Cold Call Desk" (structure-plan.md Phase 2). No Streamlit analogue -- app.py had
+    # no distinction between "in the database" and "ready to call".
+    "📤 Send to Cold Call Desk",
+    "🔁 Resend to Cold Call Desk",
+    "Could not send this lead to the Cold Call Desk. Try again.",
+    # Cold Call Desk card redesign (structure-plan.md Phase 3). No Streamlit analogue -- app.py had no
+    # "call picked by" tag, no callback date/time, no hidden-everywhere state, and no Email Send flag.
+    "Call picked by",
+    "Could not save who picked up. Try again.",
+    "When should we call back?",
+    "✅ Confirm callback",
+    "Marks this lead as needing an email and moves it to Pipeline. It does not send anything -- use Mark Email Sent once you actually have.",
+    "Could not mark this lead for email. Try again.",
+    "The lead is NOT deleted. It is hidden everywhere in the app (Cold Call Desk, Leads, Pipeline) -- there is no way to find it again yet.",
+    "This number does not reach the company. The lead goes back to Leads, tagged Wrong Number, until someone finds a working number.",
+    # Pipeline card redesign (structure-plan.md Phase 4) -- editing moved entirely to Contacts.
+    "✏️ Edit in Leads",
+    # The Contacts tab was renamed "Leads" (user request, 2026-09-22) -- this used to match app.py's own
+    # "Contacts & Accounts" text verbatim; it no longer does, on purpose. (Two similar renamed strings,
+    # TOASTS.wrongNumberSent and MEETING_OUTCOMES.proposal_sent.done, are backtick template literals --
+    # candidates() below only extracts double-quoted strings and JSX text nodes, never those, so neither
+    # one needs an entry here at all.)
+    "Leads & Accounts",
+    "Nothing here yet. A lead shows up on Pipeline once it has a callback scheduled, a meeting booked, or is marked Email Send -- everything else lives in Leads.",
+    # Meetings page: the Needs Follow-up section above the calendar, and corrected confirm-dialog wording
+    # now that Pipeline/Follow-ups no longer hold these leads (structure-plan.md Phase 5).
+    "Leads you have already met and marked Needs Follow-up. Call or email again, then update the stage below.",
+    "No leads are waiting after a meeting right now.",
+    "The lead is NOT deleted. For now, find it in Leads (a dedicated Projects tab for closed deals is coming).",
+    "The lead is NOT deleted. It moves to the Needs Follow-up list on this page, above the calendar.",
+    # Projects tab (structure-plan.md Phase 7) -- new page, no Streamlit analogue.
+    "Deals with a proposal sent or already won -- one status tag apart.",
+    "No projects yet. A deal shows up here once it is marked Send Proposal or Client Closed.",
+    "📄 Proposal Sent",
     # React needs error and loading states where Streamlit blocked and re-ran.
     "Something went wrong",
     "This view failed to load",
@@ -352,6 +390,28 @@ ALLOWED = {
     "Leads you have already met. They stay in your Pipeline under their stage; move them on from here.",
     "No call follow-ups right now.",
     "No leads are waiting after a meeting. On the Meetings page, pick Needs Follow-up or Send Proposal once a meeting is done and the lead shows up here.",
+    # Proposal Sent moved from Projects back to Pipeline (live-testing feedback, 2026-09-22 -- "purposals
+    # sary hamary pass pipline me he dekhny chahiye kahin or nhi"), reversing structure-plan.md Phase 7.
+    # No Streamlit analogue for either destination.
+    "Deals that have been won -- Client Closed.",
+    "No projects yet. A deal shows up here once it is marked Client Closed.",
+    "Nothing here yet. A lead shows up on Pipeline once it has a callback scheduled, a meeting booked, is marked Email Send, or Proposal Sent -- everything else lives in Leads.",
+    "The lead is NOT deleted. It moves to Projects.",
+    "The lead is NOT deleted. It stays visible in Pipeline.",
+    # "Proposal Send" not "Send Proposal" (user, 2026-09-22) -- matches the existing "Email Send"
+    # naming pattern. Same rename on both the Meeting popup's outcome button and the Cold Call
+    # Desk's "closed" disposition, since both set the same proposal_sent stage.
+    "📄 Proposal Send",
+    "Yes, mark Proposal Send",
+    # Leads page's "Active Sector Overview" card replaced with a "Today's Leads" / "This Week's Leads"
+    # block (user, 2026-09-22 -- "yeh jo hai is ko hata do... todays leads or this week leads ki block
+    # bana kr woh show krwao"). No Streamlit analogue for either wording.
+    "📅 Today's Leads",
+    "🗓️ This Week's Leads",
+    # Pipeline quick actions (user, 2026-09-22 -- "har lead pr Not intrested, purposal send or meeting
+    # booked or project closed yeh action yhn bhi hone chahiye"). The other 3 actions reuse
+    # MEETING_OUTCOMES' existing labels/copy verbatim; only this one (opens the date/time prompt) is new.
+    "🎯 Meeting Booked",
 }
 
 CLASS_HINT = re.compile(

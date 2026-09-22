@@ -129,7 +129,7 @@ export function ProblemDesk({ defaultExpanded = false }: { defaultExpanded?: boo
                 <Input value={reportedBy} onChange={(e) => setReportedBy(e.target.value)} maxLength={120} />
               </Field>
             </div>
-            <Button type="submit" variant="primary" size="sm" className="mt-3" disabled={create.isPending}>
+            <Button type="submit" variant="primary" size="sm" className="mt-3" loading={create.isPending}>
               🚨 Submit Problem to Desk
             </Button>
           </form>

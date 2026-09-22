@@ -54,13 +54,53 @@ export function useDeleteLead() {
   });
 }
 
+/** "Send to Cold Call Desk" -- structure-plan.md Phase 2. See lib/api/leads.ts sendToDesk(). */
+export function useSendToDesk() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (id: number) => leadsApi.sendToDesk(id),
+    onSuccess: invalidate,
+  });
+}
+
 export function useCallOutcome() {
   const invalidate = useInvalidate();
   return useMutation({
     mutationFn: ({
-      id, outcome, notes, meetingAt, mention,
-    }: { id: number; outcome: CallOutcome; notes?: string; meetingAt?: string; mention?: MentionPayload }) =>
-      leadsApi.recordOutcome(id, outcome, notes ?? "", meetingAt, mention),
+      id, outcome, notes, meetingAt, mention, callbackAt,
+    }: {
+      id: number; outcome: CallOutcome; notes?: string; meetingAt?: string; mention?: MentionPayload;
+      callbackAt?: string;
+    }) => leadsApi.recordOutcome(id, outcome, notes ?? "", meetingAt, mention, callbackAt),
+    onSuccess: invalidate,
+  });
+}
+
+/** "Call picked by" row -- tag only, see lib/api/leads.ts callPickedBy(). structure-plan.md Phase 3. */
+export function useCallPickedBy() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: ({ id, value }: { id: number; value: "receptionist" | "decision_maker" | "team_member" }) =>
+      leadsApi.callPickedBy(id, value),
+    onSuccess: invalidate,
+  });
+}
+
+/** "Email Send" -- structure-plan.md Phase 3/4. See lib/api/leads.ts markNeedsEmail(). */
+export function useNeedsEmail() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (id: number) => leadsApi.markNeedsEmail(id),
+    onSuccess: invalidate,
+  });
+}
+
+/** Meetings detail popup's 4-way picker -- structure-plan.md Phase 5. See lib/api/leads.ts meetingOutcome(). */
+export function useMeetingOutcome() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: ({ id, stage }: { id: number; stage: "won" | "proposal_sent" | "followup_due" | "lost" }) =>
+      leadsApi.meetingOutcome(id, stage),
     onSuccess: invalidate,
   });
 }

@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useLeads, useUpdateLead } from "@/hooks/use-leads";
+import { useLeads, useSendToDesk } from "@/hooks/use-leads";
 import { LeadCard } from "@/components/leads/lead-card";
+import { LeadEditForm } from "@/components/leads/lead-edit-form";
 import { LeadWho } from "@/components/leads/lead-who";
 import { NotesPanel } from "@/components/leads/notes-panel";
 import { PhoneNumberList } from "@/components/leads/phone-number-list";
@@ -11,162 +12,73 @@ import { PhoneNumberList } from "@/components/leads/phone-number-list";
 // docs.md). The components themselves are kept, unused, in case a pill-style
 // filter is wanted again somewhere.
 import { LinkedInResearchPanel, HunterDecisionMakers, SiteScanPanel } from "@/components/enrichment";
-import { Card } from "@/components/ui/card";
+import { MetricCard } from "@/components/metrics/metric-card";
 import { Button } from "@/components/ui/button";
-import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
-import { Input, Select, Field } from "@/components/ui/input";
-import { TerminalPill } from "@/components/ui/tag";
+import { Select, Field } from "@/components/ui/input";
 import {
   COUNTRIES,
   ALL_SOURCES,
-  MEETING_BOOKING,
-  PIPELINE_STAGES,
   STAGE_LABELS,
   STANDARD_CATEGORIES,
   ALL_CATEGORIES,
   ALL_COUNTRIES,
   UNKNOWN_COUNTRY,
   LEAD_SOURCE_LABELS,
-  LOST_STAGE_CONFIRM,
-  TOASTS,
+  SEND_TO_DESK,
   countryLabel,
 } from "@/lib/constants";
-import { addedAt, currency, externalUrl, displayDomain, hasUsableEmail, contactLabel, leadSource } from "@/lib/format";
-import type { Lead, PipelineStage } from "@/types";
+import {
+  addedAt,
+  currency,
+  externalUrl,
+  displayDomain,
+  hasUsableEmail,
+  contactLabel,
+  leadSource,
+  isToday,
+  isThisWeek,
+} from "@/lib/format";
+import type { Lead } from "@/types";
 import { EMPTY_STATES } from "@/lib/constants";
 
-function ClassificationPanel({ lead }: { lead: Lead }) {
-  const update = useUpdateLead();
+/**
+ * structure-plan.md Phase 2 -- Contacts is the only place a lead moves onto the Cold Call Desk from.
+ * Always enabled (no phone/email gate, the rep decides); re-sending an already-sent lead just refreshes
+ * the timestamp. Sits above the edit form so it reads as the primary action on this card.
+ */
+function SendToDeskButton({ lead }: { lead: Lead }) {
+  const send = useSendToDesk();
   const toast = useToast();
-  const confirm = useConfirm();
-  const [category, setCategory] = useState(lead.industry_tag);
-  const [stage, setStage] = useState<PipelineStage>(lead.pipeline_stage);
-  const [phone, setPhone] = useState(lead.contact_phone);
-  const [linkedin, setLinkedin] = useState(lead.contact_linkedin);
-  const [dealValue, setDealValue] = useState(lead.deal_value);
-  // See pipeline-view.tsx ManageDeal's identical field -- corrects a wrong
-  // or missing country on an already-saved lead.
-  const [country, setCountry] = useState(lead.country);
-  // See pipeline-view.tsx ManageDeal's identical fields -- this panel had no
-  // way at all to set a meeting date/time, so selecting "Meeting Booked"
-  // here always left meeting_at null, silently invisible on the Meetings
-  // tab despite the lead being correctly staged (see docs.md 2026-09-16).
-  const [meetingDate, setMeetingDate] = useState(lead.meeting_at ? lead.meeting_at.slice(0, 10) : "");
-  const [meetingTime, setMeetingTime] = useState(lead.meeting_at ? lead.meeting_at.slice(11, 16) : "");
+  const onDesk = Boolean(lead.sent_to_desk_at);
 
   return (
-    <div className="flex flex-col gap-3">
-      <h4 className="text-[1rem] font-semibold">🏷️ Classification &amp; Deal</h4>
-      <Field label="Category">
-        <Select value={category} onChange={(e) => setCategory(e.target.value)}>
-          {STANDARD_CATEGORIES.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </Select>
-      </Field>
-      <Field label="Pipeline Stage">
-        <Select value={stage} onChange={(e) => setStage(e.target.value as PipelineStage)}>
-          {PIPELINE_STAGES.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.label}
-            </option>
-          ))}
-        </Select>
-      </Field>
-      {stage === "meeting_booked" && (
-        <>
-          <div className="grid grid-cols-2 gap-2">
-            <Field label={MEETING_BOOKING.dateLabel}>
-              <Input type="date" value={meetingDate} onChange={(e) => setMeetingDate(e.target.value)} />
-            </Field>
-            <Field label={MEETING_BOOKING.timeLabel}>
-              <Input type="time" value={meetingTime} onChange={(e) => setMeetingTime(e.target.value)} />
-            </Field>
-          </div>
-          {!(meetingDate && meetingTime) && (
-            <p
-              className="rounded-[8px] px-3 py-2 text-[0.8rem]"
-              style={{ background: "var(--warn-tint)", color: "var(--warn)" }}
-            >
-              Set both Date and Time — without them this lead is staged as Meeting Booked but
-              will not appear on the Meetings tab.
-            </p>
-          )}
-        </>
-      )}
-      <Field label="Contact Phone">
-        <Input value={phone} onChange={(e) => setPhone(e.target.value)} />
-      </Field>
-      <Field label="LinkedIn URL">
-        <Input value={linkedin} onChange={(e) => setLinkedin(e.target.value)} />
-      </Field>
-      <Field label="Deal Value ($)">
-        <Input
-          type="number"
-          step={1000}
-          min={0}
-          value={dealValue}
-          onChange={(e) => setDealValue(Number(e.target.value))}
-        />
-      </Field>
-      <Field label="Country">
-        <Select value={country} onChange={(e) => setCountry(e.target.value)}>
-          <option value="">Not specified</option>
-          {COUNTRIES.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.label}
-            </option>
-          ))}
-        </Select>
-      </Field>
+    <div className="flex items-center gap-2">
       <Button
-        variant="primary"
+        variant={onDesk ? "secondary" : "primary"}
         size="sm"
-        disabled={update.isPending || (stage === "meeting_booked" && !(meetingDate && meetingTime))}
-        onClick={async () => {
-          if (stage === "lost" && lead.pipeline_stage !== "lost") {
-            const ok = await confirm({
-              title: LOST_STAGE_CONFIRM.title(lead.company_name),
-              description: LOST_STAGE_CONFIRM.body,
-              confirmLabel: LOST_STAGE_CONFIRM.confirmLabel,
-              tone: "danger",
-            });
-            if (!ok) return;
-          }
-          update.mutate(
-            {
-              id: lead.id,
-              input: {
-                industry_tag: category,
-                pipeline_stage: stage,
-                contact_phone: phone,
-                contact_linkedin: linkedin,
-                deal_value: dealValue,
-                country,
-                ...(meetingDate && meetingTime
-                  ? { meeting_at: `${meetingDate}T${meetingTime}:00` }
-                  : {}),
-              },
-            },
-            {
-              onSuccess: () => toast.success(TOASTS.saved(lead.company_name)),
-              onError: (e) => toast.error(e instanceof Error ? e.message : TOASTS.actionFailed),
-            },
-          );
-        }}
+        loading={send.isPending}
+        onClick={() =>
+          send.mutate(lead.id, {
+            onSuccess: () => toast.success(SEND_TO_DESK.sent(lead.company_name)),
+            onError: (e) => toast.error(e instanceof Error ? e.message : SEND_TO_DESK.failed),
+          })
+        }
       >
-        💾 Save Lead Details
+        {onDesk ? SEND_TO_DESK.resend : SEND_TO_DESK.send}
       </Button>
-      {update.isError && (
-        <p className="text-[0.8rem] text-danger">
-          {update.error instanceof Error ? update.error.message : "Failed to save updates. Try again."}
-        </p>
+      {onDesk && (
+        <span className="text-[0.78rem] text-muted">{SEND_TO_DESK.onDesk(addedAt(lead.sent_to_desk_at))}</span>
       )}
     </div>
   );
+}
+
+function ClassificationPanel({ lead }: { lead: Lead }) {
+  // The form itself lives in components/leads/lead-edit-form.tsx -- shared with EditLeadDialog, the
+  // popup version other pages use (Cold Call Desk, Pipeline, Projects, Meetings). Here it renders
+  // inline, same as always, since this page IS the "Leads" destination those popups edit into.
+  return <LeadEditForm lead={lead} />;
 }
 
 /** CSV export built in the browser — same columns as the Streamlit download_button. */
@@ -223,14 +135,11 @@ export function ContactsView({ initialLeads, q }: { initialLeads: Lead[]; q: str
     [allLeads, category, country, source],
   );
 
-  const totalValue = leads.reduce((s, l) => s + l.deal_value, 0);
-  const draftReady = leads.filter((l) => l.pipeline_stage === "draft_ready").length;
-  const outreach = leads.filter((l) =>
-    ["contacted", "followup_due"].includes(l.pipeline_stage),
-  ).length;
-  const booked = leads.filter((l) =>
-    ["meeting_booked", "proposal_sent", "won"].includes(l.pipeline_stage),
-  ).length;
+  // Replaces the old "Active Sector Overview" (totalValue/draftReady/outreach/booked) card -- user
+  // request, 2026-09-22: "yeh jo hai is ko hata do... todays leads or this week leads ki block bana kr
+  // woh show krwao". Both counts respect the same Category/Country/Source filters `leads` already does.
+  const leadsToday = leads.filter((l) => isToday(l.created_at)).length;
+  const leadsThisWeek = leads.filter((l) => isThisWeek(l.created_at)).length;
 
   return (
     <>
@@ -268,20 +177,12 @@ export function ContactsView({ initialLeads, q }: { initialLeads: Lead[]; q: str
         </Field>
       </div>
 
-      <Card accent="accent" className="my-4">
-        <p className="date-eyebrow">Active Sector Overview</p>
-        <h2 className="serif-title text-[1.5rem] font-bold">
-          {category === ALL_CATEGORIES ? "🌐 All Industry Sectors" : category}
-        </h2>
-        <p className="mt-1 text-[0.9rem] text-muted">
-          Showing {leads.length} accounts · {currency(totalValue)} combined pipeline value
-        </p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <TerminalPill variant="blue">📝 {draftReady} Draft Ready</TerminalPill>
-          <TerminalPill variant="amber">📤 {outreach} Outreach / Due</TerminalPill>
-          <TerminalPill variant="green">🎯 {booked} Booked / Pipeline</TerminalPill>
-        </div>
-      </Card>
+      {/* Two separate blocks, not one shared card (user, 2026-09-22 -- "yeh is trhn sy nhi do, block
+          banao"), same MetricCard the Today page's own stat row uses. */}
+      <div className="my-4 grid grid-cols-2 gap-4">
+        <MetricCard label="📅 Today's Leads" value={String(leadsToday)} />
+        <MetricCard label="🗓️ This Week's Leads" value={String(leadsThisWeek)} />
+      </div>
 
       <div className="mb-4">
         <CsvExportButton leads={leads} category={category} />
@@ -307,6 +208,9 @@ export function ContactsView({ initialLeads, q }: { initialLeads: Lead[]; q: str
             </span>
           }
         >
+          <div className="mb-4">
+            <SendToDeskButton lead={lead} />
+          </div>
           <div className="grid grid-cols-[1.8fr_1.8fr_1.4fr] gap-6">
             <div className="flex flex-col gap-3">
               <h4 className="text-[1rem] font-semibold">🏢 Company &amp; Contact</h4>

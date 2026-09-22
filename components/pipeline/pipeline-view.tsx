@@ -2,227 +2,221 @@
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useMemo, useState } from "react";
-import { useLeads, useUpdateLead, useDeleteLead } from "@/hooks/use-leads";
+import { useLeads, useMeetingOutcome, useUpdateLead } from "@/hooks/use-leads";
+import { EditLeadDialog } from "@/components/leads/edit-lead-dialog";
 import { LeadCard } from "@/components/leads/lead-card";
 import { LeadWho } from "@/components/leads/lead-who";
 import { PhoneNumberList } from "@/components/leads/phone-number-list";
 import { LinkedInResearchPanel, HunterDecisionMakers, SiteScanPanel } from "@/components/enrichment";
 import { MailtoButton } from "@/components/common/mailto-button";
+import { MetricCard } from "@/components/metrics/metric-card";
 import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
-import { Input, Textarea, Select, Field } from "@/components/ui/input";
+import { Select, Field, Input } from "@/components/ui/input";
 import {
   COUNTRIES,
   LEAD_SOURCE_LABELS,
-  MEETING_BOOKING,
-  PIPELINE_STAGES,
   STAGE_LABELS,
   STANDARD_CATEGORIES,
-  TOASTS,
   ALL_CATEGORIES,
   ALL_COUNTRIES,
   ALL_SOURCES,
   UNKNOWN_COUNTRY,
-  LOST_STAGE_CONFIRM,
-  FOLLOWUPS_VIEW,
-  PIPELINE_MEETING_FILTER,
+  PIPELINE_VIEW_FILTER,
+  PIPELINE_CARD,
+  MEETING_OUTCOMES,
+  MEETING_BOOKING,
+  TOASTS,
   countryLabel,
 } from "@/lib/constants";
 import { addedAt, currency, externalUrl, displayDomain, hasUsableEmail, leadSource } from "@/lib/format";
-import type { Lead, PipelineStage } from "@/types";
+import type { Lead } from "@/types";
 import { EMPTY_STATES } from "@/lib/constants";
 
-function ManageDeal({ lead }: { lead: Lead }) {
+/**
+ * Quick status-change actions on every Pipeline card (user, 2026-09-22: "hamesha us ka status purposal
+ * sent ya callback ya email send nhi rhyga is lye har lead pr Not intrested, purposal send or meeting
+ * booked or project closed yeh action yhn bhi hone chahiye har lead pr"). Same 4 destinations, same
+ * behaviour, as the rest of the app's flow: Client Closed/Proposal Send/Not Interested reuse the exact
+ * Meeting popup outcome (useMeetingOutcome() -- the dedicated endpoint, not a plain PATCH, because "Not
+ * Interested" must ALSO hide the lead everywhere, which a plain update can't do). "Meeting Booked" asks
+ * for a date/time first (same UI as Cold Call Desk's booking prompt) because meetings-calendar.tsx only
+ * shows a lead once meeting_at is set -- a bare stage change would leave it off the Meetings tab.
+ */
+function PipelineActions({ lead }: { lead: Lead }) {
+  const outcome = useMeetingOutcome();
   const update = useUpdateLead();
-  const remove = useDeleteLead();
   const confirm = useConfirm();
   const toast = useToast();
+  const [bookingPrompt, setBookingPrompt] = useState(false);
+  const [meetingDate, setMeetingDate] = useState("");
+  const [meetingTime, setMeetingTime] = useState("");
 
-  const [subject, setSubject] = useState(lead.subject);
-  const [body, setBody] = useState(lead.body);
-  const [dealValue, setDealValue] = useState(lead.deal_value);
-  const [stage, setStage] = useState<PipelineStage>(lead.pipeline_stage);
-  const [phone, setPhone] = useState(lead.contact_phone);
-  const [linkedin, setLinkedin] = useState(lead.contact_linkedin);
-  // Corrects a wrong or missing country on an already-saved lead -- discovery
-  // tags this automatically now, but an older lead (pre-country-field) or a
-  // bad website-domain guess (region_from_url) can still be wrong, and this
-  // is the only place to fix it since none of the discovery paths re-run
-  // themselves on an existing lead.
-  const [country, setCountry] = useState(lead.country);
-  // Seeded from lead.meeting_at (an ISO datetime, set at the "🎯 Booked!"
-  // prompt on the Cold Call Desk) so this stays editable afterward -- a lead
-  // that just became meeting_booked immediately leaves the Cold Call queue
-  // and its Battlecard unmounts, so Pipeline is the only place left to fix a
-  // wrong time.
-  const [meetingDate, setMeetingDate] = useState(lead.meeting_at ? lead.meeting_at.slice(0, 10) : "");
-  const [meetingTime, setMeetingTime] = useState(lead.meeting_at ? lead.meeting_at.slice(11, 16) : "");
+  // Not Interested / Proposal Send / Client Closed -- the same 3 (of 4) MEETING_OUTCOMES entries the
+  // Meetings detail popup uses, minus "Needs Follow-up" (a post-meeting-only concept that doesn't apply
+  // to a lead that may not have had a meeting yet).
+  const actions = MEETING_OUTCOMES.filter((o) => o.stage !== "followup_due");
+
+  async function setOutcome(o: (typeof actions)[number]) {
+    const ok = await confirm({
+      title: o.confirmTitle(lead.company_name),
+      description: o.confirmBody,
+      confirmLabel: o.confirmLabel,
+      tone: o.stage === "lost" ? "danger" : "default",
+    });
+    if (!ok) return;
+    outcome.mutate(
+      { id: lead.id, stage: o.stage },
+      {
+        onSuccess: () => toast.success(o.done(lead.company_name)),
+        onError: (e) => toast.error(e instanceof Error ? e.message : TOASTS.actionFailed),
+      },
+    );
+  }
+
+  function confirmBooking() {
+    if (!meetingDate || !meetingTime) return;
+    update.mutate(
+      {
+        id: lead.id,
+        input: { pipeline_stage: "meeting_booked", meeting_at: `${meetingDate}T${meetingTime}:00` },
+      },
+      {
+        onSuccess: () => {
+          toast.success(TOASTS.meetingBooked(lead.company_name));
+          setBookingPrompt(false);
+          setMeetingDate("");
+          setMeetingTime("");
+        },
+        onError: (e) => toast.error(e instanceof Error ? e.message : TOASTS.actionFailed),
+      },
+    );
+  }
+
+  if (bookingPrompt) {
+    return (
+      <div className="flex flex-col gap-2 rounded-[8px] border border-accent bg-input px-3 py-3">
+        <p className="text-[0.85rem] font-semibold">{MEETING_BOOKING.prompt}</p>
+        <div className="grid grid-cols-2 gap-2">
+          <Field label={MEETING_BOOKING.dateLabel}>
+            <Input type="date" value={meetingDate} onChange={(e) => setMeetingDate(e.target.value)} />
+          </Field>
+          <Field label={MEETING_BOOKING.timeLabel}>
+            <Input type="time" value={meetingTime} onChange={(e) => setMeetingTime(e.target.value)} />
+          </Field>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <Button variant="secondary" size="sm" onClick={() => setBookingPrompt(false)}>
+            {MEETING_BOOKING.cancel}
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            loading={update.isPending}
+            disabled={!meetingDate || !meetingTime}
+            onClick={confirmBooking}
+          >
+            {MEETING_BOOKING.confirm}
+          </Button>
+        </div>
+        {update.isError && (
+          <p className="text-[0.78rem] text-danger">
+            {update.error instanceof Error ? update.error.message : TOASTS.actionFailed}
+          </p>
+        )}
+      </div>
+    );
+  }
 
   return (
-    <>
-      <div className="flex flex-col gap-3">
-        <h4 className="text-[1rem] font-semibold">✉️ Outreach Draft</h4>
-        <Field label="Subject">
-          <Input value={subject} onChange={(e) => setSubject(e.target.value)} maxLength={500} />
-        </Field>
-        <Field label="Body">
-          <Textarea rows={7} value={body} onChange={(e) => setBody(e.target.value)} />
-        </Field>
-      </div>
-
-      <div className="flex flex-col gap-3">
-        <h4 className="text-[1rem] font-semibold">⚙️ Manage Deal</h4>
-        <Field label="Deal Value ($)">
-          <Input
-            type="number"
-            step={1000}
-            min={0}
-            value={dealValue}
-            onChange={(e) => setDealValue(Number(e.target.value))}
-          />
-        </Field>
-        <Field label="Pipeline Stage">
-          <Select value={stage} onChange={(e) => setStage(e.target.value as PipelineStage)}>
-            {PIPELINE_STAGES.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.label}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        {stage === "meeting_booked" && (
-          <>
-            <div className="grid grid-cols-2 gap-2">
-              <Field label={MEETING_BOOKING.dateLabel}>
-                <Input type="date" value={meetingDate} onChange={(e) => setMeetingDate(e.target.value)} />
-              </Field>
-              <Field label={MEETING_BOOKING.timeLabel}>
-                <Input type="time" value={meetingTime} onChange={(e) => setMeetingTime(e.target.value)} />
-              </Field>
-            </div>
-            {!(meetingDate && meetingTime) && (
-              <p
-                className="rounded-[8px] px-3 py-2 text-[0.8rem]"
-                style={{ background: "var(--warn-tint)", color: "var(--warn)" }}
-              >
-                Set both Date and Time — without them this lead is staged as Meeting Booked but
-                will not appear on the Meetings tab.
-              </p>
-            )}
-          </>
-        )}
-        <Field label="Contact Phone">
-          <Input value={phone} onChange={(e) => setPhone(e.target.value)} />
-        </Field>
-        <Field label="LinkedIn URL">
-          <Input value={linkedin} onChange={(e) => setLinkedin(e.target.value)} />
-        </Field>
-        <Field label="Country">
-          <Select value={country} onChange={(e) => setCountry(e.target.value)}>
-            <option value="">Not specified</option>
-            {COUNTRIES.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.label}
-              </option>
-            ))}
-          </Select>
-        </Field>
-
+    <div className="grid grid-cols-2 gap-2">
+      {actions.map((o) => (
         <Button
-          variant="primary"
+          key={o.stage}
+          variant="secondary"
           size="sm"
-          disabled={update.isPending || (stage === "meeting_booked" && !(meetingDate && meetingTime))}
-          onClick={async () => {
-            if (stage === "lost" && lead.pipeline_stage !== "lost") {
-              const ok = await confirm({
-                title: LOST_STAGE_CONFIRM.title(lead.company_name),
-                description: LOST_STAGE_CONFIRM.body,
-                confirmLabel: LOST_STAGE_CONFIRM.confirmLabel,
-                tone: "danger",
-              });
-              if (!ok) return;
-            }
-            update.mutate(
-              {
-                id: lead.id,
-                input: {
-                  subject,
-                  body,
-                  deal_value: dealValue,
-                  pipeline_stage: stage,
-                  contact_phone: phone,
-                  contact_linkedin: linkedin,
-                  country,
-                  ...(meetingDate && meetingTime
-                    ? { meeting_at: `${meetingDate}T${meetingTime}:00` }
-                    : {}),
-                },
-              },
-              {
-                onSuccess: () => toast.success(TOASTS.saved(lead.company_name)),
-                onError: (e) => toast.error(e instanceof Error ? e.message : TOASTS.actionFailed),
-              },
-            );
-          }}
+          loading={outcome.isPending}
+          disabled={lead.pipeline_stage === o.stage}
+          onClick={() => setOutcome(o)}
         >
-          {update.isPending ? "Saving…" : "💾 Save Updates"}
+          {o.label}
         </Button>
-        {update.isError && (
-          <p className="text-[0.8rem] text-danger">
-            {update.error instanceof Error ? update.error.message : "Failed to save updates. Try again."}
-          </p>
-        )}
+      ))}
+      <Button
+        variant="secondary"
+        size="sm"
+        disabled={lead.pipeline_stage === "meeting_booked"}
+        onClick={() => setBookingPrompt(true)}
+      >
+        🎯 Meeting Booked
+      </Button>
+      {outcome.isError && (
+        <p className="col-span-2 text-[0.78rem] text-danger">
+          {outcome.error instanceof Error ? outcome.error.message : TOASTS.actionFailed}
+        </p>
+      )}
+    </div>
+  );
+}
 
-        <Button
-          variant="danger"
-          size="sm"
-          disabled={remove.isPending}
-          onClick={async () => {
-            const ok = await confirm({
-              title: `Remove ${lead.company_name} from the CRM?`,
-              description:
-                "This DELETES the lead and its contacts permanently -- it cannot be undone.\n\nJust not interested? Set the stage to Closed Lost instead; the lead stays in your CRM.",
-              confirmLabel: "Yes, delete permanently",
-              tone: "danger",
-            });
-            if (!ok) return;
-            remove.mutate(lead.id, {
-              onSuccess: () => toast.success(TOASTS.leadRemoved(lead.company_name)),
-              onError: (e) => toast.error(e instanceof Error ? e.message : TOASTS.actionFailed),
-            });
-          }}
-        >
-          🗑️ Remove
-        </Button>
-        {remove.isError && (
-          <p className="text-[0.8rem] text-danger">
-            {remove.error instanceof Error ? remove.error.message : "Failed to remove this lead. Try again."}
-          </p>
-        )}
-
-        {/* Uses the EDITED subject/body, as app.py did. */}
-        <MailtoButton
-          email={lead.contact_email}
-          subject={subject}
-          body={body}
-          label="📧 Open in Mail App"
-          block
-        />
-      </div>
-    </>
+/**
+ * structure-plan.md Phase 4: editing moved to Contacts entirely (Phase 2 gave it full parity with what
+ * this page's old ManageDeal editor did), so a card here is read-only plus a link to go edit it. Kept
+ * intentionally light -- this is a progress view, not a workbench.
+ */
+function PipelineSummary({ lead }: { lead: Lead }) {
+  return (
+    <div className="flex flex-col gap-3">
+      <h4 className="text-[1rem] font-semibold">⚙️ Deal</h4>
+      <p className="text-[0.85rem] text-muted">
+        <strong>Stage:</strong> {STAGE_LABELS[lead.pipeline_stage]}
+      </p>
+      <p className="text-[0.85rem] text-muted">
+        <strong>Deal Value:</strong> {currency(lead.deal_value)}
+      </p>
+      {lead.callback_at && (
+        <p className="text-[0.85rem] text-muted">
+          <strong>Callback:</strong> {addedAt(lead.callback_at)}
+        </p>
+      )}
+      {lead.meeting_at && (
+        <p className="text-[0.85rem] text-muted">
+          <strong>Meeting:</strong> {addedAt(lead.meeting_at)}
+        </p>
+      )}
+      {lead.subject && (
+        <p className="text-[0.82rem] text-muted">
+          <strong>Subject:</strong> {lead.subject}
+        </p>
+      )}
+      <PipelineActions lead={lead} />
+      <EditLeadDialog
+        lead={lead}
+        trigger={
+          <button type="button" className="cursor-pointer text-left text-[0.85rem] font-semibold text-accent underline">
+            {PIPELINE_CARD.editInContacts}
+          </button>
+        }
+      />
+      <MailtoButton
+        email={lead.contact_email}
+        subject={lead.subject}
+        body={lead.body}
+        label="📧 Open in Mail App"
+        block
+      />
+    </div>
   );
 }
 
 export function PipelineView({
   initialLeads,
-  stage,
   category,
   country,
   q,
 }: {
   initialLeads: Lead[];
-  stage: PipelineStage | "all";
   category: string;
   country: string;
   q: string;
@@ -230,23 +224,15 @@ export function PipelineView({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { data: fetchedLeads = [] } = useLeads({ stage, category, country, q }, initialLeads);
-  // Source (leadSource(), derived from source_prompt) isn't a backend
-  // column, so unlike Stage/Category/Country it's never sent to the server
-  // -- filtered client-side over whatever the server already returned.
+  // No `stage` param any more (structure-plan.md Phase 4): the backend can't express "callback_at is
+  // set OR stage is meeting_booked OR stage is contacted" as a single stage filter, so this page always
+  // fetches unfiltered by stage (Category/Country still filter server-side, unchanged) and narrows the
+  // rest -- including the new scope rule itself -- client-side below.
+  const { data: fetchedLeads = [] } = useLeads({ category, country, q }, initialLeads);
+  // Source (leadSource(), derived from source_prompt) isn't a backend column, filtered client-side same
+  // as before.
   const [source, setSource] = useState(ALL_SOURCES);
-  // Leads that already had a meeting (meeting_at set) and have moved on -- they stay in the pipeline under
-  // their stage; this just lets the team pick them out ("gaya kahan?", 2026-09-21).
-  const [metOnly, setMetOnly] = useState(false);
-  const leads = useMemo(
-    () =>
-      fetchedLeads.filter(
-        (l) =>
-          (source === ALL_SOURCES || leadSource(l.source_prompt) === source) &&
-          (!metOnly || Boolean(l.meeting_at)),
-      ),
-    [fetchedLeads, source, metOnly],
-  );
+  const [view, setView] = useState<"all" | "callback" | "meeting" | "email" | "proposal">("all");
 
   function setParam(key: string, value: string) {
     const params = new URLSearchParams(searchParams.toString());
@@ -256,17 +242,67 @@ export function PipelineView({
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   }
 
+  // The page's own scope: only a lead that has actually progressed lives here at all -- Callback
+  // Scheduled (via callback_at, not stage -- voicemail/hang_up/no_answer share the same "followup_due"
+  // stage value and must NOT show here), Meeting Booked, Email Send ("contacted"), or (since 2026-09-22,
+  // reversing structure-plan.md Phase 7 -- "purposals sary hamary pass pipline me he dekhny chahiye
+  // kahin or nhi") Proposal Sent. Everything else (new/drafted, or dispositioned in a way that leaves it
+  // hidden/elsewhere) simply never appears.
+  const inScope = useMemo(
+    () =>
+      fetchedLeads.filter(
+        (l) =>
+          Boolean(l.callback_at) ||
+          l.pipeline_stage === "meeting_booked" ||
+          l.pipeline_stage === "contacted" ||
+          l.pipeline_stage === "proposal_sent",
+      ),
+    [fetchedLeads],
+  );
+
+  const leads = useMemo(
+    () =>
+      inScope.filter(
+        (l) =>
+          (source === ALL_SOURCES || leadSource(l.source_prompt) === source) &&
+          (view === "all" ||
+            (view === "callback" && Boolean(l.callback_at)) ||
+            (view === "meeting" && l.pipeline_stage === "meeting_booked") ||
+            (view === "email" && l.pipeline_stage === "contacted") ||
+            (view === "proposal" && l.pipeline_stage === "proposal_sent")),
+      ),
+    [inScope, source, view],
+  );
+
+  // Two blocks (user, 2026-09-22, "pipeline me do cards add krny hain leads page ki trhn... jese
+  // coldcalldesk pr pipeline show hota hai"): same MetricCard style as the Leads page's Today's/This
+  // Week's Leads blocks, same "unfiltered by the page's own dropdowns" convention Cold Call Desk's ticker
+  // cards use (queueValue there sums `queue`, not the further category/country/source/line-filtered
+  // list) -- so these two total the page's full scope (inScope), not the narrower `leads`.
+  // "Opportunity" -- every lead currently active in Pipeline (open, not yet won or lost).
+  const opportunityValue = inScope.reduce((s, l) => s + l.deal_value, 0);
+  // "Interested" -- stays 0 until a lead is actually Client Closed (won leaves this page for Projects,
+  // so this reads off the page's own unfiltered fetch, not inScope/leads).
+  const wonValue = useMemo(
+    () => fetchedLeads.filter((l) => l.pipeline_stage === "won").reduce((s, l) => s + l.deal_value, 0),
+    [fetchedLeads],
+  );
+
   return (
     <>
-      <div className="mb-4 grid grid-cols-5 gap-4">
-        <Field label="Stage Filter">
-          <Select value={stage} onChange={(e) => setParam("stage", e.target.value)}>
-            <option value="all">All Stages</option>
-            {PIPELINE_STAGES.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.label}
-              </option>
-            ))}
+      <div className="my-4 grid grid-cols-2 gap-4">
+        <MetricCard label="Opportunity" value={currency(opportunityValue)} />
+        <MetricCard label="Interested" value={currency(wonValue)} />
+      </div>
+
+      <div className="mb-4 grid grid-cols-4 gap-4">
+        <Field label={PIPELINE_VIEW_FILTER.label}>
+          <Select value={view} onChange={(e) => setView(e.target.value as typeof view)}>
+            <option value="all">{PIPELINE_VIEW_FILTER.all}</option>
+            <option value="callback">{PIPELINE_VIEW_FILTER.callback}</option>
+            <option value="meeting">{PIPELINE_VIEW_FILTER.meeting}</option>
+            <option value="email">{PIPELINE_VIEW_FILTER.email}</option>
+            <option value="proposal">{PIPELINE_VIEW_FILTER.proposal}</option>
           </Select>
         </Field>
         <Field label="Category Filter">
@@ -300,12 +336,6 @@ export function PipelineView({
             ))}
           </Select>
         </Field>
-        <Field label={PIPELINE_MEETING_FILTER.label}>
-          <Select value={metOnly ? "met" : "all"} onChange={(e) => setMetOnly(e.target.value === "met")}>
-            <option value="all">{PIPELINE_MEETING_FILTER.all}</option>
-            <option value="met">{PIPELINE_MEETING_FILTER.met}</option>
-          </Select>
-        </Field>
       </div>
 
       {leads.length === 0 && <p className="text-muted">{EMPTY_STATES.pipeline}</p>}
@@ -321,11 +351,23 @@ export function PipelineView({
                 — {currency(lead.deal_value)} · {lead.industry_tag} (
                 {STAGE_LABELS[lead.pipeline_stage]})
               </span>
-              {lead.meeting_at && lead.pipeline_stage !== "meeting_booked" && (
+              {lead.callback_at && (
                 <span className="ml-2 rounded-[6px] bg-input px-1.5 py-0.5 text-[0.75rem] font-semibold text-muted">
-                  {FOLLOWUPS_VIEW.afterMeeting(
+                  {PIPELINE_CARD.callbackTag(
+                    new Date(lead.callback_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+                  )}
+                </span>
+              )}
+              {lead.pipeline_stage === "meeting_booked" && lead.meeting_at && (
+                <span className="ml-2 rounded-[6px] bg-input px-1.5 py-0.5 text-[0.75rem] font-semibold text-muted">
+                  {PIPELINE_CARD.meetingTag(
                     new Date(lead.meeting_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
                   )}
+                </span>
+              )}
+              {lead.pipeline_stage === "proposal_sent" && (
+                <span className="ml-2 rounded-[6px] bg-input px-1.5 py-0.5 text-[0.75rem] font-semibold text-muted">
+                  {PIPELINE_CARD.proposalTag}
                 </span>
               )}
               {/* Ali (Sales Rep, 2026-09-15): leads couldn't be verified
@@ -337,7 +379,8 @@ export function PipelineView({
             </span>
           }
         >
-          <div className="grid grid-cols-[2fr_2fr_1.5fr] gap-6">
+          {/* Two columns now (PipelineSummary replaced ManageDeal's own two-panel fragment, Phase 4). */}
+          <div className="grid grid-cols-[1.6fr_1fr] gap-6">
             <div className="flex flex-col gap-3">
               <h4 className="text-[1rem] font-semibold">🏢 Company &amp; Contact</h4>
               {lead.company_website && (
@@ -373,7 +416,7 @@ export function PipelineView({
               )}
             </div>
 
-            <ManageDeal lead={lead} />
+            <PipelineSummary lead={lead} />
           </div>
         </LeadCard>
       ))}

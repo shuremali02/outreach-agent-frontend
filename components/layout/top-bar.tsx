@@ -11,7 +11,7 @@ import { NotificationBell } from "./notification-bell";
 import { UserMenu } from "./user-menu";
 
 /** Routes where a global search actually filters something. */
-const SEARCHABLE = ["/pipeline", "/contacts", "/cold-call"];
+const SEARCHABLE = ["/pipeline", "/contacts", "/cold-call", "/projects"];
 
 export function TopBar() {
   const pathname = usePathname();

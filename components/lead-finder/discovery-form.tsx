@@ -196,7 +196,7 @@ export function DiscoveryForm() {
           {source === "maps" ? MAPS_FINDER.note : QUALIFY.note}
         </p>
 
-        <Button type="submit" variant="primary" disabled={running || !ready}>
+        <Button type="submit" variant="primary" loading={running} disabled={!ready}>
           {running ? QUALIFY.running : source === "maps" ? MAPS_FINDER.button : LEAD_FINDER.button}
         </Button>
 

@@ -2,13 +2,13 @@
 
 import * as Dialog from "@radix-ui/react-dialog";
 import { useState } from "react";
-import { useUpdateLead } from "@/hooks/use-leads";
+import { useMeetingOutcome, useNeedsEmail } from "@/hooks/use-leads";
 import { NotesPanel } from "@/components/leads/notes-panel";
 import { PhoneNumberList } from "@/components/leads/phone-number-list";
 import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
-import { MEETING_OUTCOMES, STAGE_LABELS, TOASTS, countryLabel } from "@/lib/constants";
+import { EMAIL_SEND, MEETING_OUTCOMES, STAGE_LABELS, TOASTS, countryLabel } from "@/lib/constants";
 import { currency, displayDomain, externalUrl, hasUsableEmail } from "@/lib/format";
 import type { Lead } from "@/types";
 
@@ -37,7 +37,12 @@ export function MeetingDetailDialog({
   trigger: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
-  const update = useUpdateLead();
+  // A dedicated endpoint, not a plain PATCH (structure-plan.md Phase 5) -- "lost" (Not Interested) must
+  // ALSO hide the lead everywhere, which UpdateLeadInput deliberately cannot do.
+  const update = useMeetingOutcome();
+  // "Email Send" -- same flag as Cold Call Desk's button (structure-plan.md Phase 3/4), added here too
+  // per the user ("whn pr yeh send email wala button bhi add krdo meetings form me").
+  const needsEmail = useNeedsEmail();
   const confirm = useConfirm();
   const toast = useToast();
 
@@ -50,7 +55,7 @@ export function MeetingDetailDialog({
     });
     if (!ok) return;
     update.mutate(
-      { id: lead.id, input: { pipeline_stage: outcome.stage } },
+      { id: lead.id, stage: outcome.stage },
       {
         onSuccess: () => {
           toast.success(outcome.done(lead.company_name));
@@ -134,7 +139,8 @@ export function MeetingDetailDialog({
                     key={outcome.stage}
                     variant="secondary"
                     size="sm"
-                    disabled={update.isPending || lead.pipeline_stage === outcome.stage}
+                    loading={update.isPending}
+                    disabled={lead.pipeline_stage === outcome.stage}
                     onClick={() => setOutcome(outcome)}
                   >
                     {outcome.label}
@@ -144,6 +150,30 @@ export function MeetingDetailDialog({
               {update.isError && (
                 <p className="mt-2 text-[0.78rem] text-danger">
                   {update.error instanceof Error ? update.error.message : "Failed to save this outcome. Try again."}
+                </p>
+              )}
+              <Button
+                variant="secondary"
+                size="sm"
+                block
+                className="mt-2"
+                title={EMAIL_SEND.help}
+                loading={needsEmail.isPending}
+                onClick={() =>
+                  needsEmail.mutate(lead.id, {
+                    onSuccess: () => {
+                      toast.success(EMAIL_SEND.sent(lead.company_name));
+                      setOpen(false);
+                    },
+                    onError: (e) => toast.error(e instanceof Error ? e.message : EMAIL_SEND.failed),
+                  })
+                }
+              >
+                {EMAIL_SEND.button}
+              </Button>
+              {needsEmail.isError && (
+                <p className="mt-2 text-[0.78rem] text-danger">
+                  {needsEmail.error instanceof Error ? needsEmail.error.message : EMAIL_SEND.failed}
                 </p>
               )}
             </div>

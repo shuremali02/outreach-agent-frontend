@@ -190,7 +190,7 @@ export function ContactsPanel({
         size="sm"
         block
         onClick={() => findPeople.mutate()}
-        disabled={findPeople.isPending}
+        loading={findPeople.isPending}
       >
         {findPeople.isPending ? "Searching…" : "🎯 Find decision makers"}
       </Button>
@@ -301,6 +301,7 @@ export function ContactsPanel({
                         // .mutate()), so it doesn't look like every contact
                         // is being looked up at once.
                         disabled={reveal.isPending}
+                        loading={reveal.isPending && reveal.variables === c.id}
                         title="Spend one SignalHire credit for a direct email and phone"
                       >
                         {reveal.isPending && reveal.variables === c.id ? "Revealing…" : "🔓 Reveal"}
@@ -319,6 +320,7 @@ export function ContactsPanel({
                           findLinkedIn.mutate(c.id);
                         }}
                         disabled={findLinkedIn.isPending}
+                        loading={findLinkedIn.isPending && findLinkedIn.variables === c.id}
                         title={CONTACT_LOOKUP.findLinkedInHelp}
                       >
                         {findLinkedIn.isPending && findLinkedIn.variables === c.id
@@ -342,6 +344,7 @@ export function ContactsPanel({
                             findPhone.mutate(c.id);
                           }}
                           disabled={findPhone.isPending}
+                          loading={findPhone.isPending && findPhone.variables === c.id}
                           title="Look up a mobile phone number via FullEnrich (up to 10 credits, only charged on a match)"
                         >
                           {findPhone.isPending && findPhone.variables === c.id
