@@ -36,6 +36,7 @@ function NeedsFollowUpCard({ lead, calendarLink }: { lead: Lead; calendarLink: s
 
   return (
     <LeadCard
+      lead={lead}
       summary={
         <span className="text-[0.95rem]">
           🔁 <strong>{lead.company_name}</strong>

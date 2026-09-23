@@ -819,6 +819,8 @@ export const PIPELINE_VIEW_FILTER = {
   meeting: "🎯 Meetings",
   email: "✉️ Email Send",
   proposal: "📄 Proposal Sent",
+  // "Star" priority mark -- user request, 2026-09-23.
+  starred: "⭐ Starred",
 } as const;
 
 export const PIPELINE_CARD = {

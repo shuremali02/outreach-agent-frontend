@@ -128,7 +128,13 @@ export function AddLeadPopover() {
                 // dropped silently rather than blocking submit.
                 extra_contacts: extraContacts
                   .filter((r) => r.name.trim())
-                  .map(({ _rowId, ...rest }) => rest),
+                  .map((r): ExtraContactInput => ({
+                    name: r.name,
+                    role: r.role,
+                    email: r.email,
+                    phone: r.phone,
+                    linkedin: r.linkedin,
+                  })),
               });
             }}
             className="flex flex-col gap-3"

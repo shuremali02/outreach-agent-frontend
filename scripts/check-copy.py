@@ -403,6 +403,10 @@ ALLOWED = {
     # Desk's "closed" disposition, since both set the same proposal_sent stage.
     "📄 Proposal Send",
     "Yes, mark Proposal Send",
+    # Compact on/off theme switch in the top bar, replacing the sidebar's two big Light/Dark buttons
+    # (user, 2026-09-23). No Streamlit analogue for either wording.
+    "Switch to dark theme",
+    "Switch to light theme",
     # Leads page's "Active Sector Overview" card replaced with a "Today's Leads" / "This Week's Leads"
     # block (user, 2026-09-22 -- "yeh jo hai is ko hata do... todays leads or this week leads ki block
     # bana kr woh show krwao"). No Streamlit analogue for either wording.
@@ -412,6 +416,11 @@ ALLOWED = {
     # booked or project closed yeh action yhn bhi hone chahiye"). The other 3 actions reuse
     # MEETING_OUTCOMES' existing labels/copy verbatim; only this one (opens the date/time prompt) is new.
     "🎯 Meeting Booked",
+    # "Star" priority mark (user, 2026-09-23 -- "star mark kr dy... yeh sirf mark hai koi action nhi").
+    # No Streamlit analogue. LeadCard's toggle button title/aria-label text.
+    "Mark as priority",
+    "Mark this lead as priority",
+    "Unstar this lead",
 }
 
 CLASS_HINT = re.compile(

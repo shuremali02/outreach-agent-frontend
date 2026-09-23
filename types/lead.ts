@@ -92,6 +92,9 @@ export interface Lead {
   /** ISO datetime, "" = no callback scheduled. Set by the Callback Scheduled outcome's date/time prompt --
    * separate from meeting_at, never shown on the Meetings calendar. */
   callback_at: string;
+  /** ISO datetime, "" = not starred. "Star" priority mark -- tag only, never changes pipeline_stage.
+   * User request, 2026-09-23. */
+  starred_at: string;
   signalhire_uid: string;
   /** URLs the discovery agent actually read, so a lead can be audited. */
   discovery_citations: string[];

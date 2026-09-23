@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLeads } from "@/hooks/use-leads";
 import { Battlecard } from "./battlecard";
 // Re-enabled: the CSV Import tab is how a spreadsheet gets uploaded +
@@ -11,7 +12,7 @@ import { Battlecard } from "./battlecard";
 import { IngestDrawer } from "@/components/ingest/ingest-drawer";
 import { TickerCard } from "@/components/metrics/ticker-card";
 import { Button } from "@/components/ui/button";
-import { Field, Select } from "@/components/ui/input";
+import { Field, Input, Select } from "@/components/ui/input";
 import {
   CALL_WINDOW,
   ALL_CATEGORIES,
@@ -28,6 +29,11 @@ import { currency, leadSource, localClock, num } from "@/lib/format";
 import type { Lead } from "@/types";
 import { EMPTY_STATES } from "@/lib/constants";
 
+// Module-level, not component-scoped: a `new Set(...)` recreated every render was never referentially
+// stable, so the lint rule correctly flagged it as unusable in a useMemo dependency array -- adding it
+// would have defeated the memo (it "changes" every render). The set of outcomes itself never changes.
+const TRIED_OUTCOMES = new Set(["voicemail", "hang_up"]);
+
 /** "direct" (a person's verified line) | "switchboard" (business line) | "none". */
 function lineOf(l: Lead): string {
   if (!l.contact_phone) return "none";
@@ -38,6 +44,36 @@ function lineOf(l: Lead): string {
 
 export function ColdCallView({ initialLeads, q }: { initialLeads: Lead[]; q: string }) {
   const { data: allLeads = [] } = useLeads({ q }, initialLeads);
+
+  // Search moved here from the shared TopBar (user, 2026-09-23: "jo yeh search bar hai isko iski jaga
+  // yahan neechy ly ao") -- same debounced ?q= URL-sync logic top-bar.tsx used for this route, just
+  // rendered next to "Re-sort by local time" instead. top-bar.tsx no longer renders it on /cold-call.
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const urlQ = searchParams.get("q") ?? "";
+  const [search, setSearch] = useState(urlQ);
+  const [lastUrlQ, setLastUrlQ] = useState(urlQ);
+  if (urlQ !== lastUrlQ) {
+    setLastUrlQ(urlQ);
+    setSearch(urlQ);
+  }
+  const searchParamsRef = useRef(searchParams);
+  useEffect(() => {
+    searchParamsRef.current = searchParams;
+  });
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const params = new URLSearchParams(searchParamsRef.current.toString());
+      if (search) params.set("q", search);
+      else params.delete("q");
+      const qs = params.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    }, 300);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, pathname]);
+
   const [category, setCategory] = useState(ALL_CATEGORIES);
   const [country, setCountry] = useState(ALL_COUNTRIES);
   // Derived from source_prompt (leadSource()), not a real backend filter --
@@ -106,7 +142,6 @@ export function ColdCallView({ initialLeads, q }: { initialLeads: Lead[]; q: str
   // one waiting longest surfaces first, ready to try again); everything else on the desk (never called,
   // or re-sent from Contacts after some other outcome) is "New". New leads sort newest-first so the
   // latest batch is always at the top.
-  const triedOutcomes = new Set(["voicemail", "hang_up"]);
   const noAnswerLeads = useMemo(
     () =>
       filtered
@@ -117,14 +152,14 @@ export function ColdCallView({ initialLeads, q }: { initialLeads: Lead[]; q: str
   const triedLeads = useMemo(
     () =>
       filtered
-        .filter((l) => triedOutcomes.has(l.last_call_outcome))
+        .filter((l) => TRIED_OUTCOMES.has(l.last_call_outcome))
         .sort((a, b) => a.updated_at.localeCompare(b.updated_at)),
     [filtered],
   );
   const newLeads = useMemo(
     () =>
       filtered
-        .filter((l) => l.last_call_outcome !== "no_answer" && !triedOutcomes.has(l.last_call_outcome))
+        .filter((l) => l.last_call_outcome !== "no_answer" && !TRIED_OUTCOMES.has(l.last_call_outcome))
         .sort((a, b) => rank(a) - rank(b) || b.created_at.localeCompare(a.created_at)),
     [filtered, rank],
   );
@@ -219,7 +254,15 @@ export function ColdCallView({ initialLeads, q }: { initialLeads: Lead[]; q: str
           </Select>
         </Field>
       </div>
-      <div className="mb-4">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <Input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search company, contact, email…"
+          aria-label="Search leads"
+          className="w-[28rem]"
+        />
         <Button
           variant="secondary"
           size="sm"

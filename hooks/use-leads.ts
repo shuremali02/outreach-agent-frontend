@@ -105,6 +105,15 @@ export function useMeetingOutcome() {
   });
 }
 
+/** "Star" priority mark -- toggle, tag only, see lib/api/leads.ts toggleStar(). User request, 2026-09-23. */
+export function useToggleStar() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (id: number) => leadsApi.toggleStar(id),
+    onSuccess: invalidate,
+  });
+}
+
 /** "➕ Add Note" -- always appends server-side, see lib/api/leads.ts addNote(). */
 export function useAddNote() {
   const invalidate = useInvalidate();

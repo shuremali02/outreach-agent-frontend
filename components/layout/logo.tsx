@@ -14,13 +14,12 @@ export function LogoMark({ size = 30 }: { size?: number }) {
   );
 }
 
-/** The mark + wordmark from the Streamlit sidebar. */
+/** The mark + wordmark from the Streamlit sidebar. "/ studio" removed (user, 2026-09-23). */
 export function Logo() {
   return (
     <div className="logo-container">
       <LogoMark />
       <span className="logo-text">elipse</span>
-      <span className="logo-sub">/ studio</span>
     </div>
   );
 }

@@ -25,6 +25,7 @@ export function PriorityOutreachList({ initialLeads }: { initialLeads: Lead[] })
       {top.map((lead) => (
         <LeadCard
           key={lead.id}
+          lead={lead}
           summary={
             <span className="text-[0.95rem]">
               <strong>{lead.company_name}</strong>

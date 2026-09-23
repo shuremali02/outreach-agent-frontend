@@ -35,6 +35,8 @@ export const leadsApi = {
     api.post<Lead>(`/leads/${id}/call-picked-by`, { value }),
   /** "Email Send" button -- see app/api/leads.py needs_email(). structure-plan.md Phase 3/4. */
   markNeedsEmail: (id: number) => api.post<Lead>(`/leads/${id}/needs-email`),
+  /** "Star" priority mark -- toggle, tag only, see app/api/leads.py star(). User request, 2026-09-23. */
+  toggleStar: (id: number) => api.post<Lead>(`/leads/${id}/star`, {}),
   /** Meetings detail popup's 4-way picker -- see app/api/leads.py meeting_outcome(). structure-plan.md Phase 5. */
   meetingOutcome: (id: number, stage: "won" | "proposal_sent" | "followup_due" | "lost") =>
     api.post<Lead>(`/leads/${id}/meeting-outcome`, { stage }),

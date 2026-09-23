@@ -30,7 +30,7 @@ import {
   TOASTS,
   countryLabel,
 } from "@/lib/constants";
-import { addedAt, currency, externalUrl, displayDomain, hasUsableEmail, leadSource } from "@/lib/format";
+import { addedAt, currency, externalUrl, displayDomain, hasUsableEmail, leadSource, shortDate } from "@/lib/format";
 import type { Lead } from "@/types";
 import { EMPTY_STATES } from "@/lib/constants";
 
@@ -232,7 +232,11 @@ export function PipelineView({
   // Source (leadSource(), derived from source_prompt) isn't a backend column, filtered client-side same
   // as before.
   const [source, setSource] = useState(ALL_SOURCES);
-  const [view, setView] = useState<"all" | "callback" | "meeting" | "email" | "proposal">("all");
+  const [view, setView] = useState<"all" | "callback" | "meeting" | "email" | "proposal" | "starred">("all");
+  // Date filter (user, 2026-09-23) -- "pipeline me last touched wali lead dekhyngy". updated_at, not
+  // created_at: a lead already in Pipeline moved there by being worked, so "last touched" (when a
+  // disposition/edit last changed it) is what's meaningful here, not when it was originally created.
+  const [lastTouched, setLastTouched] = useState("");
 
   function setParam(key: string, value: string) {
     const params = new URLSearchParams(searchParams.toString());
@@ -269,9 +273,11 @@ export function PipelineView({
             (view === "callback" && Boolean(l.callback_at)) ||
             (view === "meeting" && l.pipeline_stage === "meeting_booked") ||
             (view === "email" && l.pipeline_stage === "contacted") ||
-            (view === "proposal" && l.pipeline_stage === "proposal_sent")),
+            (view === "proposal" && l.pipeline_stage === "proposal_sent") ||
+            (view === "starred" && Boolean(l.starred_at))) &&
+          (!lastTouched || shortDate(l.updated_at) === lastTouched),
       ),
-    [inScope, source, view],
+    [inScope, source, view, lastTouched],
   );
 
   // Two blocks (user, 2026-09-22, "pipeline me do cards add krny hain leads page ki trhn... jese
@@ -295,7 +301,7 @@ export function PipelineView({
         <MetricCard label="Interested" value={currency(wonValue)} />
       </div>
 
-      <div className="mb-4 grid grid-cols-4 gap-4">
+      <div className="mb-4 grid grid-cols-5 gap-4">
         <Field label={PIPELINE_VIEW_FILTER.label}>
           <Select value={view} onChange={(e) => setView(e.target.value as typeof view)}>
             <option value="all">{PIPELINE_VIEW_FILTER.all}</option>
@@ -303,6 +309,7 @@ export function PipelineView({
             <option value="meeting">{PIPELINE_VIEW_FILTER.meeting}</option>
             <option value="email">{PIPELINE_VIEW_FILTER.email}</option>
             <option value="proposal">{PIPELINE_VIEW_FILTER.proposal}</option>
+            <option value="starred">{PIPELINE_VIEW_FILTER.starred}</option>
           </Select>
         </Field>
         <Field label="Category Filter">
@@ -336,6 +343,9 @@ export function PipelineView({
             ))}
           </Select>
         </Field>
+        <Field label="Last Touched">
+          <Input type="date" value={lastTouched} onChange={(e) => setLastTouched(e.target.value)} />
+        </Field>
       </div>
 
       {leads.length === 0 && <p className="text-muted">{EMPTY_STATES.pipeline}</p>}
@@ -343,6 +353,7 @@ export function PipelineView({
       {leads.map((lead) => (
         <LeadCard
           key={lead.id}
+          lead={lead}
           summary={
             <span className="text-[0.95rem]">
               💼 <strong>{lead.company_name}</strong>

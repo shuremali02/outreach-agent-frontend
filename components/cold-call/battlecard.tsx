@@ -342,7 +342,7 @@ export function Battlecard({
     // toggle) so a rep can tuck away a lead they're not calling next without
     // losing their place in the queue -- previously this whole card had no
     // collapse at all.
-    <LeadCard summary={summary} defaultOpen>
+    <LeadCard lead={lead} summary={summary} defaultOpen>
       <div className="grid grid-cols-[1.2fr_2fr] gap-6">
         {/* Dialer column */}
         <div className="flex flex-col gap-3">

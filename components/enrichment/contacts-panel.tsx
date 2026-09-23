@@ -106,8 +106,9 @@ export function ContactsPanel({
   // away panel never fires a stray invalidate for a query nothing watches.
   const revealTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
   useEffect(() => {
+    const timers = revealTimers.current;
     return () => {
-      revealTimers.current.forEach(clearTimeout);
+      timers.forEach(clearTimeout);
     };
   }, []);
 
