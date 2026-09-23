@@ -9,6 +9,7 @@ import { useSessionUser } from "@/hooks/use-session-user";
 import { NOTIFICATIONS } from "@/lib/constants";
 import { commentTime } from "@/lib/format";
 import { useToast } from "@/components/ui/toast";
+import { Loader } from "@/components/ui/loader";
 import type { AppNotification } from "@/types";
 
 const POLL_MS = 30_000;
@@ -129,8 +130,9 @@ export function NotificationBell() {
                 type="button"
                 onClick={() => markAll.mutate()}
                 disabled={markAll.isPending}
-                className="cursor-pointer text-[0.8rem] font-semibold text-accent hover:underline"
+                className="inline-flex cursor-pointer items-center gap-1 text-[0.8rem] font-semibold text-accent hover:underline disabled:cursor-default"
               >
+                {markAll.isPending && <Loader className="h-3 w-3" />}
                 {NOTIFICATIONS.markAll}
               </button>
             )}

@@ -8,10 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AddLeadPopover } from "./add-lead-popover";
 import { NotificationBell } from "./notification-bell";
+import { ThemeSwitch } from "./theme-switch";
 import { UserMenu } from "./user-menu";
 
-/** Routes where a global search actually filters something. */
-const SEARCHABLE = ["/pipeline", "/contacts", "/cold-call"];
+/** Routes where a global search actually filters something. Cold Call Desk moved its search box down
+ * next to "Re-sort by local time" instead (user, 2026-09-23) -- not rendered up here any more. */
+const SEARCHABLE = ["/pipeline", "/contacts", "/projects"];
 
 export function TopBar() {
   const pathname = usePathname();
@@ -95,6 +97,7 @@ export function TopBar() {
           {refreshing ? "⏳ Refreshing…" : "🔄 Refresh"}
         </Button>
         <AddLeadPopover />
+        <ThemeSwitch />
         <NotificationBell />
         <UserMenu />
       </div>

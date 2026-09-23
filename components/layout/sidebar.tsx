@@ -3,12 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSyncExternalStore } from "react";
-import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { NAV_ITEMS, SIDEBAR_TOGGLE } from "@/lib/constants";
 import { useMetrics } from "@/hooks/use-metrics";
 import { cn } from "@/lib/utils";
 import { Logo, LogoMark } from "./logo";
-import { ThemeToggle } from "./theme-toggle";
 import { SystemStatusPanel } from "./system-status";
 import type { CrmMetrics, SystemStatus } from "@/types";
 
@@ -77,8 +76,8 @@ export function Sidebar({
         collapsed ? "w-[76px] px-2" : "w-[280px] px-4",
       )}
     >
-      <div className={cn("mb-2 flex items-center", collapsed ? "justify-center" : "justify-between")}>
-        {collapsed ? <LogoMark /> : <Logo />}
+      {/* Toggle moved above the logo, simple chevron arrows instead of the panel icons (user, 2026-09-23). */}
+      <div className={cn("mb-2 flex flex-col gap-2", collapsed && "items-center")}>
         <button
           type="button"
           onClick={toggle}
@@ -86,11 +85,13 @@ export function Sidebar({
           aria-expanded={!collapsed}
           title={collapsed ? SIDEBAR_TOGGLE.expand : SIDEBAR_TOGGLE.collapse}
           className={cn(
-            "cursor-pointer rounded-[8px] border border-border bg-card p-2 text-muted hover:border-accent hover:text-accent",
+            "cursor-pointer text-muted hover:text-accent",
+            collapsed ? "self-center" : "self-start",
           )}
         >
-          {collapsed ? <PanelLeftOpen className="h-5 w-5" aria-hidden /> : <PanelLeftClose className="h-5 w-5" aria-hidden />}
+          {collapsed ? <ChevronRight className="h-5 w-5" aria-hidden /> : <ChevronLeft className="h-5 w-5" aria-hidden />}
         </button>
+        {collapsed ? <LogoMark /> : <Logo />}
       </div>
 
       <nav className="flex flex-col gap-2">
@@ -126,14 +127,10 @@ export function Sidebar({
         })}
       </nav>
 
-      {/* Preferences + System Status need the width; collapsed = navigation only. */}
+      {/* System Status needs the width; collapsed = navigation only. Theme toggle moved to the top bar
+          (user, 2026-09-23) -- these two big buttons took too much sidebar space for an on/off choice. */}
       {!collapsed && (
         <>
-          <hr className="my-5 border-border" />
-
-          <Eyebrow>Preferences</Eyebrow>
-          <ThemeToggle />
-
           <hr className="my-5 border-border" />
 
           <Eyebrow>System Status</Eyebrow>

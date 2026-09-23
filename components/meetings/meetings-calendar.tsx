@@ -77,8 +77,8 @@ function MeetingEntry({ lead }: { lead: Lead }) {
 
 /**
  * Month-grid view of every meeting ever booked, regardless of current
- * pipeline_stage. Editing a meeting's time still happens from the Pipeline
- * lead card (components/pipeline/pipeline-view.tsx ManageDeal); picking an
+ * pipeline_stage. Editing a meeting's time now happens from Contacts (structure-plan.md Phase 4 moved
+ * all lead editing there); picking an
  * outcome (Client Closed / Not Interested / Follow-up / Proposal Sent) can
  * happen right here, and no longer removes the meeting from the grid --
  * confirmed live 2026-09-18: marking a meeting "Done" used to move it out of

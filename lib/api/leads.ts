@@ -26,9 +26,25 @@ export const leadsApi = {
     rep_notes = "",
     meeting_at?: string,
     mention?: MentionPayload,
-  ) => api.post<Lead>(`/leads/${id}/outcome`, { outcome, rep_notes, meeting_at, ...mention }),
+    callback_at?: string,
+  ) => api.post<Lead>(`/leads/${id}/outcome`, { outcome, rep_notes, meeting_at, callback_at, ...mention }),
   /** "✅ Mark Email Sent" -- see app/api/leads.py mark_email_sent(). */
   markEmailSent: (id: number) => api.post<void>(`/leads/${id}/email-sent`),
+  /** "Call picked by" row -- tag only, see app/api/leads.py call_picked_by(). structure-plan.md Phase 3. */
+  callPickedBy: (id: number, value: "receptionist" | "decision_maker" | "team_member") =>
+    api.post<Lead>(`/leads/${id}/call-picked-by`, { value }),
+  /** "Email Send" button -- see app/api/leads.py needs_email(). structure-plan.md Phase 3/4. */
+  markNeedsEmail: (id: number) => api.post<Lead>(`/leads/${id}/needs-email`),
+  /** "Star" priority mark -- toggle, tag only, see app/api/leads.py star(). User request, 2026-09-23. */
+  toggleStar: (id: number) => api.post<Lead>(`/leads/${id}/star`, {}),
+  /** Meetings detail popup's 4-way picker -- see app/api/leads.py meeting_outcome(). structure-plan.md Phase 5. */
+  meetingOutcome: (id: number, stage: "won" | "proposal_sent" | "followup_due" | "lost") =>
+    api.post<Lead>(`/leads/${id}/meeting-outcome`, { stage }),
+  /**
+   * "Send to Cold Call Desk" on Contacts -- structure-plan.md Phase 2. Always allowed; the desk's own
+   * list is everything with sent_to_desk_at set (see crud.send_to_desk()). Idempotent to re-send.
+   */
+  sendToDesk: (id: number) => api.post<Lead>(`/leads/${id}/send-to-desk`),
   /**
    * "➕ Add Note" -- always APPENDS server-side (see app/crud/leads.py
    * add_note()), never overwrites lead.notes wholesale. Replaces the old

@@ -1,24 +1,22 @@
-import { SectionHeader } from "@/components/common/section-header";
 import { MeetingsCalendar } from "@/components/meetings/meetings-calendar";
-import { leadsApi } from "@/lib/api";
-import { PAGE_HEADERS } from "@/lib/constants";
+import { NeedsFollowUpList } from "@/components/meetings/needs-followup-list";
+import { leadsApi, metricsApi } from "@/lib/api";
 
-// See follow-ups/page.tsx -- no dynamic API here either, so this would fail
+// See today/page.tsx -- no dynamic API here either, so this would fail
 // `next build` the same way once that page's error is fixed.
 export const dynamic = "force-dynamic";
 
 export default async function MeetingsPage() {
   // No stage filter -- the calendar shows every meeting ever booked, not
   // just ones still sitting in meeting_booked (see meetings-calendar.tsx).
-  const leads = await leadsApi.list({});
+  const [leads, status] = await Promise.all([leadsApi.list({}), metricsApi.status()]);
 
   return (
     <div>
-      <SectionHeader
-        eyebrow={PAGE_HEADERS.meetings.eyebrow}
-        title={PAGE_HEADERS.meetings.title}
-        subtitle={PAGE_HEADERS.meetings.subtitle}
-      />
+      {/* No SectionHeader here (user, 2026-09-22: "yeh hata do meting tab ki heading humyn nhi rkhni").
+          structure-plan.md Phase 5: the only surviving piece of the old Follow-ups page, above the
+          calendar as confirmed. */}
+      <NeedsFollowUpList initialLeads={leads} calendarLink={status.calendar_link} />
       <MeetingsCalendar initialLeads={leads} />
     </div>
   );

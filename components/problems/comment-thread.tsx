@@ -70,7 +70,7 @@ export function CommentThread({ problemId, count }: { problemId: number; count: 
                 aria-label="Comment"
                 maxLength={5000}
               />
-              <Button type="submit" variant="secondary" size="sm" disabled={add.isPending || !text.trim()}>
+              <Button type="submit" variant="secondary" size="sm" loading={add.isPending} disabled={!text.trim()}>
                 💬 Post Response
               </Button>
             </div>

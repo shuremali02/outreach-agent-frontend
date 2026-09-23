@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLeads } from "@/hooks/use-leads";
 import { Battlecard } from "./battlecard";
 // Re-enabled: the CSV Import tab is how a spreadsheet gets uploaded +
@@ -11,9 +12,8 @@ import { Battlecard } from "./battlecard";
 import { IngestDrawer } from "@/components/ingest/ingest-drawer";
 import { TickerCard } from "@/components/metrics/ticker-card";
 import { Button } from "@/components/ui/button";
-import { Field, Select } from "@/components/ui/input";
+import { Field, Input, Select } from "@/components/ui/input";
 import {
-  CALL_QUEUE_STAGES,
   CALL_WINDOW,
   ALL_CATEGORIES,
   ALL_COUNTRIES,
@@ -23,10 +23,16 @@ import {
   COUNTRIES,
   LEAD_SOURCE_LABELS,
   COLD_CALL_QUEUE,
+  LAST_TOUCH,
 } from "@/lib/constants";
 import { currency, leadSource, localClock, num } from "@/lib/format";
 import type { Lead } from "@/types";
 import { EMPTY_STATES } from "@/lib/constants";
+
+// Module-level, not component-scoped: a `new Set(...)` recreated every render was never referentially
+// stable, so the lint rule correctly flagged it as unusable in a useMemo dependency array -- adding it
+// would have defeated the memo (it "changes" every render). The set of outcomes itself never changes.
+const TRIED_OUTCOMES = new Set(["voicemail", "hang_up"]);
 
 /** "direct" (a person's verified line) | "switchboard" (business line) | "none". */
 function lineOf(l: Lead): string {
@@ -38,6 +44,36 @@ function lineOf(l: Lead): string {
 
 export function ColdCallView({ initialLeads, q }: { initialLeads: Lead[]; q: string }) {
   const { data: allLeads = [] } = useLeads({ q }, initialLeads);
+
+  // Search moved here from the shared TopBar (user, 2026-09-23: "jo yeh search bar hai isko iski jaga
+  // yahan neechy ly ao") -- same debounced ?q= URL-sync logic top-bar.tsx used for this route, just
+  // rendered next to "Re-sort by local time" instead. top-bar.tsx no longer renders it on /cold-call.
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const urlQ = searchParams.get("q") ?? "";
+  const [search, setSearch] = useState(urlQ);
+  const [lastUrlQ, setLastUrlQ] = useState(urlQ);
+  if (urlQ !== lastUrlQ) {
+    setLastUrlQ(urlQ);
+    setSearch(urlQ);
+  }
+  const searchParamsRef = useRef(searchParams);
+  useEffect(() => {
+    searchParamsRef.current = searchParams;
+  });
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const params = new URLSearchParams(searchParamsRef.current.toString());
+      if (search) params.set("q", search);
+      else params.delete("q");
+      const qs = params.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    }, 300);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, pathname]);
+
   const [category, setCategory] = useState(ALL_CATEGORIES);
   const [country, setCountry] = useState(ALL_COUNTRIES);
   // Derived from source_prompt (leadSource()), not a real backend filter --
@@ -64,15 +100,13 @@ export function ColdCallView({ initialLeads, q }: { initialLeads: Lead[]; q: str
     setDismissed((prev) => (prev.has(leadId) ? prev : new Set(prev).add(leadId)));
   }
 
-  /** app.py: draft_ready|followup_due, excluding dead numbers. */
-  const queue = useMemo(
-    () =>
-      allLeads.filter(
-        (l) =>
-          CALL_QUEUE_STAGES.includes(l.pipeline_stage) && l.phone_status !== "dead_disconnected",
-      ),
-    [allLeads],
-  );
+  /**
+   * structure-plan.md Phase 3 -- the desk's own membership rule: a lead is here once Contacts explicitly
+   * sends it (sent_to_desk_at), full stop. Not stage-based any more. apply_call_outcome() (backend)
+   * clears sent_to_desk_at the moment a call outcome or Email Send takes a lead elsewhere (Wrong Number
+   * -> Contacts, Callback/Meeting/Closed -> Pipeline), so this list only ever needs the one field.
+   */
+  const queue = useMemo(() => allLeads.filter((l) => Boolean(l.sent_to_desk_at)), [allLeads]);
 
   const filtered = useMemo(
     () =>
@@ -103,24 +137,30 @@ export function ColdCallView({ initialLeads, q }: { initialLeads: Lead[]; q: str
     };
   }, [sortAt]);
 
-  // Split, not one flat list: a lead already called once (voicemail/callback
-  // -> followup_due) stays in this same queue forever, mixed in with leads
-  // that have never been called (draft_ready) -- with a large queue that
-  // makes a handful of brand-new leads impossible to spot. New leads sort
-  // newest-first so the latest batch is always at the top; follow-ups sort
-  // oldest-touched-first so the longest-overdue callback surfaces first.
+  // Three groups, not one flat list -- structure-plan.md Phase 3. No Answer stays in its normal
+  // (middle) position; Voicemail/Hang Up sink to the bottom, oldest-touched first within that group (the
+  // one waiting longest surfaces first, ready to try again); everything else on the desk (never called,
+  // or re-sent from Contacts after some other outcome) is "New". New leads sort newest-first so the
+  // latest batch is always at the top.
+  const noAnswerLeads = useMemo(
+    () =>
+      filtered
+        .filter((l) => l.last_call_outcome === "no_answer")
+        .sort((a, b) => rank(a) - rank(b) || a.updated_at.localeCompare(b.updated_at)),
+    [filtered, rank],
+  );
+  const triedLeads = useMemo(
+    () =>
+      filtered
+        .filter((l) => TRIED_OUTCOMES.has(l.last_call_outcome))
+        .sort((a, b) => a.updated_at.localeCompare(b.updated_at)),
+    [filtered],
+  );
   const newLeads = useMemo(
     () =>
       filtered
-        .filter((l) => l.pipeline_stage === "draft_ready")
+        .filter((l) => l.last_call_outcome !== "no_answer" && !TRIED_OUTCOMES.has(l.last_call_outcome))
         .sort((a, b) => rank(a) - rank(b) || b.created_at.localeCompare(a.created_at)),
-    [filtered, rank],
-  );
-  const followUps = useMemo(
-    () =>
-      filtered
-        .filter((l) => l.pipeline_stage === "followup_due")
-        .sort((a, b) => rank(a) - rank(b) || a.updated_at.localeCompare(b.updated_at)),
     [filtered, rank],
   );
 
@@ -214,7 +254,15 @@ export function ColdCallView({ initialLeads, q }: { initialLeads: Lead[]; q: str
           </Select>
         </Field>
       </div>
-      <div className="mb-4">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <Input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search company, contact, email…"
+          aria-label="Search leads"
+          className="w-[28rem]"
+        />
         <Button
           variant="secondary"
           size="sm"
@@ -245,12 +293,23 @@ export function ColdCallView({ initialLeads, q }: { initialLeads: Lead[]; q: str
         </div>
       )}
 
-      {followUps.length > 0 && (
+      {noAnswerLeads.length > 0 && (
+        <div className="mb-4">
+          <h3 className="mb-2 text-[1.05rem] font-semibold">
+            {COLD_CALL_QUEUE.followUpHeading(noAnswerLeads.length)}
+          </h3>
+          {noAnswerLeads.map((lead) => (
+            <Battlecard key={lead.id} lead={lead} onActionTaken={dismiss} />
+          ))}
+        </div>
+      )}
+
+      {triedLeads.length > 0 && (
         <div>
           <h3 className="mb-2 text-[1.05rem] font-semibold">
-            {COLD_CALL_QUEUE.followUpHeading(followUps.length)}
+            {LAST_TOUCH.lowPriorityHeading(triedLeads.length)}
           </h3>
-          {followUps.map((lead) => (
+          {triedLeads.map((lead) => (
             <Battlecard key={lead.id} lead={lead} onActionTaken={dismiss} />
           ))}
         </div>

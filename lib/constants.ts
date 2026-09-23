@@ -4,7 +4,9 @@ import type { LeadSource, PipelineStage } from "@/types";
 export const PIPELINE_STAGES: { id: PipelineStage; label: string }[] = [
   { id: "new_lead", label: "New Discovery" },
   { id: "draft_ready", label: "Draft Ready" },
-  { id: "contacted", label: "Outreach Sent" },
+  // Renamed from "Outreach Sent" -- structure-plan.md Phase 3/4: this is now where the new "Email
+  // Send" button (Cold Call Desk) lands a lead, same stage id ("contacted"), new label everywhere.
+  { id: "contacted", label: "Email Send" },
   { id: "followup_due", label: "Follow-up Due" },
   { id: "meeting_booked", label: "Meeting Booked" },
   { id: "proposal_sent", label: "Proposal Sent" },
@@ -235,15 +237,25 @@ export const SIDEBAR_TOGGLE = {
 } as const;
 
 /** Sidebar navigation — replaces the st.session_state["active_tab"] dispatch. */
+// Order requested by the user 2026-09-22 ("tabs ka format change kro"): Today and Sales Terminal stay
+// first, then Leads, Cold Call Desk, the new placeholder Email tab, Pipeline, Meetings, Projects --
+// Problem Desk moved out of its old 4th slot to near the end, AI Lead Finder last of all.
 export const NAV_ITEMS = [
   { name: "Today", icon: "⊞", href: "/today", badge: null },
   { name: "Sales Terminal", icon: "📊", href: "/terminal", badge: null },
+  { name: "Leads", icon: "👥", href: "/contacts", badge: null },
   { name: "Cold Call Desk", icon: "⚡", href: "/cold-call", badge: "call_ready_count" },
-  { name: "Problem Desk", icon: "🎯", href: "/problems", badge: "open_problems_count" },
+  // Placeholder (user, 2026-09-22): reserved for a future dedicated Email view. No page behind it yet.
+  { name: "Email", icon: "✉️", href: "/email", badge: null },
   { name: "Pipeline", icon: "💼", href: "/pipeline", badge: null },
-  { name: "Contacts", icon: "👥", href: "/contacts", badge: null },
-  { name: "Follow-ups", icon: "📅", href: "/follow-ups", badge: "followups_due" },
+  // Retired by structure-plan.md Phase 6: the Follow-ups page is gone -- voicemail/callback chasing
+  // moved to Cold Call Desk (Phase 3), post-meeting follow-up to Meetings (Phase 5).
   { name: "Meetings", icon: "🗓️", href: "/meetings", badge: "meetings_count" },
+  // structure-plan.md Phase 7: closed deals, split out of Pipeline (Phase 4) and out of the
+  // meeting-outcome confirm copy's temporary "find it in Contacts" note (Phase 5). Narrowed 2026-09-22
+  // to Won only -- Proposal Sent moved back into Pipeline (see MEETING_OUTCOMES.proposal_sent).
+  { name: "Projects", icon: "📁", href: "/projects", badge: null },
+  { name: "Problem Desk", icon: "🎯", href: "/problems", badge: "open_problems_count" },
   { name: "AI Lead Finder", icon: "🔍", href: "/lead-finder", badge: null },
 ] as const;
 
@@ -420,11 +432,11 @@ export const MAPS_FINDER = {
 export const DEFAULT_SHEET_URL =
   "https://docs.google.com/spreadsheets/d/1VS1nEC6qNe4IabeTSTNaMJ-JsVvqj1lEVzxxwsKVToU/edit";
 
-/** Stages that appear on the Follow-up Hub. */
-export const FOLLOWUP_STAGES: PipelineStage[] = ["contacted", "followup_due", "proposal_sent"];
+// Retired by structure-plan.md Phase 6: the Follow-up Hub page is gone.
+// FOLLOWUP_STAGES: PipelineStage[] = ["contacted", "followup_due", "proposal_sent"]
 
-/** Stages that feed the Cold Call Desk queue (minus dead numbers). */
-export const CALL_QUEUE_STAGES: PipelineStage[] = ["draft_ready", "followup_due"];
+// Retired by structure-plan.md Phase 3: Cold Call Desk membership is now lead.sent_to_desk_at, not stage.
+// Kept as a comment for history -- CALL_QUEUE_STAGES: PipelineStage[] = ["draft_ready", "followup_due"]
 
 /**
  * app.py:1665-2038, 2313, 2359 — the eyebrow / heading / subtitle for each view.
@@ -454,23 +466,31 @@ export const PAGE_HEADERS = {
     title: "Studio Pipeline",
     subtitle: "Track and progress accounts through your sales stages and industry sectors.",
   },
+  // No Streamlit analogue -- structure-plan.md Phase 7, narrowed 2026-09-22 (Proposal Sent moved to
+  // Pipeline, so this is Won only now).
+  projects: {
+    eyebrow: undefined,
+    title: "Projects",
+    subtitle: "Deals that have been won -- Client Closed.",
+  },
+  // Placeholder tab (user, 2026-09-22) -- reserved for a future dedicated Email view, nothing built yet.
+  email: {
+    eyebrow: undefined,
+    title: "Email",
+    subtitle: "Coming soon.",
+  },
   contacts: {
     eyebrow: "DIRECTORY & SEGMENTATION",
-    title: "Contacts & Accounts",
+    // Sidebar tab renamed "Contacts" -> "Leads" per user request; route/component names (/contacts,
+    // ContactsView) left as they are -- only the visible copy changed.
+    title: "Leads & Accounts",
     subtitle:
       "Segmented client directory by target industry sector with real-time deal management.",
   },
-  followUps: {
-    eyebrow: undefined,
-    title: "Follow-up Hub",
-    subtitle: "Stay on top of active conversations and scheduled check-ins.",
-  },
+  // Retired by structure-plan.md Phase 6: PAGE_HEADERS.followUps = { title: "Follow-up Hub", ... }
   // No Streamlit analogue -- app.py never tracked a meeting date at all.
-  meetings: {
-    eyebrow: undefined,
-    title: "Meetings",
-    subtitle: "Every meeting your team has booked, laid out on the calendar.",
-  },
+  // Retired 2026-09-22 (user): PAGE_HEADERS.meetings = { title: "Meetings", subtitle: "Every meeting
+  // your team has booked, laid out on the calendar." } -- the Meetings page no longer shows a heading.
   leadFinder: {
     eyebrow: undefined,
     title: "AI Lead Discovery & Research",
@@ -614,16 +634,6 @@ export const DISPOSITIONS = [
     help: "Qualified Meeting Booked! Advances to Pipeline stage.",
   },
   {
-    outcome: "receptionist",
-    label: "👤 Receptionist",
-    help: "Reached the receptionist/gatekeeper, not a decision maker. Keeps in Follow-up queue.",
-  },
-  {
-    outcome: "decision_maker",
-    label: "🧑‍💼 Decision Maker",
-    help: "Spoke with the decision maker directly, no outcome yet. Keeps in Follow-up queue.",
-  },
-  {
     outcome: "no_answer",
     label: "📞 No Answer",
     help: "Phone rang, nobody picked up. Keeps in Follow-up queue.",
@@ -640,7 +650,11 @@ export const DISPOSITIONS = [
   },
   {
     outcome: "closed",
-    label: "🤝 Closed",
+    // Renamed from "🤝 Closed" (user, 2026-09-22): this sets the exact same stage
+    // (proposal_sent) as the Meeting popup's "📄 Proposal Send" outcome, and the old label read
+    // like the deal was already won/final -- it isn't. Same status, same name everywhere now.
+    // "Proposal Send" not "Send Proposal" -- matches the existing "Email Send" naming pattern.
+    label: "📄 Proposal Send",
     help: "Client is closing the deal, not final yet. Advances to Proposal Sent.",
   },
 ] as const;
@@ -695,6 +709,32 @@ export const MEETINGS_CALENDAR = {
 } as const;
 
 /**
+ * components/meetings/needs-followup-list.tsx -- above the calendar (structure-plan.md Phase 5). The
+ * only piece the old Follow-ups page's "After meetings" tab left behind, relocated here.
+ */
+export const NEEDS_FOLLOWUP = {
+  // Renamed from "Needs Follow-up" (user request, 2026-09-22): read as the old, removed Follow-ups page
+  // coming back. This is still exactly the old "After meetings" tab, nothing else -- name now says so.
+  heading: (n: number) => `🔁 After Meetings (${n})`,
+  note: "Leads you have already met and marked Needs Follow-up. Call or email again, then update the stage below.",
+  empty: "No leads are waiting after a meeting right now.",
+  searchPlaceholder: "Company, contact or email…",
+  sortRecent: "Recently updated first",
+  sortOldest: "Oldest first",
+  showing: (shown: number, total: number) => `Showing ${shown} of ${total}`,
+  stageLabel: "Move to",
+} as const;
+
+/**
+ * Dead Line / Not Interested (structure-plan.md Phase 3), and Meeting's own Not Interested (Phase 5):
+ * the lead is recorded, not deleted, but is now hidden from every list -- Cold Call Desk, Contacts and
+ * Pipeline -- not just moved to Closed Lost. A later phase adds a way to find these again; there isn't
+ * one yet.
+ */
+export const HIDDEN_STAY_NOTE =
+  "The lead is NOT deleted. It is hidden everywhere in the app (Cold Call Desk, Leads, Pipeline) -- there is no way to find it again yet.";
+
+/**
  * components/meetings/meeting-detail-dialog.tsx -- what a rep picks once a
  * meeting has actually happened. Replaces the old binary Done/Cancel
  * (confirmed live 2026-09-18: "Done" always sent the lead to Proposal Sent,
@@ -703,11 +743,12 @@ export const MEETINGS_CALENDAR = {
  * the calendar when one of these is picked (see meetings-calendar.tsx /
  * meetings/page.tsx dropping the stage filter) -- the calendar is a record
  * of every meeting that happened, tagged with its outcome, not just the
- * still-open ones. Each entry just PATCHes pipeline_stage via the existing
- * useUpdateLead hook -- no new endpoint.
+ * still-open ones. Each entry now calls the dedicated POST
+ * /leads/{id}/meeting-outcome (structure-plan.md Phase 5) -- Not Interested
+ * must also hide the lead, which a plain PATCH deliberately cannot do.
  */
 export const MEETING_OUTCOMES: {
-  stage: PipelineStage;
+  stage: "won" | "proposal_sent" | "followup_due" | "lost";
   label: string;
   /** Confirmation dialog (components/ui/confirm-dialog.tsx). */
   confirmTitle: (company: string) => string;
@@ -720,68 +761,83 @@ export const MEETING_OUTCOMES: {
     stage: "won",
     label: "✅ Client Closed",
     confirmTitle: (company) => `Mark ${company} as Client Closed?`,
-    confirmBody: "The lead is NOT deleted. It stays in your CRM under Pipeline → Deal Won.",
+    confirmBody: "The lead is NOT deleted. It moves to Projects.",
     confirmLabel: "Yes, mark Client Closed",
-    done: (company) => `${company} marked as Client Closed`,
+    done: (company) => `${company} marked as Client Closed. Find it in Projects.`,
   },
   {
     stage: "proposal_sent",
-    label: "📄 Send Proposal",
-    confirmTitle: (company) => `Mark ${company} as Send Proposal?`,
-    confirmBody: "The lead is NOT deleted. It stays in your CRM under Pipeline → Proposal Sent.",
-    confirmLabel: "Yes, mark Send Proposal",
-    done: (company) => `${company} moved to Proposal Sent. Find it under Follow-ups → After meetings.`,
+    // "Proposal Send" not "Send Proposal" (user, 2026-09-22) -- matches the existing "Email Send" naming
+    // pattern, and matches the Cold Call Desk's "closed" disposition, which sets this same stage.
+    label: "📄 Proposal Send",
+    confirmTitle: (company) => `Mark ${company} as Proposal Send?`,
+    // structure-plan.md Phase 7 (reversed 2026-09-22, live-testing feedback -- "purposals sary hamary
+    // pass pipline me he dekhny chahiye kahin or nhi"): Proposal Sent used to leave Pipeline for Projects
+    // alongside Won. Now it stays visible in Pipeline instead -- only Won (an actually closed deal) goes
+    // to Projects.
+    confirmBody: "The lead is NOT deleted. It stays visible in Pipeline.",
+    confirmLabel: "Yes, mark Proposal Send",
+    done: (company) => `${company} moved to Proposal Sent. Find it in Pipeline.`,
   },
   {
     stage: "followup_due",
     label: "🔁 Needs Follow-up",
     confirmTitle: (company) => `Mark ${company} as Needs Follow-up?`,
-    confirmBody: "The lead is NOT deleted. It moves to Follow-ups → After meetings so you can call again, and stays in Pipeline.",
+    confirmBody: "The lead is NOT deleted. It moves to the Needs Follow-up list on this page, above the calendar.",
     confirmLabel: "Yes, needs follow-up",
-    done: (company) => `${company} moved to Follow-ups → After meetings, newest first.`,
+    done: (company) => `${company} moved to Needs Follow-up, above the calendar.`,
   },
   {
     stage: "lost",
     label: "❌ Not Interested",
     confirmTitle: (company) => `Mark ${company} as Not Interested?`,
-    confirmBody:
-      "The lead is NOT deleted. It stays in your CRM under Pipeline → Closed Lost, and you can move it back any time.",
+    confirmBody: HIDDEN_STAY_NOTE,
     confirmLabel: "Yes, not interested",
-    done: (company) => `${company} moved to Closed Lost`,
+    done: (company) => `${company} marked Not Interested`,
   },
 ];
 
-/**
- * Follow-ups page find-it tools (components/follow-ups/follow-up-list.tsx): search,
- * stage filter with counts, and most-recently-updated-first so a lead just moved
- * here (e.g. after a meeting) is at the top instead of buried. No Streamlit
- * analogue -- app.py's list was short enough not to need it.
- */
-export const FOLLOWUPS_VIEW = {
-  searchLabel: "Search Follow-ups",
-  searchPlaceholder: "Company, contact or email…",
-  allStages: (n: number) => `All Stages (${n})`,
-  sortLabel: "Sort By",
-  sortRecent: "Recently updated first",
-  sortOldest: "Oldest first",
-  showing: (shown: number, total: number) => `Showing ${shown} of ${total} follow-up leads`,
-  afterMeeting: (date: string) => `📅 Meeting ${date}`,
-  /** Two lists on one page: leads already met vs leads still being chased. Team lead request 2026-09-21. */
-  tabMeetings: (n: number) => `After meetings (${n})`,
-  tabCalls: (n: number) => `Call follow-ups (${n})`,
-  noteMeetings: "Leads you have already met. They stay in your Pipeline under their stage; move them on from here.",
-  noteCalls: "Leads still being chased by phone or email. No meeting yet.",
-  emptyMeetings:
-    "No leads are waiting after a meeting. On the Meetings page, pick Needs Follow-up or Send Proposal once a meeting is done and the lead shows up here.",
-  emptyCalls: "No call follow-ups right now.",
-  movePipeline: "Move in Pipeline",
-} as const;
+// Retired by structure-plan.md Phase 6: the Follow-up Hub page is gone. Its "After meetings" tab moved to
+// components/meetings/needs-followup-list.tsx (Phase 5, see NEEDS_FOLLOWUP above); voicemail/callback
+// chasing (the old "call follow-ups" tab) moved to Cold Call Desk (Phase 3). FOLLOWUPS_VIEW removed.
 
 /** Pipeline: show the leads that already had a meeting (they sit under their stage like any other lead). */
-export const PIPELINE_MEETING_FILTER = {
-  label: "Meeting Filter",
-  all: "All leads",
-  met: "After a meeting",
+// Retired by structure-plan.md Phase 4: Pipeline is no longer "every lead", so a Meeting-only filter
+// on top of that no longer makes sense -- PIPELINE_VIEW_FILTER below replaces it.
+// PIPELINE_MEETING_FILTER = { label: "Meeting Filter", all: "All leads", met: "After a meeting" }
+
+/**
+ * Pipeline (structure-plan.md Phase 4): the page itself now only ever holds four kinds of lead --
+ * Callback Scheduled, Meeting Booked, Email Send, and (since 2026-09-22, reversing Phase 7 -- see
+ * MEETING_OUTCOMES.proposal_sent) Proposal Sent -- so this replaces the old Stage Filter (which
+ * offered all 8 stages, most of which could never appear here any more) and the old Meeting Filter.
+ */
+export const PIPELINE_VIEW_FILTER = {
+  label: "View",
+  all: "All",
+  callback: "📞 Callbacks",
+  meeting: "🎯 Meetings",
+  email: "✉️ Email Send",
+  proposal: "📄 Proposal Sent",
+  // "Star" priority mark -- user request, 2026-09-23.
+  starred: "⭐ Starred",
+} as const;
+
+export const PIPELINE_CARD = {
+  callbackTag: (when: string) => `📞 Callback ${when}`,
+  meetingTag: (when: string) => `🎯 Meeting ${when}`,
+  proposalTag: "📄 Proposal Sent",
+  editInContacts: "✏️ Edit in Leads",
+} as const;
+
+/**
+ * Projects (structure-plan.md Phase 7, narrowed 2026-09-22): used to combine both closed paths --
+ * Cold Call Desk's Closed and Meeting's Client Closed (stages proposal_sent and won). Proposal Sent
+ * now stays in Pipeline instead (see MEETING_OUTCOMES.proposal_sent) -- Projects is Won only, so there
+ * is no longer a View filter to pick between the two.
+ */
+export const PROJECTS_VIEW = {
+  tag: { won: "🏆 Won" } as Record<string, string>,
 } as const;
 
 /**
@@ -800,20 +856,59 @@ export const CLOSING_DISPOSITIONS: Record<
 > = {
   dead_number: {
     title: (company) => `Mark ${company}'s number as a Dead Line?`,
-    body: `The number is disconnected or bad, so the lead leaves this call queue.\n\n${LOST_STAY_NOTE}`,
+    body: `The number is disconnected or bad.\n\n${HIDDEN_STAY_NOTE}`,
     confirmLabel: "Yes, dead line",
   },
   not_interested: {
     title: (company) => `Mark ${company} as No Interest?`,
-    body: `They spoke with you and said no, so the lead leaves this call queue.\n\n${LOST_STAY_NOTE}`,
+    body: `They spoke with you and said no.\n\n${HIDDEN_STAY_NOTE}`,
     confirmLabel: "Yes, no interest",
   },
   wrong_number: {
     title: (company) => `Mark ${company}'s number as a Wrong Number?`,
-    body: `This number does not reach the company, so the lead leaves this call queue.\n\n${LOST_STAY_NOTE}`,
+    body: "This number does not reach the company. The lead goes back to Leads, tagged Wrong Number, until someone finds a working number.",
     confirmLabel: "Yes, wrong number",
   },
 };
+
+/**
+ * "Call picked by" row (Cold Call Desk) -- structure-plan.md Phase 3. Tag only: marks who answered,
+ * never changes the lead's stage or queue position. No Streamlit analogue.
+ */
+export const CALL_PICKED_BY = {
+  heading: "Call picked by",
+  options: [
+    { value: "receptionist", label: "👤 Receptionist" },
+    { value: "decision_maker", label: "🧑‍💼 Decision Maker" },
+    { value: "team_member", label: "👥 Team Member" },
+  ],
+  marked: (label: string) => `Marked: ${label}`,
+  failed: "Could not save who picked up. Try again.",
+} as const;
+
+/** Callback Scheduled's date/time prompt -- same shape as Booked!'s, a separate field (callback_at). */
+export const CALLBACK_BOOKING = {
+  prompt: "When should we call back?",
+  dateLabel: "Date",
+  timeLabel: "Time",
+  confirm: "✅ Confirm callback",
+  cancel: "Cancel",
+} as const;
+
+/** "Email Send" button (Cold Call Desk) -- structure-plan.md Phase 3/4. See lib/constants.ts SEND_TO_DESK
+ * for the similarly-named but separate "Send to Cold Call Desk" (Contacts). */
+export const EMAIL_SEND = {
+  button: "✉️ Email Send",
+  help: "Marks this lead as needing an email and moves it to Pipeline. It does not send anything -- use Mark Email Sent once you actually have.",
+  sent: (company: string) => `${company} marked for email and moved to Pipeline`,
+  failed: "Could not mark this lead for email. Try again.",
+} as const;
+
+/** The bottom "already tried" section and last-touch mark on Cold Call Desk cards (Phase 3). */
+export const LAST_TOUCH = {
+  lowPriorityHeading: (count: number) => `⏳ Already Tried (${count})`,
+  label: (when: string) => `Last touched ${when}`,
+} as const;
 
 export const LOST_STAGE_CONFIRM = {
   title: (company: string) => `Move ${company} to Closed Lost?`,
@@ -829,6 +924,8 @@ export const LOST_STAGE_CONFIRM = {
 export const TOASTS = {
   disposition: (label: string, company: string) => `${label} saved for ${company}`,
   meetingBooked: (company: string) => `Meeting booked for ${company}`,
+  callbackScheduled: (company: string) => `Callback scheduled for ${company}`,
+  wrongNumberSent: (company: string) => `${company}'s number was wrong -- sent back to Leads`,
   noteAdded: (company: string) => `Note added to ${company}`,
   emailMarked: (company: string) => `Email marked as sent for ${company}`,
   battlecardReady: (company: string) => `AI battlecard ready for ${company}`,
@@ -894,16 +991,17 @@ export const EMPTY_STATES = {
   // cold-call-view.tsx), so pointing to it left a dead end. Points at Lead
   // Finder (AI Search / Google Maps) instead, which is how leads are sourced now.
   coldCallQueue: "🎯 No leads in this queue! Use Lead Finder (AI Search or Google Maps) to find new leads.",
+  // structure-plan.md Phase 4: Pipeline only ever holds a lead once it has actually progressed
+  // (Callback Scheduled, Meeting Booked, Email Send, or -- since 2026-09-22 -- Proposal Sent), so an
+  // empty Pipeline is normal, not a sign the filters are wrong -- unlike every other empty-state
+  // message on this page, which does mean "try different filters".
   pipeline:
-    "No leads found for this filter combination. Try selecting 'All Categories' or use 'AI Lead Finder'.",
+    "Nothing here yet. A lead shows up on Pipeline once it has a callback scheduled, a meeting booked, is marked Email Send, or Proposal Sent -- everything else lives in Leads.",
+  // structure-plan.md Phase 7, narrowed 2026-09-22: Projects is Won only now (Proposal Sent moved to
+  // Pipeline). No Streamlit analogue.
+  projects: "No projects yet. A deal shows up here once it is marked Client Closed.",
   contacts: (category: string) =>
     `No leads found under '${category}'. Use 'AI Lead Finder' or 'Add a Lead' to discover companies for this category.`,
-  followUps:
-    "No active follow-ups due right now. When you mark leads as 'Outreach Sent', they will appear here.",
-  // Distinct from the message above -- that one means the queue itself is
-  // empty; this means follow-ups exist but none match the Reason/Source
-  // filter combination picked.
-  followUpsFiltered: "No follow-ups match this filter combination. Try 'All Reasons' or 'All Sources'.",
   problems: "No problems recorded in this category. All clear!",
   comments:
     "No discussions yet. Share your thoughts, objection rebuttals, or solutions below!",
@@ -952,6 +1050,18 @@ export const LEAD_CARD = {
   subject: "Subject:",
   currentStage: "Current Stage:",
   followUpSubject: "Initial Outreach Subject:",
+} as const;
+
+/**
+ * Contacts becomes the one place a lead is edited and sent onward (structure-plan.md Phase 2). No
+ * Streamlit analogue -- app.py had no "which leads are ready to call" distinction at all.
+ */
+export const SEND_TO_DESK = {
+  send: "📤 Send to Cold Call Desk",
+  resend: "🔁 Resend to Cold Call Desk",
+  onDesk: (when: string) => `📞 On Cold Call Desk since ${when}`,
+  sent: (company: string) => `${company} sent to the Cold Call Desk`,
+  failed: "Could not send this lead to the Cold Call Desk. Try again.",
 } as const;
 
 /** app.py:1054-1059 — the Problem Desk card header (both instances). */

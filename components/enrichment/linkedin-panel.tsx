@@ -43,7 +43,7 @@ export function LinkedInResearchPanel({ lead }: { lead: Lead }) {
         size="sm"
         block
         onClick={() => research.mutate()}
-        disabled={research.isPending}
+        loading={research.isPending}
       >
         {research.isPending ? "Researching…" : "🤖 AI Research LinkedIn (Gemini Flash)"}
       </Button>

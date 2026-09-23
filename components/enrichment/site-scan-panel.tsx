@@ -87,7 +87,7 @@ export function SiteScanPanel({ lead }: { lead: Lead }) {
             variant="secondary"
             size="sm"
             onClick={() => start.mutate()}
-            disabled={scanning}
+            loading={scanning}
           >
             {scanning ? "Scanning…" : "🔍 Scan site (3D / product intel)"}
           </Button>
@@ -96,7 +96,7 @@ export function SiteScanPanel({ lead }: { lead: Lead }) {
             variant="secondary"
             size="sm"
             onClick={() => findWebsite.mutate()}
-            disabled={findWebsite.isPending}
+            loading={findWebsite.isPending}
             title={EMPTY_STATES.noWebsite}
           >
             {findWebsite.isPending ? "Searching…" : "🔎 Find website (Google Maps)"}
@@ -106,7 +106,7 @@ export function SiteScanPanel({ lead }: { lead: Lead }) {
           variant="secondary"
           size="sm"
           onClick={() => enrich.mutate()}
-          disabled={enrich.isPending}
+          loading={enrich.isPending}
         >
           {enrich.isPending ? "Enriching…" : "✨ Deep enrich (Hunter + SignalHire)"}
         </Button>

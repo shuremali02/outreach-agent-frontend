@@ -42,7 +42,9 @@ export function Field({
   children,
   className,
 }: {
-  label: string;
+  /** Usually a plain string; a node is allowed for a label that also carries an inline action (e.g. an
+   * "Edit" link next to the field's own name) -- see battlecard.tsx's notes field. */
+  label: React.ReactNode;
   htmlFor?: string;
   children: React.ReactNode;
   className?: string;

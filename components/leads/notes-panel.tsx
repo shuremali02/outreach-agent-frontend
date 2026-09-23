@@ -43,7 +43,8 @@ export function NotesPanel({ lead }: { lead: Lead }) {
       <Button
         variant="primary"
         size="sm"
-        disabled={addNote.isPending || !draft.trim()}
+        loading={addNote.isPending}
+        disabled={!draft.trim()}
         onClick={() =>
           addNote.mutate(
             { id: lead.id, text: draft, mention: extractMentions(draft, users) },

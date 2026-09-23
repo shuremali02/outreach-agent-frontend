@@ -29,7 +29,8 @@ const EMPTY: CreateLeadInput = {
   contact_email: "",
   contact_phone: "",
   country: "",
-  deal_value: 18000,
+  // structure-plan.md Phase 8: default deal value is 10000 everywhere (was 18000 here).
+  deal_value: 10000,
   // No default category -- was STANDARD_CATEGORIES[5] (Tech & Commercial),
   // which silently tagged a lead with the wrong category whenever a rep
   // didn't notice and change it. Blank forces an explicit, deliberate pick
@@ -127,7 +128,13 @@ export function AddLeadPopover() {
                 // dropped silently rather than blocking submit.
                 extra_contacts: extraContacts
                   .filter((r) => r.name.trim())
-                  .map(({ _rowId, ...rest }) => rest),
+                  .map((r): ExtraContactInput => ({
+                    name: r.name,
+                    role: r.role,
+                    email: r.email,
+                    phone: r.phone,
+                    linkedin: r.linkedin,
+                  })),
               });
             }}
             className="flex flex-col gap-3"
@@ -332,7 +339,8 @@ export function AddLeadPopover() {
               type="submit"
               variant="primary"
               block
-              disabled={create.isPending || needsMeetingTime || missingRequired}
+              loading={create.isPending}
+              disabled={needsMeetingTime || missingRequired}
             >
               {create.isPending ? "Saving…" : "Save Lead to CRM"}
             </Button>

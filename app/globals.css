@@ -152,12 +152,6 @@
     color: var(--text);
   }
 
-  .logo-sub {
-    font-size: 0.95rem;
-    color: var(--muted);
-    font-weight: 400;
-  }
-
   .crm-card {
     background-color: var(--card);
     border: 1px solid var(--border);

@@ -80,6 +80,21 @@ export interface Lead {
   /** Who added / last touched the lead (user ids -- map to names with useUsers()). null = before login existed. */
   created_by_user_id: number | null;
   last_touched_by_user_id: number | null;
+  /** ISO datetime, "" = not on the Cold Call Desk (structure-plan.md Phase 1). Set when a rep presses
+   * "Send to Cold Call Desk" in Contacts; cleared if the lead is sent back (e.g. Wrong Number). */
+  sent_to_desk_at: string;
+  /** "receptionist" | "decision_maker" | "team_member" | "" -- tag only from the "Call picked by" row,
+   * never changes pipeline_stage. */
+  call_picked_by: string;
+  /** ISO datetime, "" = not hidden. Dead Line / Not Interested set this; such a lead never appears in a
+   * GET /leads list (backend excludes it unconditionally), so this is only ever seen via a direct fetch. */
+  hidden_at: string;
+  /** ISO datetime, "" = no callback scheduled. Set by the Callback Scheduled outcome's date/time prompt --
+   * separate from meeting_at, never shown on the Meetings calendar. */
+  callback_at: string;
+  /** ISO datetime, "" = not starred. "Star" priority mark -- tag only, never changes pipeline_stage.
+   * User request, 2026-09-23. */
+  starred_at: string;
   signalhire_uid: string;
   /** URLs the discovery agent actually read, so a lead can be audited. */
   discovery_citations: string[];
