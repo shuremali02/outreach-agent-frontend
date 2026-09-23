@@ -92,11 +92,11 @@ export function countryLabel(code: string): string {
 
 /**
  * Add a Lead popover's own Country dropdown -- was narrowed to just US/UK/Canada on 2026-09-18; France
- * added back 2026-09-23 (user request). Pipeline/Contacts/Cold Call Desk's filter dropdowns keep the full
- * COUNTRIES list above so leads already in the CRM from any other country (Pakistan, UAE, etc.) stay
- * filterable regardless of what this popover offers.
+ * and Saudi Arabia added back 2026-09-23 (user request). Pipeline/Contacts/Cold Call Desk's filter
+ * dropdowns keep the full COUNTRIES list above so leads already in the CRM from any other country
+ * (Pakistan, UAE, etc.) stay filterable regardless of what this popover offers.
  */
-export const ADD_LEAD_COUNTRIES = COUNTRIES.filter((c) => ["US", "GB", "CA", "FR"].includes(c.id));
+export const ADD_LEAD_COUNTRIES = COUNTRIES.filter((c) => ["US", "GB", "CA", "FR", "SA"].includes(c.id));
 
 export const ALL_SOURCES = "All Sources";
 
@@ -243,10 +243,11 @@ export const NAV_ITEMS = [
   { name: "Today", icon: "⊞", href: "/today", badge: null },
   { name: "Sales Terminal", icon: "📊", href: "/terminal", badge: null },
   { name: "Leads", icon: "👥", href: "/contacts", badge: null },
-  { name: "Cold Call Desk", icon: "⚡", href: "/cold-call", badge: "call_ready_count" },
+  // Badge removed (user, 2026-09-23) -- only Pipeline/Meetings/Problem Desk keep a sidebar counter now.
+  { name: "Cold Call Desk", icon: "⚡", href: "/cold-call", badge: null },
   // Placeholder (user, 2026-09-22): reserved for a future dedicated Email view. No page behind it yet.
   { name: "Email", icon: "✉️", href: "/email", badge: null },
-  { name: "Pipeline", icon: "💼", href: "/pipeline", badge: null },
+  { name: "Pipeline", icon: "💼", href: "/pipeline", badge: "pipeline_count" },
   // Retired by structure-plan.md Phase 6: the Follow-ups page is gone -- voicemail/callback chasing
   // moved to Cold Call Desk (Phase 3), post-meeting follow-up to Meetings (Phase 5).
   { name: "Meetings", icon: "🗓️", href: "/meetings", badge: "meetings_count" },
