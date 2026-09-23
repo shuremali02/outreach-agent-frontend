@@ -15,11 +15,16 @@ import { api } from "@/lib/api";
  */
 let offsetMs = 0;
 let syncing = false;
-let current = 0;
+const now = () => Date.now() + offsetMs;
+// Initialized eagerly (not 0) so getSnapshot below can return `current` directly, with no `|| now()`
+// fallback -- that fallback returned a genuinely new value on every single call until the first
+// subscribe() fired (React only calls subscribe after the initial render commits), which broke
+// useSyncExternalStore's "getSnapshot must be stable between calls" contract and triggered "The result
+// of getSnapshot should be cached to avoid an infinite loop" (found live 2026-09-23). getServerSnapshot
+// below still returns null regardless, so this eager value never leaks into SSR/hydration output.
+let current = now();
 let timer: ReturnType<typeof setInterval> | undefined;
 const listeners = new Set<() => void>();
-
-const now = () => Date.now() + offsetMs;
 
 /** How far the PC clock is from the server's, using the middle of the request as "when" the server answered. */
 async function syncClock() {
@@ -65,9 +70,5 @@ function subscribe(listener: () => void) {
 }
 
 export function useNow(): number | null {
-  return useSyncExternalStore(
-    subscribe,
-    () => current || now(),
-    () => null,
-  );
+  return useSyncExternalStore(subscribe, () => current, () => null);
 }

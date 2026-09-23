@@ -477,7 +477,10 @@ export function Battlecard({
             )}
           </div>
 
-          {/* "Call picked by" -- structure-plan.md Phase 3. Tag only: no stage change, no queue move. */}
+          {/* "Call picked by" -- structure-plan.md Phase 3. Tag only: no stage change, no queue move.
+              One shared mutation for all 3 buttons -- spinner only on the one actually clicked
+              (callPickedBy.variables), `disabled` still blocks the others while it's in flight (a rep
+              noticed, 2026-09-23: "loader spinner har button par chal rha hai"). */}
           <div>
             <p className="mb-1 text-[0.8rem] font-semibold text-muted">{CALL_PICKED_BY.heading}</p>
             <div className="flex flex-wrap gap-2">
@@ -486,7 +489,8 @@ export function Battlecard({
                   key={o.value}
                   variant={lead.call_picked_by === o.value ? "primary" : "secondary"}
                   size="sm"
-                  loading={callPickedBy.isPending}
+                  loading={callPickedBy.isPending && callPickedBy.variables?.value === o.value}
+                  disabled={callPickedBy.isPending}
                   onClick={() => callPickedBy.mutate({ id: lead.id, value: o.value })}
                 >
                   {o.label}
@@ -636,6 +640,12 @@ export function Battlecard({
             // 9 dispositions (Receptionist/Decision Maker moved to the "Call picked by" tag row above,
             // structure-plan.md Phase 3) -- 3-wide (3x3) fits evenly.
             <>
+              {/* One shared `record` mutation for the whole grid -- spinner only on the button actually
+                  clicked (record.variables), `disabled` still blocks the rest while it's in flight (a rep
+                  noticed, 2026-09-23: "loader spinner har button par chal rha hai"). Meeting Booked/
+                  Callback Scheduled open a prompt instead of calling record.mutate() directly here, so
+                  they're never the one lit up by this comparison -- their own Confirm buttons (below)
+                  handle their own loading state separately. */}
               <div className="grid grid-cols-3 gap-2">
                 {DISPOSITIONS.map((d) => (
                   <Button
@@ -646,7 +656,8 @@ export function Battlecard({
                     variant={d.outcome === "meeting_booked" && booked ? "primary" : "secondary"}
                     size="sm"
                     title={d.help}
-                    loading={record.isPending}
+                    loading={record.isPending && record.variables?.outcome === d.outcome}
+                    disabled={record.isPending}
                     onClick={() => disposition(d.outcome as CallOutcome)}
                   >
                     {d.label}

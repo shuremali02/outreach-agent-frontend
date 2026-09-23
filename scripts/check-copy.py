@@ -421,6 +421,11 @@ ALLOWED = {
     "Mark as priority",
     "Mark this lead as priority",
     "Unstar this lead",
+    # Callback Scheduled leads with no callback_at (an old, since-fixed button never captured a date/time
+    # -- see docs.md 2026-09-23). Pipeline now shows them anyway with this tag, prompting a rep to set the
+    # real time via Edit. No Streamlit analogue.
+    "Callback Scheduled, but no date/time was captured -- set one via Edit.",
+    "📞 Callback (no time set)",
 }
 
 CLASS_HINT = re.compile(

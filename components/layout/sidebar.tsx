@@ -6,6 +6,7 @@ import { useSyncExternalStore } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { NAV_ITEMS, SIDEBAR_TOGGLE } from "@/lib/constants";
 import { useMetrics } from "@/hooks/use-metrics";
+import { useMounted } from "@/hooks/use-mounted";
 import { cn } from "@/lib/utils";
 import { Logo, LogoMark } from "./logo";
 import { SystemStatusPanel } from "./system-status";
@@ -45,6 +46,7 @@ export function Sidebar({
 }) {
   const pathname = usePathname();
   const { data: metrics } = useMetrics(initialMetrics);
+  const mounted = useMounted();
 
   // Open/close, remembered across visits (per browser). The server (and hydration) always renders it open,
   // then the stored choice applies, so the markup matches.
@@ -62,9 +64,14 @@ export function Sidebar({
 
   /** app.py only rendered counts for Cold Call/Problem/Follow-ups; Meetings'
    * badge (meetings_count) was added later per user request 2026-09-18, no
-   * Streamlit counterpart. */
+   * Streamlit counterpart.
+   *
+   * `mounted` fixes a hydration mismatch found live 2026-09-23: useMetrics()'s query cache survives
+   * client-side navigation, so a full server round-trip to a new page can render a genuinely different
+   * count than what the client already has cached from an earlier page -- same root cause and same fix
+   * as lead-who.tsx's, see hooks/use-mounted.ts. */
   function badgeFor(key: string | null): number | null {
-    if (!key || !metrics) return null;
+    if (!mounted || !key || !metrics) return null;
     const value = metrics[key as keyof CrmMetrics];
     return typeof value === "number" && value > 0 ? value : null;
   }

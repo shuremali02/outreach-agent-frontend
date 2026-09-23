@@ -131,13 +131,17 @@ function PipelineActions({ lead }: { lead: Lead }) {
 
   return (
     <div className="grid grid-cols-2 gap-2">
+      {/* One shared `outcome` mutation for all 3 buttons -- `disabled` blocks all of them while any one
+          is in flight (a rep noticed, 2026-09-23: "loader spinner har button par chal rha hai"), but the
+          spinner itself only shows on the specific button actually clicked (outcome.variables), same
+          per-row scoping contacts-panel.tsx's Reveal/Find LinkedIn/Find Phone already use. */}
       {actions.map((o) => (
         <Button
           key={o.stage}
           variant="secondary"
           size="sm"
-          loading={outcome.isPending}
-          disabled={lead.pipeline_stage === o.stage}
+          loading={outcome.isPending && outcome.variables?.stage === o.stage}
+          disabled={lead.pipeline_stage === o.stage || outcome.isPending}
           onClick={() => setOutcome(o)}
         >
           {o.label}
@@ -146,7 +150,7 @@ function PipelineActions({ lead }: { lead: Lead }) {
       <Button
         variant="secondary"
         size="sm"
-        disabled={lead.pipeline_stage === "meeting_booked"}
+        disabled={lead.pipeline_stage === "meeting_booked" || outcome.isPending}
         onClick={() => setBookingPrompt(true)}
       >
         🎯 Meeting Booked
@@ -247,16 +251,26 @@ export function PipelineView({
   }
 
   // The page's own scope: only a lead that has actually progressed lives here at all -- Callback
-  // Scheduled (via callback_at, not stage -- voicemail/hang_up/no_answer share the same "followup_due"
-  // stage value and must NOT show here), Meeting Booked, Email Send ("contacted"), or (since 2026-09-22,
-  // reversing structure-plan.md Phase 7 -- "purposals sary hamary pass pipline me he dekhny chahiye
-  // kahin or nhi") Proposal Sent. Everything else (new/drafted, or dispositioned in a way that leaves it
-  // hidden/elsewhere) simply never appears.
+  // Scheduled (via callback_at OR last_call_outcome === "callback_scheduled" -- voicemail/hang_up/
+  // no_answer share the same "followup_due" stage value and must NOT show here, but checking
+  // last_call_outcome specifically still excludes them correctly even without callback_at), Meeting
+  // Booked, Email Send ("contacted"), or (since 2026-09-22, reversing structure-plan.md Phase 7 --
+  // "purposals sary hamary pass pipline me he dekhny chahiye kahin or nhi") Proposal Sent. Everything
+  // else (new/drafted, or dispositioned in a way that leaves it hidden/elsewhere) simply never appears.
+  //
+  // The last_call_outcome half of the Callback check added 2026-09-23: a production build that never
+  // successfully deployed (fixed the same day -- see docs.md "dead Follow-ups page" entries) meant several
+  // Callback Scheduled dispositions went out through an old button that never asked for date/time, so
+  // callback_at is null on them despite the disposition being real. User: "agar callback stage hai toh usy
+  // auto add krdo pipeline me hum khudi time add krlyngy edit form sy" -- show them on Pipeline anyway so
+  // a rep can fill in the real time via the edit form, rather than leaving them stranded off Pipeline
+  // with no callback_at to ever match the old check.
   const inScope = useMemo(
     () =>
       fetchedLeads.filter(
         (l) =>
           Boolean(l.callback_at) ||
+          l.last_call_outcome === "callback_scheduled" ||
           l.pipeline_stage === "meeting_booked" ||
           l.pipeline_stage === "contacted" ||
           l.pipeline_stage === "proposal_sent",
@@ -270,7 +284,7 @@ export function PipelineView({
         (l) =>
           (source === ALL_SOURCES || leadSource(l.source_prompt) === source) &&
           (view === "all" ||
-            (view === "callback" && Boolean(l.callback_at)) ||
+            (view === "callback" && (Boolean(l.callback_at) || l.last_call_outcome === "callback_scheduled")) ||
             (view === "meeting" && l.pipeline_stage === "meeting_booked") ||
             (view === "email" && l.pipeline_stage === "contacted") ||
             (view === "proposal" && l.pipeline_stage === "proposal_sent") ||
@@ -362,12 +376,22 @@ export function PipelineView({
                 — {currency(lead.deal_value)} · {lead.industry_tag} (
                 {STAGE_LABELS[lead.pipeline_stage]})
               </span>
-              {lead.callback_at && (
+              {lead.callback_at ? (
                 <span className="ml-2 rounded-[6px] bg-input px-1.5 py-0.5 text-[0.75rem] font-semibold text-muted">
                   {PIPELINE_CARD.callbackTag(
                     new Date(lead.callback_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
                   )}
                 </span>
+              ) : (
+                lead.last_call_outcome === "callback_scheduled" && (
+                  <span
+                    className="ml-2 rounded-[6px] px-1.5 py-0.5 text-[0.75rem] font-semibold"
+                    style={{ background: "var(--warn-tint)", color: "var(--warn)" }}
+                    title="Callback Scheduled, but no date/time was captured -- set one via Edit."
+                  >
+                    {PIPELINE_CARD.callbackNoTimeTag}
+                  </span>
+                )
               )}
               {lead.pipeline_stage === "meeting_booked" && lead.meeting_at && (
                 <span className="ml-2 rounded-[6px] bg-input px-1.5 py-0.5 text-[0.75rem] font-semibold text-muted">

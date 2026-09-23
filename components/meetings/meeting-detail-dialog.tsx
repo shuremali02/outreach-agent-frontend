@@ -133,14 +133,17 @@ export function MeetingDetailDialog({
               <p className="mb-2 text-[0.78rem] font-medium text-muted">
                 Current stage: {STAGE_LABELS[lead.pipeline_stage]}
               </p>
+              {/* One shared `update` mutation for all 4 buttons -- spinner only on the one actually
+                  clicked (update.variables), `disabled` still blocks the rest while it's in flight (a rep
+                  noticed, 2026-09-23: "loader spinner har button par chal rha hai"). */}
               <div className="grid grid-cols-2 gap-2">
                 {MEETING_OUTCOMES.map((outcome) => (
                   <Button
                     key={outcome.stage}
                     variant="secondary"
                     size="sm"
-                    loading={update.isPending}
-                    disabled={lead.pipeline_stage === outcome.stage}
+                    loading={update.isPending && update.variables?.stage === outcome.stage}
+                    disabled={lead.pipeline_stage === outcome.stage || update.isPending}
                     onClick={() => setOutcome(outcome)}
                   >
                     {outcome.label}

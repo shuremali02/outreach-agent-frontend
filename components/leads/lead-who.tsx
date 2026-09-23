@@ -1,20 +1,8 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useMounted } from "@/hooks/use-mounted";
 import { useUserNames } from "@/hooks/use-users";
 import type { Lead } from "@/types";
-
-// No real external store to subscribe to -- `mounted` only ever flips once, right after hydration, and
-// never changes again, so there is nothing to notify on.
-function subscribe() {
-  return () => {};
-}
-function getSnapshot() {
-  return true;
-}
-function getServerSnapshot() {
-  return false;
-}
 
 /**
  * "👤 Added by Ali · Last touched by Sara" -- who put the lead in and who worked it last (auth-plan.md).
@@ -25,15 +13,11 @@ function getServerSnapshot() {
  * the QueryClient is created once and survives client-side navigation, so if the browser had already
  * visited another page that populated the ["users"] cache, a fresh server round-trip to THIS page
  * mismatches: server renders null (no cached names yet), client's first render already has them. Holding
- * off until after mount makes the client's first render null too, matching the server every time; the
- * real names then fill in a moment later like any other post-mount query update.
- *
- * useSyncExternalStore, not useEffect+setState (react-hooks/set-state-in-effect flagged that as a
- * cascading-render risk) -- same "different before/after hydration" pattern sidebar.tsx already uses for
- * its own collapsed state, just inlined here since there's no real store to read.
+ * off until after mount (see hooks/use-mounted.ts) makes the client's first render null too, matching the
+ * server every time; the real names then fill in a moment later like any other post-mount query update.
  */
 export function LeadWho({ lead }: { lead: Lead }) {
-  const mounted = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const mounted = useMounted();
   const nameOf = useUserNames();
   const added = nameOf(lead.created_by_user_id);
   const touched = nameOf(lead.last_touched_by_user_id);

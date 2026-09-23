@@ -828,6 +828,10 @@ export const PIPELINE_CARD = {
   meetingTag: (when: string) => `🎯 Meeting ${when}`,
   proposalTag: "📄 Proposal Sent",
   editInContacts: "✏️ Edit in Leads",
+  // Callback Scheduled dispositions that went out through an old, since-fixed button that never captured
+  // a date/time -- user, 2026-09-23. Prompts a rep to set one via Edit rather than leaving the lead with
+  // no visible sign it needs one.
+  callbackNoTimeTag: "📞 Callback (no time set)",
 } as const;
 
 /**

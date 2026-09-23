@@ -15,6 +15,9 @@ export interface CrmMetrics {
   /** Sidebar badge: pipeline_stage=meeting_booked AND meeting_at set --
    * matches meetings-calendar.tsx's own filter exactly. */
   meetings_count: number;
+  /** Sidebar badge (user request, 2026-09-23) -- matches pipeline-view.tsx's own inScope filter exactly:
+   * callback_at set, or stage in meeting_booked/contacted/proposal_sent. */
+  pipeline_count: number;
 }
 
 /** Per-week / aggregate block from team_analytics.py. */

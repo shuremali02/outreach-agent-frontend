@@ -28,11 +28,33 @@ export function useLeads(filters: LeadFilters = {}, initialData?: Lead[]) {
   });
 }
 
-/** Every mutation invalidates leads + metrics — the measured version of st.rerun(). */
+/**
+ * Every mutation success patches leads + refetches metrics -- the measured version of st.rerun().
+ *
+ * Used to be a blanket `invalidateQueries({queryKey: ["leads"]})`, which refetches the ENTIRE,
+ * unbounded leads table (list_leads() has no limit/offset -- 1400+ rows now, every column) from every
+ * currently-mounted page, on every single click. Found live 2026-09-23 ("har button bohut time ly rha
+ * hai... application kafi slow hoti ja rhi hai") -- it was never fast, it just gets objectively worse as
+ * the table grows, and yesterday's loading spinners made the wait visible for the first time.
+ *
+ * Every mutation in this file already resolves to the updated Lead (LeadOut) -- react-query passes that
+ * as `data`, the first argument to onSuccess, whether or not the handler declares it. So `onSuccess:
+ * invalidate` was silently discarding a value it already had. Now: when a Lead comes back, splice it into
+ * every cached ["leads", ...] array in place (no network request at all) instead of refetching. Only
+ * falls back to a real invalidate when there's no Lead to patch with (useDeleteLead's remove() resolves
+ * to void -- removing a row needs its own list-shaped update, not a per-item patch, and deletes are rare
+ * enough that a full refetch there is fine).
+ */
 function useInvalidate() {
   const qc = useQueryClient();
-  return () => {
-    qc.invalidateQueries({ queryKey: ["leads"] });
+  return (updated?: Lead) => {
+    if (updated) {
+      qc.setQueriesData<Lead[]>({ queryKey: ["leads"] }, (old) =>
+        old ? old.map((l) => (l.id === updated.id ? updated : l)) : old,
+      );
+    } else {
+      qc.invalidateQueries({ queryKey: ["leads"] });
+    }
     qc.invalidateQueries({ queryKey: ["metrics"] });
   };
 }
@@ -50,7 +72,11 @@ export function useDeleteLead() {
   const invalidate = useInvalidate();
   return useMutation({
     mutationFn: (id: number) => leadsApi.remove(id),
-    onSuccess: invalidate,
+    // Explicit wrapper, not `onSuccess: invalidate` directly -- remove() resolves to void, and letting
+    // TS infer this mutation's TData from invalidate's `(updated?: Lead) => void` signature (instead of
+    // from mutationFn's actual return type) breaks the type check. Calling invalidate() with no argument
+    // is exactly the "no Lead to patch with, fall back to a real refetch" path anyway.
+    onSuccess: () => invalidate(),
   });
 }
 
