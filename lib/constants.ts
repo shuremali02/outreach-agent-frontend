@@ -91,13 +91,12 @@ export function countryLabel(code: string): string {
 }
 
 /**
- * Add a Lead popover's own Country dropdown -- deliberately just these 3,
- * per user request 2026-09-18 (the team only manually adds US/UK/Canada
- * leads). Pipeline/Contacts/Cold Call Desk/Follow-ups' filter dropdowns
- * keep the full COUNTRIES list above so leads already in the CRM from any
- * other country (Pakistan, UAE, etc.) stay filterable.
+ * Add a Lead popover's own Country dropdown -- was narrowed to just US/UK/Canada on 2026-09-18; France
+ * added back 2026-09-23 (user request). Pipeline/Contacts/Cold Call Desk's filter dropdowns keep the full
+ * COUNTRIES list above so leads already in the CRM from any other country (Pakistan, UAE, etc.) stay
+ * filterable regardless of what this popover offers.
  */
-export const ADD_LEAD_COUNTRIES = COUNTRIES.filter((c) => ["US", "GB", "CA"].includes(c.id));
+export const ADD_LEAD_COUNTRIES = COUNTRIES.filter((c) => ["US", "GB", "CA", "FR"].includes(c.id));
 
 export const ALL_SOURCES = "All Sources";
 
