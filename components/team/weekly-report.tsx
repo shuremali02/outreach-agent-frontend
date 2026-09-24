@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useState } from "react";
 import { TeamTable } from "@/components/team/team-table";
 import { Field, Select } from "@/components/ui/input";
@@ -10,6 +11,9 @@ import { num } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useUsers } from "@/hooks/use-users";
 import type { ActivityFeedItem, PipelineStage, TeamWeeks } from "@/types";
+
+/** A "month" here is a block of 4 weeks (not a calendar month) -- see WeeklyReport below. */
+const WEEKS_PER_BLOCK = 4;
 
 const OUTCOME_LABELS: Record<string, string> = Object.fromEntries(DISPOSITIONS.map((d) => [d.outcome, d.label]));
 
@@ -103,34 +107,85 @@ export function WeeklyReport({ initialData }: { initialData: TeamWeeks }) {
     );
   }
 
-  const week = data.weeks.find((w) => w.week === picked) ?? data.weeks[0];
+  // data.weeks is newest-first, numbered continuously from Week 1 (the backend's wire format, unchanged).
+  // `picked` null = follow the current (newest) week, so when a new week starts it becomes the one on
+  // screen by itself; a specific number = the rep stepped back to that week.
+  //
+  // Weeks are grouped into 4-week "months" (user, 2026-09-24, chose "4-week blocks": "yeh 4 weeks tk he rhyga
+  // kyun k 4 weeks bad toh month he end ho jata hai") -- NOT calendar months (Week 1 = Sep 21, so block 1
+  // ends Oct 18). The heading shows the week's number WITHIN its block (Week 5 overall = Week 1 of Month
+  // 2), ‹ › step only inside the selected block, and the Month switch below jumps between blocks.
+  const blockOf = (n: number) => Math.floor((n - 1) / WEEKS_PER_BLOCK);
+  const idx = Math.max(0, data.weeks.findIndex((w) => w.week === picked)); // -1 (null) -> newest
+  const week = data.weeks[idx];
+  const currentBlock = blockOf(data.weeks[0].week);
+  const selBlock = week ? blockOf(week.week) : currentBlock;
+  const blockWeeks = data.weeks.filter((w) => blockOf(w.week) === selBlock); // still newest-first
+  const bIdx = week ? blockWeeks.findIndex((w) => w.week === week.week) : 0;
+  const olderWeek = blockWeeks[bIdx + 1];
+  const newerWeek = blockWeeks[bIdx - 1];
+  const blocks = [...new Set(data.weeks.map((w) => blockOf(w.week)))]
+    .sort((a, b) => a - b)
+    .map((index) => {
+      const ws = data.weeks.filter((w) => blockOf(w.week) === index);
+      return { index, newest: ws[0], start: ws[ws.length - 1].start, end: ws[0].end };
+    });
+  const go = (target: number) => setPicked(target === data.weeks[0].week ? null : target);
+  const arrow =
+    "cursor-pointer rounded-[6px] p-1 text-muted transition-colors hover:text-accent disabled:cursor-default disabled:opacity-30 disabled:hover:text-muted";
 
   return (
     <>
-      <div className="mb-4 flex flex-wrap gap-2">
-        {data.weeks.map((w) => (
-          <button
-            key={w.week}
-            type="button"
-            onClick={() => setPicked(w.week)}
-            className={cn(
-              "cursor-pointer rounded-[8px] border px-3 py-2 text-[0.85rem] font-semibold transition-colors",
-              w.week === week.week
-                ? "border-transparent bg-accent text-white"
-                : "border-border bg-card text-muted hover:border-accent hover:text-accent",
-            )}
-          >
-            {w.label}
-            {w.in_progress && " •"}
-          </button>
-        ))}
-      </div>
+      {blocks.length > 1 && (
+        <div className="mb-4 flex flex-wrap gap-2">
+          {blocks.map((b) => (
+            <button
+              key={b.index}
+              type="button"
+              onClick={() => go(b.newest.week)}
+              title={fmtRange(b.start, b.end)}
+              className={cn(
+                "cursor-pointer rounded-[8px] border px-3 py-1.5 text-[0.85rem] font-semibold transition-colors",
+                b.index === selBlock
+                  ? "border-transparent bg-accent text-white"
+                  : "border-border bg-card text-muted hover:border-accent hover:text-accent",
+              )}
+            >
+              Month {b.index + 1}
+              {b.index === currentBlock && " •"}
+            </button>
+          ))}
+        </div>
+      )}
 
       {week && (
         <>
-          <div className="mb-3 flex flex-wrap items-baseline gap-x-4 gap-y-1">
+          <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1">
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => olderWeek && go(olderWeek.week)}
+                disabled={!olderWeek}
+                aria-label="Previous week"
+                title="Previous week"
+                className={arrow}
+              >
+                <ChevronLeft className="h-5 w-5" aria-hidden />
+              </button>
+              <button
+                type="button"
+                onClick={() => newerWeek && go(newerWeek.week)}
+                disabled={!newerWeek}
+                aria-label="Next week"
+                title="Next week"
+                className={arrow}
+              >
+                <ChevronRight className="h-5 w-5" aria-hidden />
+              </button>
+            </div>
             <h2 className="text-[1.3rem] font-semibold">
-              {week.label} <span className="text-[1rem] font-normal text-muted">{fmtRange(week.start, week.end)}</span>
+              Week {((week.week - 1) % WEEKS_PER_BLOCK) + 1}{" "}
+              <span className="text-[1rem] font-normal text-muted">{fmtRange(week.start, week.end)}</span>
             </h2>
             {week.in_progress && (
               <span className="rounded-full bg-info-tint px-2 py-0.5 text-[0.75rem] font-semibold text-info" style={{ background: "var(--info-tint)", color: "var(--info)" }}>

@@ -8,7 +8,7 @@ import { LeadCard } from "@/components/leads/lead-card";
 import { LeadWho } from "@/components/leads/lead-who";
 import { PhoneNumberList } from "@/components/leads/phone-number-list";
 import { LinkedInResearchPanel, HunterDecisionMakers, SiteScanPanel } from "@/components/enrichment";
-import { MailtoButton } from "@/components/common/mailto-button";
+import { NotesPanel } from "@/components/leads/notes-panel";
 import { MetricCard } from "@/components/metrics/metric-card";
 import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/components/ui/confirm-dialog";
@@ -203,13 +203,8 @@ function PipelineSummary({ lead }: { lead: Lead }) {
           </button>
         }
       />
-      <MailtoButton
-        email={lead.contact_email}
-        subject={lead.subject}
-        body={lead.body}
-        label="📧 Open in Mail App"
-        block
-      />
+      {/* The "Open in Mail App" button that used to end this column now comes with the Notes panel next to
+          it (NotesPanel renders its own), so it isn't shown twice on one card. */}
     </div>
   );
 }
@@ -414,8 +409,9 @@ export function PipelineView({
             </span>
           }
         >
-          {/* Two columns now (PipelineSummary replaced ManageDeal's own two-panel fragment, Phase 4). */}
-          <div className="grid grid-cols-[1.6fr_1fr] gap-6">
+          {/* Three columns: company/contact | deal + actions | notes. Notes added 2026-09-24 ("yeh notes
+              pipeline me nhi dikh rhy") -- the same NotesPanel Leads/Projects/the Meeting popup already use. */}
+          <div className="grid grid-cols-[1.4fr_1fr_1.2fr] gap-6">
             <div className="flex flex-col gap-3">
               <h4 className="text-[1rem] font-semibold">🏢 Company &amp; Contact</h4>
               {lead.company_website && (
@@ -452,6 +448,8 @@ export function PipelineView({
             </div>
 
             <PipelineSummary lead={lead} />
+
+            <NotesPanel lead={lead} />
           </div>
         </LeadCard>
       ))}
