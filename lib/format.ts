@@ -72,28 +72,50 @@ export function shortDate(iso: string): string {
 }
 
 /**
- * Leads (Contacts) page's "Today's Leads" / "This Week's Leads" block, replacing the old "Active Sector
- * Overview" card (user request, 2026-09-22 -- "yeh jo hai is ko hata do... todays leads or this week
- * leads ki block bana kr woh show krwao"). Browser-local calendar day/week (Monday start), matching
- * addedAt() above -- not app/crud/call_events.py's PKT sales-day definition, which is a different metric
- * (call activity, not lead creation) with no filter-by-category/country/source equivalent on this page.
+ * Leads (Contacts) page's "Today's Leads" / "This Week's Leads" block (user request, 2026-09-22).
+ *
+ * "Today" is the team's PKT SALES DAY -- 2 PM to 2 AM PKT, NOT midnight to midnight -- and "This Week" is
+ * Monday 00:00 PKT to the next Monday 00:00 PKT, exactly mirroring app/crud/call_events.py's _day_bounds()/
+ * _week_bounds() so this block agrees with the Today page and Sales Terminal ("hamary pass 2 sy 2 ki logic
+ * hai", 2026-09-24 -- this first shipped as browser-local calendar day/week, which was wrong for that).
+ * Fixed UTC+5 offset (Pakistan has no DST), so it doesn't depend on the viewer's own timezone either.
+ * DAY_START_HOUR/DAY_LENGTH_HOURS below are copied from call_events.py (_DAY_START_HOUR = 14, 12h window) --
+ * if that changes there, change it here too.
+ *
+ * Note the consequence of a 12h window: like call activity, "today" only covers 2 PM-2 AM. Between 2 AM
+ * and 2 PM it still shows the sales day that just ended (matches the backend), and a lead created in that
+ * 2 AM-2 PM gap falls inside no "today" window at all -- it does count toward "this week".
  */
+const PKT_OFFSET_MS = 5 * 3600_000;
+const DAY_START_HOUR = 14;
+const DAY_LENGTH_HOURS = 12;
+
+function salesDayBounds(nowMs: number): [number, number] {
+  const pkt = new Date(nowMs + PKT_OFFSET_MS); // getUTC* on this are PKT wall-clock fields
+  const anchorDay = pkt.getUTCHours() >= DAY_START_HOUR ? pkt.getUTCDate() : pkt.getUTCDate() - 1;
+  const startPktWall = Date.UTC(pkt.getUTCFullYear(), pkt.getUTCMonth(), anchorDay, DAY_START_HOUR);
+  const start = startPktWall - PKT_OFFSET_MS;
+  return [start, start + DAY_LENGTH_HOURS * 3600_000];
+}
+
+function weekBounds(nowMs: number): [number, number] {
+  const pkt = new Date(nowMs + PKT_OFFSET_MS);
+  const sinceMonday = (pkt.getUTCDay() + 6) % 7; // Mon=0 ... Sun=6
+  const startPktWall = Date.UTC(pkt.getUTCFullYear(), pkt.getUTCMonth(), pkt.getUTCDate() - sinceMonday);
+  const start = startPktWall - PKT_OFFSET_MS;
+  return [start, start + 7 * 24 * 3600_000];
+}
+
 export function isToday(iso: string): boolean {
-  const d = new Date(iso);
-  const now = new Date();
-  return (
-    d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate()
-  );
+  const t = new Date(iso).getTime();
+  const [start, end] = salesDayBounds(Date.now());
+  return t >= start && t < end;
 }
 
 export function isThisWeek(iso: string): boolean {
-  const d = new Date(iso);
-  const now = new Date();
-  const day = now.getDay();
-  const mondayOffset = day === 0 ? -6 : 1 - day;
-  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() + mondayOffset);
-  const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 7);
-  return d >= start && d < end;
+  const t = new Date(iso).getTime();
+  const [start, end] = weekBounds(Date.now());
+  return t >= start && t < end;
 }
 
 /**

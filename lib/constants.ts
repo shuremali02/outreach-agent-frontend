@@ -130,7 +130,9 @@ export const TEAM_ACTIVITY = {
     receptionist: "Reception",
     decision_maker: "Decision Maker",
     meetings: "Meetings",
-    followups: "Follow-ups",
+    // Key is still "followups" (wire compat) -- shows as "Pipeline", counting only what puts a lead into
+    // Pipeline (Callback/Meeting/Proposal/Email Send), not voicemail/no-answer/hang-up. User, 2026-09-24.
+    followups: "Pipeline",
     emails: "Emails",
     leads_added: "Leads Added",
     disconnected: "Dead Lines",
@@ -975,7 +977,7 @@ export const ACTIVITY_SCROLLER = {
     // sales team added manually (source_prompt == "Manual entry"), not AI/
     // Maps/CSV-discovered ones, so the label says so.
     { key: "leads_added", label: "Sales Team Leads", color: "#8b5cf6" },
-    { key: "followups", label: "Follow-ups", color: "#f59e0b" },
+    { key: "followups", label: "Pipeline", color: "#f59e0b" },
     { key: "meetings", label: "Meetings", color: "#14b8a6" },
     { key: "disconnected", label: "Disconnected", color: "#ef4444" },
     { key: "voicemail", label: "Voicemail", color: "#ec4899" },
