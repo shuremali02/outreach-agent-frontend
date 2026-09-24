@@ -7,6 +7,7 @@ import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import { Input, Textarea, Select, Field } from "@/components/ui/input";
 import {
+  CALLBACK_BOOKING,
   COUNTRIES,
   MEETING_BOOKING,
   PIPELINE_STAGES,
@@ -42,6 +43,15 @@ export function LeadEditForm({ lead, onDone }: { lead: Lead; onDone?: () => void
   // docs.md 2026-09-16).
   const [meetingDate, setMeetingDate] = useState(lead.meeting_at ? lead.meeting_at.slice(0, 10) : "");
   const [meetingTime, setMeetingTime] = useState(lead.meeting_at ? lead.meeting_at.slice(11, 16) : "");
+  // Callback date/time (2026-09-24). This form had no way to set one, so a lead whose Callback Scheduled
+  // went through the old production button that never asked for a time (docs.md 2026-09-23) could not be
+  // given one -- and one saved with a time is what puts a lead on Pipeline under the original rule too.
+  // Shown only where it's relevant (a follow-up lead, or one that already has / had a callback) rather than
+  // on every lead's form. callback_at comes back as naive wall-clock ISO, like meeting_at (schemas/lead.py).
+  const [callbackDate, setCallbackDate] = useState(lead.callback_at ? lead.callback_at.slice(0, 10) : "");
+  const [callbackTime, setCallbackTime] = useState(lead.callback_at ? lead.callback_at.slice(11, 16) : "");
+  const showCallback =
+    stage === "followup_due" || Boolean(lead.callback_at) || lead.last_call_outcome === "callback_scheduled";
 
   return (
     <div className="flex flex-col gap-3">
@@ -91,6 +101,19 @@ export function LeadEditForm({ lead, onDone }: { lead: Lead; onDone?: () => void
               will not appear on the Meetings tab.
             </p>
           )}
+        </>
+      )}
+      {showCallback && (
+        <>
+          <p className="text-[0.85rem] font-semibold">{CALLBACK_BOOKING.prompt}</p>
+          <div className="grid grid-cols-2 gap-2">
+            <Field label={CALLBACK_BOOKING.dateLabel}>
+              <Input type="date" value={callbackDate} onChange={(e) => setCallbackDate(e.target.value)} />
+            </Field>
+            <Field label={CALLBACK_BOOKING.timeLabel}>
+              <Input type="time" value={callbackTime} onChange={(e) => setCallbackTime(e.target.value)} />
+            </Field>
+          </div>
         </>
       )}
       <Field label="Contact Phone">
@@ -147,6 +170,11 @@ export function LeadEditForm({ lead, onDone }: { lead: Lead; onDone?: () => void
                 country,
                 ...(meetingDate && meetingTime
                   ? { meeting_at: `${meetingDate}T${meetingTime}:00` }
+                  : {}),
+                // Only when the callback fields are showing AND both are filled -- never sends a half-
+                // filled value, and (like every field here) can't clear an existing callback.
+                ...(showCallback && callbackDate && callbackTime
+                  ? { callback_at: `${callbackDate}T${callbackTime}:00` }
                   : {}),
               },
             },

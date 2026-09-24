@@ -258,5 +258,6 @@ export type UpdateLeadInput = Partial<
     | "screenshot_path"
     | "enrichment_source"
     | "meeting_at"
+    | "callback_at"
   >
 >;
