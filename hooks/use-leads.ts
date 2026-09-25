@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { leadsApi } from "@/lib/api";
 import type { MentionPayload } from "@/lib/mentions";
 import type { CallOutcome, Lead, LeadFilters, UpdateLeadInput } from "@/types";
@@ -17,15 +17,69 @@ export function leadsKey(filters: LeadFilters = {}) {
     filters.category ?? null,
     filters.country ?? null,
     filters.q ?? null,
+    // A slim and a full list are different payloads -- never serve one from the other's cache entry.
+    filters.slim === false ? "full" : "slim",
+    filters.onDesk ? "desk" : null,
+    filters.tried ?? null,
   ] as const;
 }
 
-export function useLeads(filters: LeadFilters = {}, initialData?: Lead[]) {
+/** `enabled: false` = don't fetch yet (Cold Call Desk's Voicemail / Hang Up group, until the rep opens it). */
+export function useLeads(filters: LeadFilters = {}, initialData?: Lead[], enabled = true) {
   return useQuery({
     queryKey: leadsKey(filters),
     queryFn: () => leadsApi.list(filters),
     initialData,
+    enabled,
   });
+}
+
+/** The long text columns a slim list row leaves empty -- keep in step with SLIM_DEFERRED (backend schemas/lead.py). */
+type SlimField =
+  | "body"
+  | "phone_script"
+  | "objection_notes"
+  | "product_description"
+  | "qualification_notes"
+  | "discovery_citations";
+
+/**
+ * The full version of a lead that came from the slim list. Call it in the component that shows or edits
+ * body / phone_script / objection_notes / product_description (NotesPanel, SiteScanPanel, LeadEditForm,
+ * Today's cards) -- those mount only while a card is open, so a page of 50 collapsed cards costs zero
+ * extra requests. A lead that is already full (a mutation response patched into the list, or the Cold Call
+ * Desk's full list) returns as-is and fetches nothing.
+ *
+ * `ready` is false until the fetch lands; anything that WRITES those fields back (the edit form) must wait
+ * for it, or it would save the empty placeholder over the real text.
+ *
+ * The updated_at in the key is the freshness signal: the list refetches whenever a lead changes, the new
+ * updated_at makes a new key, and the detail is fetched again -- no invalidation to remember at the many
+ * places that write these fields. placeholderData keeps showing the previous text while that happens.
+ */
+export function useFullLead(lead: Lead): { lead: Lead; ready: boolean; failed: boolean } {
+  const needs = Boolean(lead.slim);
+  const { data, isError } = useQuery({
+    queryKey: ["lead", lead.id, lead.updated_at],
+    queryFn: () => leadsApi.get(lead.id),
+    enabled: needs,
+    staleTime: 5 * 60_000,
+    placeholderData: keepPreviousData,
+  });
+  if (!needs) return { lead, ready: true, failed: false };
+  if (!data) return { lead, ready: false, failed: isError };
+  return { lead: { ...lead, ...pickSlimFields(data), slim: false }, ready: true, failed: false };
+}
+
+function pickSlimFields(full: Lead): Pick<Lead, SlimField> {
+  return {
+    body: full.body,
+    phone_script: full.phone_script,
+    objection_notes: full.objection_notes,
+    product_description: full.product_description,
+    qualification_notes: full.qualification_notes,
+    discovery_citations: full.discovery_citations,
+  };
 }
 
 /**
@@ -136,6 +190,16 @@ export function useToggleStar() {
   const invalidate = useInvalidate();
   return useMutation({
     mutationFn: (id: number) => leadsApi.toggleStar(id),
+    onSuccess: invalidate,
+  });
+}
+
+/** "✏️ Edit" on the notes box -- see lib/api/leads.ts editNotes() (409 if the notes changed meanwhile). */
+export function useEditNotes() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: ({ id, text, expected }: { id: number; text: string; expected: string }) =>
+      leadsApi.editNotes(id, text, expected),
     onSuccess: invalidate,
   });
 }

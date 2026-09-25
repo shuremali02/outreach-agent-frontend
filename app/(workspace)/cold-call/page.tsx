@@ -11,7 +11,9 @@ export const dynamic = "force-dynamic";
 export default async function ColdCallPage({ searchParams }: PageProps<"/cold-call">) {
   const sp = await searchParams;
   const q = typeof sp.q === "string" ? sp.q : "";
-  const leads = await leadsApi.list({ q });
+  // Must match ColdCallView's useLeads() filters exactly, or its initialData is thrown away. Only the desk's
+  // own leads, and not the Voicemail / Hang Up group -- that loads when the rep opens its section.
+  const leads = await leadsApi.list({ q, slim: false, onDesk: true, tried: false });
 
   return (
     <div>

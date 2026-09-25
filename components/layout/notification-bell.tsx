@@ -12,7 +12,7 @@ import { useToast } from "@/components/ui/toast";
 import { Loader } from "@/components/ui/loader";
 import type { AppNotification } from "@/types";
 
-const POLL_MS = 30_000;
+const POLL_MS = 60_000;
 
 function whereText(n: AppNotification): string {
   if (n.company_name) return NOTIFICATIONS.onLead(n.company_name);
@@ -21,9 +21,15 @@ function whereText(n: AppNotification): string {
 }
 
 /**
- * Bell + unread count in the top bar. Polls every 30s and on focus, so a mention shows up within
- * half a minute; anything sent while the person was offline is waiting the next time they sign in.
- * Renders nothing when nobody is signed in (login off), same as the user menu.
+ * Bell + unread count in the top bar. Renders nothing when nobody is signed in (login off), same as the
+ * user menu; anything sent while the person was offline is waiting the next time they sign in.
+ *
+ * Polling cost (2026-09-24): this used to poll BOTH the list and the count every 30s, list included while
+ * the dropdown was closed -- 76% of the backend's requests in one HF log, each one ~3 DB round trips. Now
+ * only the count (one COUNT query) is polled, every 60s and on focus. The list -- which the snackbar needs
+ * to say WHO mentioned you -- is fetched only when there is something unread, when the dropdown opens, and
+ * when the count goes up. Known gap: if one mention is read elsewhere while a new one arrives inside the
+ * same 60s the count does not rise, so that one waits until the next poll that changes it or a dropdown open.
  */
 export function NotificationBell() {
   const router = useRouter();
@@ -33,25 +39,36 @@ export function NotificationBell() {
   const [open, setOpen] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
 
-  const list = useQuery({
-    queryKey: ["notifications"],
-    queryFn: () => notificationsApi.list(20),
-    enabled: signedIn,
-    refetchInterval: POLL_MS,
-    refetchOnWindowFocus: true,
-    staleTime: 0,
-    retry: false,
-  });
   const count = useQuery({
     queryKey: ["notifications-count"],
     queryFn: notificationsApi.unreadCount,
     enabled: signedIn,
     refetchInterval: POLL_MS,
     refetchOnWindowFocus: true,
-    staleTime: 0,
+    // Focus refetch only if the last one is older than this, so alt-tabbing back and forth is free.
+    staleTime: 30_000,
     retry: false,
   });
   const unread = count.data?.count ?? 0;
+
+  // No interval, no focus refetch: kept fresh by the count effect below and by opening the dropdown.
+  const list = useQuery({
+    queryKey: ["notifications"],
+    queryFn: () => notificationsApi.list(20),
+    enabled: signedIn && (open || unread > 0),
+    retry: false,
+  });
+
+  // A rise in the unread count means something new arrived: refresh the list (a no-op while it is
+  // disabled -- it then fetches the moment `unread > 0` enables it).
+  const prevUnread = useRef<number | null>(null);
+  useEffect(() => {
+    const n = count.data?.count;
+    if (n === undefined) return;
+    const prev = prevUnread.current;
+    prevUnread.current = n;
+    if (prev !== null && n > prev) qc.invalidateQueries({ queryKey: ["notifications"] });
+  }, [count.data, qc]);
 
   // Snackbar for anything new since the last poll. The first load only says "you have N", so
   // a backlog from while you were away is one message, not a stack of them.
@@ -87,12 +104,13 @@ export function NotificationBell() {
     };
   }, [open]);
 
-  const refresh = () => {
+  // Both read endpoints already return the new unread count -- use it instead of asking again.
+  const applyRead = (res: { count: number }) => {
+    qc.setQueryData(["notifications-count"], res);
     qc.invalidateQueries({ queryKey: ["notifications"] });
-    qc.invalidateQueries({ queryKey: ["notifications-count"] });
   };
-  const markRead = useMutation({ mutationFn: notificationsApi.markRead, onSuccess: refresh });
-  const markAll = useMutation({ mutationFn: notificationsApi.markAllRead, onSuccess: refresh });
+  const markRead = useMutation({ mutationFn: notificationsApi.markRead, onSuccess: applyRead });
+  const markAll = useMutation({ mutationFn: notificationsApi.markAllRead, onSuccess: applyRead });
 
   function go(n: AppNotification) {
     if (!n.read) markRead.mutate(n.id);
@@ -108,7 +126,11 @@ export function NotificationBell() {
     <div ref={boxRef} className="relative">
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => {
+          // Opening shows the current list, not whatever was fetched a while ago.
+          if (!open) qc.invalidateQueries({ queryKey: ["notifications"] });
+          setOpen((v) => !v);
+        }}
         aria-label={unread ? `${NOTIFICATIONS.bell} (${unread} unread)` : NOTIFICATIONS.bell}
         aria-expanded={open}
         className="relative flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-border bg-input text-text hover:border-accent"

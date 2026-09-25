@@ -2,7 +2,10 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLeads } from "@/hooks/use-leads";
+import { leadsApi } from "@/lib/api";
+import { Loader } from "@/components/ui/loader";
 import { Battlecard } from "./battlecard";
 // Re-enabled: the CSV Import tab is how a spreadsheet gets uploaded +
 // enriched (File > Download > CSV from Google Sheets/Excel, then drop the
@@ -43,7 +46,29 @@ function lineOf(l: Lead): string {
 }
 
 export function ColdCallView({ initialLeads, q }: { initialLeads: Lead[]; q: string }) {
-  const { data: allLeads = [] } = useLeads({ q }, initialLeads);
+  // Full rows, not slim: every card here shows the phone script and objections (and the mailto body), and
+  // 139 cards each fetching their own full lead would be far worse than one bigger list.
+  // Only the desk's own leads (filtered in SQL, not in the browser), and NOT the Voicemail / Hang Up group:
+  // that one is fetched only once the rep opens its section below ("Already Tried"), so it is not
+  // downloaded on every visit. These filters must match app/(workspace)/cold-call/page.tsx exactly.
+  const { data: mainLeads = [] } = useLeads({ q, slim: false, onDesk: true, tried: false }, initialLeads);
+  const qc = useQueryClient();
+  const [showTried, setShowTried] = useState(false);
+  const triedRef = useRef<HTMLDivElement>(null);
+  const tried = useLeads({ q, slim: false, onDesk: true, tried: true }, undefined, showTried);
+  // The collapsed section still says how many are waiting -- one COUNT query, not the rows.
+  const triedCount = useQuery({
+    queryKey: ["desk-tried-count", q],
+    queryFn: () => leadsApi.deskTriedCount(q),
+    staleTime: 60_000,
+  });
+  const triedTotal = triedCount.data?.count ?? 0;
+  const allLeads = useMemo(() => {
+    const byId = new Map<number, Lead>();
+    for (const l of mainLeads) byId.set(l.id, l);
+    for (const l of tried.data ?? []) byId.set(l.id, l);
+    return [...byId.values()];
+  }, [mainLeads, tried.data]);
 
   // Search moved here from the shared TopBar (user, 2026-09-23: "jo yeh search bar hai isko iski jaga
   // yahan neechy ly ao") -- same debounced ?q= URL-sync logic top-bar.tsx used for this route, just
@@ -98,6 +123,8 @@ export function ColdCallView({ initialLeads, q }: { initialLeads: Lead[]; q: str
   const [dismissed, setDismissed] = useState<Set<number>>(new Set());
   function dismiss(leadId: number) {
     setDismissed((prev) => (prev.has(leadId) ? prev : new Set(prev).add(leadId)));
+    // A Voicemail / Hang Up outcome moves the lead into the (possibly unloaded) tried group: keep its count honest.
+    qc.invalidateQueries({ queryKey: ["desk-tried-count"] });
   }
 
   /**
@@ -184,7 +211,11 @@ export function ColdCallView({ initialLeads, q }: { initialLeads: Lead[]; q: str
       <IngestDrawer />
 
       <div className="mb-5 grid grid-cols-5 gap-3">
-        <TickerCard label="Call-Ready Queue" value={num(queue.length)} size="md" />
+        <TickerCard
+          label="Call-Ready Queue"
+          value={num(mainLeads.filter((l) => l.sent_to_desk_at).length + triedTotal)}
+          size="md"
+        />
         <TickerCard
           label="Verified Direct Lines"
           value={num(verifiedLines)}
@@ -263,14 +294,27 @@ export function ColdCallView({ initialLeads, q }: { initialLeads: Lead[]; q: str
           aria-label="Search leads"
           className="w-[28rem]"
         />
-        <Button
-          variant="secondary"
-          size="sm"
-          title={COLD_CALL_QUEUE.resortHelp}
-          onClick={() => setSortAt(Date.now())}
-        >
-          {COLD_CALL_QUEUE.resort}
-        </Button>
+        <div className="flex items-center gap-2">
+          {/* The section itself sits at the bottom (after every New / Follow-up card) -- this jumps to it. */}
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => {
+              setShowTried(true);
+              triedRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }}
+          >
+            {LAST_TOUCH.lowPriorityHeading(triedTotal)}
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            title={COLD_CALL_QUEUE.resortHelp}
+            onClick={() => setSortAt(Date.now())}
+          >
+            {COLD_CALL_QUEUE.resort}
+          </Button>
+        </div>
       </div>
 
       {filtered.length === 0 && (
@@ -304,12 +348,23 @@ export function ColdCallView({ initialLeads, q }: { initialLeads: Lead[]; q: str
         </div>
       )}
 
-      {triedLeads.length > 0 && (
-        <div>
-          <h3 className="mb-2 text-[1.05rem] font-semibold">
-            {LAST_TOUCH.lowPriorityHeading(triedLeads.length)}
-          </h3>
-          {triedLeads.map((lead) => (
+      {/* Always rendered, even at 0 or if the count request failed -- hiding it made it look missing. */}
+      {(
+        <div ref={triedRef} className="scroll-mt-4">
+          <button
+            type="button"
+            onClick={() => setShowTried((v) => !v)}
+            aria-expanded={showTried}
+            className="mb-2 flex cursor-pointer items-center gap-2 text-left text-[1.05rem] font-semibold hover:text-accent"
+          >
+            <span className="text-[0.8rem] text-muted" aria-hidden>
+              {showTried ? "▾" : "▸"}
+            </span>
+            {LAST_TOUCH.lowPriorityHeading(showTried && tried.data ? triedLeads.length : triedTotal)}
+            {showTried && tried.isFetching && <Loader className="h-4 w-4" />}
+            {!showTried && <span className="text-[0.8rem] font-normal text-muted">{LAST_TOUCH.clickToLoad}</span>}
+          </button>
+          {showTried && triedLeads.map((lead) => (
             <Battlecard key={lead.id} lead={lead} onActionTaken={dismiss} />
           ))}
         </div>

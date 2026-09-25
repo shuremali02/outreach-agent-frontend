@@ -34,6 +34,15 @@ import { addedAt, currency, externalUrl, displayDomain, hasUsableEmail, leadSour
 import type { Lead } from "@/types";
 import { EMPTY_STATES } from "@/lib/constants";
 
+/** Has a callback (a set time, or a Callback Scheduled disposition) AND is not already Won / Lost. */
+function hasOpenCallback(l: Lead): boolean {
+  return (
+    (Boolean(l.callback_at) || l.last_call_outcome === "callback_scheduled") &&
+    l.pipeline_stage !== "won" &&
+    l.pipeline_stage !== "lost"
+  );
+}
+
 /**
  * Quick status-change actions on every Pipeline card (user, 2026-09-22: "hamesha us ka status purposal
  * sent ya callback ya email send nhi rhyga is lye har lead pr Not intrested, purposal send or meeting
@@ -260,12 +269,15 @@ export function PipelineView({
   // auto add krdo pipeline me hum khudi time add krlyngy edit form sy" -- show them on Pipeline anyway so
   // a rep can fill in the real time via the edit form, rather than leaving them stranded off Pipeline
   // with no callback_at to ever match the old check.
+  //
+  // A callback only counts while the lead is still open: a Won or Lost lead keeps its old callback_at /
+  // last_call_outcome forever, and letting that pull it back in scope listed a closed deal on Pipeline and
+  // counted it twice (Opportunity AND Client Closed). Mirrored in crud/leads.py get_crm_metrics pipeline_count.
   const inScope = useMemo(
     () =>
       fetchedLeads.filter(
         (l) =>
-          Boolean(l.callback_at) ||
-          l.last_call_outcome === "callback_scheduled" ||
+          hasOpenCallback(l) ||
           l.pipeline_stage === "meeting_booked" ||
           l.pipeline_stage === "contacted" ||
           l.pipeline_stage === "proposal_sent",
@@ -279,7 +291,7 @@ export function PipelineView({
         (l) =>
           (source === ALL_SOURCES || leadSource(l.source_prompt) === source) &&
           (view === "all" ||
-            (view === "callback" && (Boolean(l.callback_at) || l.last_call_outcome === "callback_scheduled")) ||
+            (view === "callback" && hasOpenCallback(l)) ||
             (view === "meeting" && l.pipeline_stage === "meeting_booked") ||
             (view === "email" && l.pipeline_stage === "contacted") ||
             (view === "proposal" && l.pipeline_stage === "proposal_sent") ||
@@ -296,7 +308,9 @@ export function PipelineView({
   // list) -- so these two total the page's full scope (inScope), not the narrower `leads`.
   // "Opportunity" -- every lead currently active in Pipeline (open, not yet won or lost).
   const opportunityValue = inScope.reduce((s, l) => s + l.deal_value, 0);
-  // "Interested" -- stays 0 until a lead is actually Client Closed (won leaves this page for Projects,
+  // "Client Closed" (was "Interested" until 2026-09-24, renamed on request -- it's exactly the leads at stage
+  // won, the same label the Client Closed button and Projects use) -- stays 0 until a lead is actually
+  // Client Closed (won leaves this page for Projects,
   // so this reads off the page's own unfiltered fetch, not inScope/leads).
   const wonValue = useMemo(
     () => fetchedLeads.filter((l) => l.pipeline_stage === "won").reduce((s, l) => s + l.deal_value, 0),
@@ -307,7 +321,7 @@ export function PipelineView({
     <>
       <div className="my-4 grid grid-cols-2 gap-4">
         <MetricCard label="Opportunity" value={currency(opportunityValue)} />
-        <MetricCard label="Interested" value={currency(wonValue)} />
+        <MetricCard label="Client Closed" value={currency(wonValue)} />
       </div>
 
       <div className="mb-4 grid grid-cols-5 gap-4">

@@ -9,7 +9,13 @@ export const leadsApi = {
       category: filters.category,
       country: filters.country,
       q: filters.q,
+      // Slim unless a page asks for full (Cold Call Desk, whose cards show the script and objections).
+      slim: filters.slim === false ? undefined : 1,
+      on_desk: filters.onDesk ? 1 : undefined,
+      tried: filters.tried,
     }),
+  /** Size of the Cold Call Desk's Voicemail / Hang Up group, so the collapsed section can show it unloaded. */
+  deskTriedCount: (q?: string) => api.get<{ count: number }>("/leads/desk-tried-count", { q }),
   get: (id: number) => api.get<Lead>(`/leads/${id}`),
   create: (input: CreateLeadInput) => api.post<Lead>("/leads", input),
   update: (id: number, input: UpdateLeadInput) => api.patch<Lead>(`/leads/${id}`, input),
@@ -54,6 +60,9 @@ export const leadsApi = {
    */
   addNote: (id: number, text: string, mention?: MentionPayload) =>
     api.post<Lead>(`/leads/${id}/notes`, { text, ...mention }),
+  /** Replace the whole notes text; the backend answers 409 if it changed since `expected` (the text edited from). */
+  editNotes: (id: number, text: string, expected: string) =>
+    api.patch<Lead>(`/leads/${id}/notes`, { text, expected }),
 };
 
 import type { DecisionMaker, LeadContact, LinkedInResearch, Job } from "@/types";

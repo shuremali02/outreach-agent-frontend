@@ -256,7 +256,8 @@ export function ContactsPanel({
                       </span>
                     </p>
                     {c.email && (
-                      <p className="mt-0.5">
+                      // break-all: a long address (no spaces to wrap at) ran under the buttons on the right.
+                      <p className="mt-0.5 break-all">
                         <span className="text-[0.95rem] font-medium text-text">{c.email}</span>
                       </p>
                     )}

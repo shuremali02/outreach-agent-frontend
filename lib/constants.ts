@@ -893,6 +893,15 @@ export const CALL_PICKED_BY = {
   failed: "Could not save who picked up. Try again.",
 } as const;
 
+/**
+ * Lead edit form while it fetches the full lead (a slim list row has no outreach draft to edit -- see
+ * useFullLead() in hooks/use-leads.ts). No Streamlit counterpart: app.py's form never loaded lazily.
+ */
+export const EDIT_FORM = {
+  loading: "Loading lead…",
+  loadFailed: "Could not load this lead's full details. Close this and try again.",
+} as const;
+
 /** Callback Scheduled's date/time prompt -- same shape as Booked!'s, a separate field (callback_at). */
 export const CALLBACK_BOOKING = {
   prompt: "When should we call back?",
@@ -913,7 +922,8 @@ export const EMAIL_SEND = {
 
 /** The bottom "already tried" section and last-touch mark on Cold Call Desk cards (Phase 3). */
 export const LAST_TOUCH = {
-  lowPriorityHeading: (count: number) => `⏳ Already Tried (${count})`,
+  lowPriorityHeading: (count: number) => `⏳ Voicemail & Hang Ups (${count})`,
+  clickToLoad: "click to load",
   label: (when: string) => `Last touched ${when}`,
 } as const;
 

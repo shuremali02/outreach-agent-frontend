@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useUpdateLead, useDeleteLead } from "@/hooks/use-leads";
+import { useFullLead, useUpdateLead, useDeleteLead } from "@/hooks/use-leads";
+import { Loader } from "@/components/ui/loader";
 import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
@@ -9,6 +10,7 @@ import { Input, Textarea, Select, Field } from "@/components/ui/input";
 import {
   CALLBACK_BOOKING,
   COUNTRIES,
+  EDIT_FORM,
   MEETING_BOOKING,
   PIPELINE_STAGES,
   STANDARD_CATEGORIES,
@@ -25,6 +27,21 @@ import type { Lead, PipelineStage } from "@/types";
  * they already are.
  */
 export function LeadEditForm({ lead, onDone }: { lead: Lead; onDone?: () => void }) {
+  // A slim list row has an EMPTY body; this form sends `body` back on save, so it must not open (and
+  // initialise its fields) until the real one is here -- otherwise "Save" would wipe the outreach draft.
+  const { lead: full, ready, failed } = useFullLead(lead);
+  if (failed) return <p className="py-4 text-[0.85rem] text-danger">{EDIT_FORM.loadFailed}</p>;
+  if (!ready) {
+    return (
+      <p className="flex items-center gap-2 py-4 text-[0.85rem] text-muted" role="status">
+        <Loader className="h-4 w-4" /> {EDIT_FORM.loading}
+      </p>
+    );
+  }
+  return <LeadEditFormFields lead={full} onDone={onDone} />;
+}
+
+function LeadEditFormFields({ lead, onDone }: { lead: Lead; onDone?: () => void }) {
   const update = useUpdateLead();
   const remove = useDeleteLead();
   const toast = useToast();

@@ -15,6 +15,9 @@ import { UserMenu } from "./user-menu";
  * next to "Re-sort by local time" instead (user, 2026-09-23) -- not rendered up here any more. */
 const SEARCHABLE = ["/pipeline", "/contacts", "/projects"];
 
+/** Layout-wide queries the Refresh button must not touch: they are not "this page's data". */
+const LAYOUT_QUERY_KEYS = new Set(["notifications", "notifications-count", "users", "auth-config", "status"]);
+
 export function TopBar() {
   const pathname = usePathname();
   const router = useRouter();
@@ -23,15 +26,20 @@ export function TopBar() {
   // On every page (this bar is shared across the whole workspace layout) --
   // reps were reloading the entire browser tab just to see new data another
   // rep/job had already written to the DB. React Query already holds
-  // everything cached client-side; invalidating with no key filter marks
-  // every active query stale and refetches it, same end result as a full
-  // reload but without losing scroll position, open cards, or in-progress
-  // form fields elsewhere on the page.
+  // everything cached client-side; invalidating marks queries stale and
+  // refetches the ones on screen, same end result as a full reload but
+  // without losing scroll position, open cards, or in-progress form fields.
+  // Only the CURRENT page's data: the layout's own background queries (bell,
+  // users, session/status) are left alone -- the bell already polls itself --
+  // and queries of other pages are only marked stale (nothing fetches for a
+  // page nobody is looking at), so they refresh when that page is opened.
   const [refreshing, setRefreshing] = useState(false);
   async function handleRefresh() {
     setRefreshing(true);
     try {
-      await qc.invalidateQueries();
+      await qc.invalidateQueries({
+        predicate: (query) => !LAYOUT_QUERY_KEYS.has(String(query.queryKey[0])),
+      });
     } finally {
       setRefreshing(false);
     }

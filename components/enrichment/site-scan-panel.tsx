@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { enrichmentApi } from "@/lib/api";
 import { useJob } from "@/hooks/use-job";
+import { useFullLead } from "@/hooks/use-leads";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { VerdictBanner } from "./verdict-banner";
@@ -18,7 +19,9 @@ import { EMPTY_STATES, SITE_SCAN, TOASTS } from "@/lib/constants";
  * The scan runs as a polled background job rather than blocking, because
  * scraper.scan_site() can take up to ~98s.
  */
-export function SiteScanPanel({ lead }: { lead: Lead }) {
+export function SiteScanPanel({ lead: listLead }: { lead: Lead }) {
+  // product_description (the persisted-scan fallback below) is not in a slim list row -- see useFullLead().
+  const { lead } = useFullLead(listLead);
   const qc = useQueryClient();
   const toast = useToast();
   const [jobId, setJobId] = useState<string | null>(null);
