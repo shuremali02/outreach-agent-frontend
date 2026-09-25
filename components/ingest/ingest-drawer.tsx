@@ -19,6 +19,7 @@ import {
   INGEST_TITLE,
 } from "@/lib/constants";
 import type { DiscoverJobResult, ImportJobResult, Job } from "@/types";
+import { withIcons } from "@/components/ui/emoji-icon";
 
 function useJobRunner() {
   const qc = useQueryClient();
@@ -80,7 +81,7 @@ export function IngestDrawer() {
       {/* Collapsed by default, as in app.py (expanded=False), but rendered as a
           real button rather than expander text so it reads as clickable. */}
       <Button variant="secondary" onClick={() => setOpen((v) => !v)}>
-        {INGEST_TITLE}
+        {withIcons(INGEST_TITLE)}
         <span className="text-muted">{open ? "▲" : "▼"}</span>
       </Button>
 
@@ -88,13 +89,13 @@ export function IngestDrawer() {
         <div className="mt-3 rounded-[12px] border border-border bg-card p-5">
           <Tabs.Root defaultValue="ai">
             <Tabs.List className="mb-4 flex gap-2">
-              <TabButton value="ai">{INGEST_TABS.ai}</TabButton>
-              <TabButton value="csv">{INGEST_TABS.csv}</TabButton>
-              {/* <TabButton value="apollo">{INGEST_TABS.apollo}</TabButton> -- see commented state above */}
+              <TabButton value="ai">{withIcons(INGEST_TABS.ai)}</TabButton>
+              <TabButton value="csv">{withIcons(INGEST_TABS.csv)}</TabButton>
+              {/* <TabButton value="apollo">{withIcons(INGEST_TABS.apollo)}</TabButton> -- see commented state above */}
             </Tabs.List>
 
             <Tabs.Content value="ai" className="flex flex-col gap-3">
-              <p className="text-[0.85rem] text-muted">{AI_DISCOVERY.intro}</p>
+              <p className="text-[0.85rem] text-muted">{withIcons(AI_DISCOVERY.intro)}</p>
               <Field label={AI_DISCOVERY.label}>
                 <Input value={aiPrompt} onChange={(e) => setAiPrompt(e.target.value)} maxLength={2000} />
               </Field>
@@ -111,7 +112,7 @@ export function IngestDrawer() {
                   ai.start.mutate(() => jobsApi.start("discover", { prompt: aiPrompt, max_leads: aiCount }))
                 }
               >
-                {ai.running ? "Discovering…" : AI_DISCOVERY.button}
+                {withIcons(ai.running ? "Discovering…" : AI_DISCOVERY.button)}
               </Button>
               <JobProgress job={ai.job} />
               {ai.job?.status === "done" &&
@@ -136,14 +137,14 @@ export function IngestDrawer() {
                   }
                   return (
                     <p className="text-[0.85rem] text-success">
-                      {result?.saved ? AI_DISCOVERY.success(result.saved) : AI_DISCOVERY.empty}
+                      {withIcons(result?.saved ? AI_DISCOVERY.success(result.saved) : AI_DISCOVERY.empty)}
                     </p>
                   );
                 })()}
             </Tabs.Content>
 
             <Tabs.Content value="csv" className="flex flex-col gap-3">
-              <p className="text-[0.85rem] text-muted">{CSV_IMPORT.intro}</p>
+              <p className="text-[0.85rem] text-muted">{withIcons(CSV_IMPORT.intro)}</p>
               <Field label={CSV_IMPORT.label}>
                 <input
                   type="file"
@@ -185,12 +186,12 @@ export function IngestDrawer() {
                   )
                 }
               >
-                {csv.running ? "Processing…" : CSV_IMPORT.button(csvRows)}
+                {withIcons(csv.running ? "Processing…" : CSV_IMPORT.button(csvRows))}
               </Button>
               <JobProgress job={csv.job} />
               {csv.job?.status === "done" && (
                 <p className="text-[0.85rem] text-success">
-                  {CSV_IMPORT.success((csv.job.result as ImportJobResult | undefined)?.inserted ?? 0)}
+                  {withIcons(CSV_IMPORT.success((csv.job.result as ImportJobResult | undefined)?.inserted ?? 0))}
                 </p>
               )}
             </Tabs.Content>
@@ -199,12 +200,12 @@ export function IngestDrawer() {
                 together with the TabButton above and the state block near
                 the top of this component to bring it back.
             <Tabs.Content value="apollo" className="flex flex-col gap-3">
-              <p className="text-[0.85rem] text-muted">{APOLLO_IMPORT.intro}</p>
+              <p className="text-[0.85rem] text-muted">{withIcons(APOLLO_IMPORT.intro)}</p>
               <p
                 className="rounded-[8px] px-3 py-2 text-[0.82rem]"
                 style={{ background: "var(--info-tint)", color: "var(--info)" }}
               >
-                {APOLLO_IMPORT.notice}
+                {withIcons(APOLLO_IMPORT.notice)}
               </p>
               <div className="grid grid-cols-[3fr_1.2fr] gap-3">
                 <Field label={APOLLO_IMPORT.label}>
@@ -252,7 +253,7 @@ export function IngestDrawer() {
                   )
                 }
               >
-                {apollo.running ? "Fetching…" : APOLLO_IMPORT.button}
+                {withIcons(apollo.running ? "Fetching…" : APOLLO_IMPORT.button)}
               </Button>
               <JobProgress job={apollo.job} />
               {apollo.job?.status === "done" && (

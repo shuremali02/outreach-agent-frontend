@@ -1,5 +1,6 @@
 import * as Tabs from "@radix-ui/react-tabs";
 import { cn } from "@/lib/utils";
+import { withIcons } from "@/components/ui/emoji-icon";
 
 /**
  * Shared Radix Tabs.Trigger styling — was copy-pasted independently into
@@ -15,7 +16,7 @@ export function TabButton({ value, children }: { value: string; children: React.
         "data-[state=active]:border-transparent data-[state=active]:bg-accent data-[state=active]:text-white",
       )}
     >
-      {children}
+      {withIcons(children)}
     </Tabs.Trigger>
   );
 }

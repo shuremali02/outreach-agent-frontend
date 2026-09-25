@@ -9,6 +9,7 @@ import { PhoneNumberList } from "@/components/leads/phone-number-list";
 import { displayDomain } from "@/lib/format";
 import type { Lead, LeadContact } from "@/types";
 import { CONTACT_LOOKUP, EMPTY_STATES, TOASTS } from "@/lib/constants";
+import { Ico, withIcons } from "@/components/ui/emoji-icon";
 
 /**
  * Provider-neutral replacement for the Hunter-only decision-maker list.
@@ -204,7 +205,7 @@ export function ContactsPanel({
 
       {findLinkedIn.isError && (
         <p className="text-[0.78rem] text-danger">
-          {findLinkedIn.error instanceof Error ? findLinkedIn.error.message : CONTACT_LOOKUP.linkedInFailed}
+          {withIcons(findLinkedIn.error instanceof Error ? findLinkedIn.error.message : CONTACT_LOOKUP.linkedInFailed)}
         </p>
       )}
 
@@ -230,7 +231,7 @@ export function ContactsPanel({
           className="rounded-[8px] px-3 py-2 text-[0.8rem]"
           style={{ background: "var(--warn-tint)", color: "var(--warn)" }}
         >
-          {EMPTY_STATES.decisionMakers(displayDomain(lead.company_website))}
+          {withIcons(EMPTY_STATES.decisionMakers(displayDomain(lead.company_website)))}
         </p>
       )}
 
@@ -248,10 +249,10 @@ export function ContactsPanel({
                 >
                   <div className="min-w-0 flex-1">
                     <p className="text-[0.85rem]">
-                      <strong>👤 {c.name}</strong>
+                      <strong><Ico e="👤" /> {c.name}</strong>
                       {c.role && <em className="text-muted"> — {c.role}</em>}
                       <span className="ml-2 text-[0.7rem] text-muted">
-                        {SOURCE_LABEL[c.source] ?? c.source}
+                        {withIcons(SOURCE_LABEL[c.source] ?? c.source)}
                         {c.confidence > 0 && ` · ${c.confidence}%`}
                       </span>
                     </p>
@@ -277,14 +278,14 @@ export function ContactsPanel({
                       </a>
                     )}
                     {noLinkedInIds.has(c.id) && !c.linkedin && (
-                      <p className="mt-0.5 text-[0.75rem] text-muted">{CONTACT_LOOKUP.linkedInNotFound}</p>
+                      <p className="mt-0.5 text-[0.75rem] text-muted">{withIcons(CONTACT_LOOKUP.linkedInNotFound)}</p>
                     )}
                     {!c.phone && !c.linkedin && looksLikePerson(c.name) && !noLinkedInIds.has(c.id) && (
-                      <p className="mt-0.5 text-[0.72rem] text-muted">{CONTACT_LOOKUP.phoneTipNoLinkedIn}</p>
+                      <p className="mt-0.5 text-[0.72rem] text-muted">{withIcons(CONTACT_LOOKUP.phoneTipNoLinkedIn)}</p>
                     )}
                     {noMatchIds.has(c.id) && !c.phone && (
                       <p className="mt-0.5 text-[0.75rem] text-muted">
-                        📵 No mobile number found for this contact.
+                        <Ico e="📵" /> No mobile number found for this contact.
                       </p>
                     )}
                   </div>

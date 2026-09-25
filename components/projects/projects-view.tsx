@@ -25,6 +25,7 @@ import {
 import { addedAt, currency, externalUrl, displayDomain, hasUsableEmail, leadSource } from "@/lib/format";
 import type { Lead } from "@/types";
 import { EMPTY_STATES } from "@/lib/constants";
+import { CategoryLabel, Ico, stripEmoji, withIcons } from "@/components/ui/emoji-icon";
 
 /**
  * structure-plan.md Phase 7, narrowed 2026-09-22 (live-testing feedback -- "purposals sary hamary pass
@@ -71,38 +72,38 @@ export function ProjectsView({
       <div className="mb-4 grid grid-cols-3 gap-4">
         <Field label="Category Filter">
           <Select value={category} onChange={(e) => setParam("category", e.target.value)}>
-            <option value={ALL_CATEGORIES}>{ALL_CATEGORIES}</option>
+            <option value={ALL_CATEGORIES}>{stripEmoji(ALL_CATEGORIES)}</option>
             {STANDARD_CATEGORIES.map((c) => (
               <option key={c} value={c}>
-                {c}
+                {stripEmoji(c)}
               </option>
             ))}
           </Select>
         </Field>
         <Field label="Country Filter">
           <Select value={country} onChange={(e) => setParam("country", e.target.value)}>
-            <option value={ALL_COUNTRIES}>{ALL_COUNTRIES}</option>
-            <option value={UNKNOWN_COUNTRY}>🏳️ Unknown</option>
+            <option value={ALL_COUNTRIES}>{stripEmoji(ALL_COUNTRIES)}</option>
+            <option value={UNKNOWN_COUNTRY}>Unknown</option>
             {COUNTRIES.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.label}
+                {stripEmoji(c.label)}
               </option>
             ))}
           </Select>
         </Field>
         <Field label="Source Filter">
           <Select value={source} onChange={(e) => setSource(e.target.value)}>
-            <option value={ALL_SOURCES}>{ALL_SOURCES}</option>
+            <option value={ALL_SOURCES}>{stripEmoji(ALL_SOURCES)}</option>
             {Object.entries(LEAD_SOURCE_LABELS).map(([id, label]) => (
               <option key={id} value={id}>
-                {label}
+                {stripEmoji(label)}
               </option>
             ))}
           </Select>
         </Field>
       </div>
 
-      {leads.length === 0 && <p className="text-muted">{EMPTY_STATES.projects}</p>}
+      {leads.length === 0 && <p className="text-muted">{withIcons(EMPTY_STATES.projects)}</p>}
 
       {leads.map((lead) => (
         <LeadCard
@@ -112,14 +113,14 @@ export function ProjectsView({
             <span className="text-[0.95rem]">
               <strong>{lead.company_name}</strong>
               <span className="ml-2 rounded-[6px] bg-input px-1.5 py-0.5 text-[0.75rem] font-semibold text-muted">
-                {PROJECTS_VIEW.tag[lead.pipeline_stage] ?? STAGE_LABELS[lead.pipeline_stage]}
+                {withIcons(PROJECTS_VIEW.tag[lead.pipeline_stage] ?? STAGE_LABELS[lead.pipeline_stage])}
               </span>
               <span className="text-muted">
                 {" "}
-                — {currency(lead.deal_value)} · {lead.industry_tag}
+                — {currency(lead.deal_value)} · <CategoryLabel value={lead.industry_tag} />
               </span>
               <span className="ml-2 text-[0.75rem] text-muted">
-                🕒 {addedAt(lead.created_at)} · {LEAD_SOURCE_LABELS[leadSource(lead.source_prompt)]}
+                <Ico e="🕒" /> {addedAt(lead.created_at)} · {withIcons(LEAD_SOURCE_LABELS[leadSource(lead.source_prompt)])}
                 <LeadWho lead={lead} />
               </span>
             </span>
@@ -127,7 +128,7 @@ export function ProjectsView({
         >
           <div className="grid grid-cols-[1.6fr_1fr] gap-6">
             <div className="flex flex-col gap-3">
-              <h4 className="text-[1rem] font-semibold">🏢 Company &amp; Contact</h4>
+              <h4 className="text-[1rem] font-semibold"><Ico e="🏢" /> Company &amp; Contact</h4>
               {lead.company_website && (
                 <a
                   href={externalUrl(lead.company_website)}
@@ -135,12 +136,12 @@ export function ProjectsView({
                   rel="noopener noreferrer"
                   className="text-[0.85rem] text-accent underline"
                 >
-                  🌐 {displayDomain(lead.company_website)}
+                  <Ico e="🌐" /> {displayDomain(lead.company_website)}
                 </a>
               )}
-              <p className="text-[0.85rem]">👤 {lead.contact_name || "—"}</p>
+              <p className="text-[0.85rem]"><Ico e="👤" /> {lead.contact_name || "—"}</p>
               {hasUsableEmail(lead.contact_email) && (
-                <p className="text-[1rem] font-medium text-text">✉️ {lead.contact_email}</p>
+                <p className="text-[1rem] font-medium text-text"><Ico e="✉" /> {lead.contact_email}</p>
               )}
               {lead.contact_phone && <PhoneNumberList phones={lead.contact_phone} />}
               <p className="text-[0.82rem] text-muted">
@@ -150,7 +151,7 @@ export function ProjectsView({
                 lead={lead}
                 trigger={
                   <button type="button" className="cursor-pointer text-left text-[0.85rem] font-semibold text-accent underline">
-                    {PIPELINE_CARD.editInContacts}
+                    {withIcons(PIPELINE_CARD.editInContacts)}
                   </button>
                 }
               />

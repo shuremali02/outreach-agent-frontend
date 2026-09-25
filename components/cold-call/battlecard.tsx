@@ -40,6 +40,7 @@ import {
   fallbackScript,
 } from "@/lib/constants";
 import type { CallOutcome, Lead } from "@/types";
+import { CategoryLabel, Ico, withIcons } from "@/components/ui/emoji-icon";
 
 /** app.py:1874-1881 — the template used when phone_script is missing or < 15 chars. */
 function scriptFor(lead: Lead): string {
@@ -62,7 +63,7 @@ function EditContact({ lead }: { lead: Lead }) {
         onClick={() => setOpen((v) => !v)}
         className="cursor-pointer text-[0.8rem] font-semibold text-muted hover:text-accent"
       >
-        {BATTLECARD.editContact}
+        {withIcons(BATTLECARD.editContact)}
       </button>
       {open && (
         <div className="mt-2 flex flex-col gap-2">
@@ -97,7 +98,7 @@ function EditContact({ lead }: { lead: Lead }) {
               )
             }
           >
-            {BATTLECARD.saveContact}
+            {withIcons(BATTLECARD.saveContact)}
           </Button>
           {update.isError && (
             <p className="text-[0.78rem] text-danger">
@@ -305,10 +306,10 @@ export function Battlecard({
         </span>
         <PhoneBadge status={lead.phone_status} phone={lead.contact_phone} />
         <LocalTimeBadge tz={lead.call_tz} hasPhone={Boolean(lead.contact_phone)} />
-        <span className="stage-tag">{lead.industry_tag}</span>
+        <span className="stage-tag"><CategoryLabel value={lead.industry_tag} /></span>
       </div>
       <p className="mb-1 mt-1 text-[0.88rem] text-muted">
-        👤 {lead.contact_name || "Decision Maker"}
+        <Ico e="👤" /> {lead.contact_name || "Decision Maker"}
         {lead.contact_role && ` · ${lead.contact_role}`}
       </p>
       {/* Ali (Sales Rep, 2026-09-15): "there should be date and time
@@ -316,9 +317,9 @@ export function Battlecard({
           country name" -- and who/what added it. All three from data
           already on the lead, none of it was previously shown anywhere. */}
       <p className="text-[0.75rem] text-muted">
-        🕒 {addedAt(lead.created_at)}
+        <Ico e="🕒" /> {addedAt(lead.created_at)}
         {" · "}
-        {LEAD_SOURCE_LABELS[leadSource(lead.source_prompt)]}
+        {withIcons(LEAD_SOURCE_LABELS[leadSource(lead.source_prompt)])}
         {lead.country && ` · ${countryLabel(lead.country)}`}
         <LeadWho lead={lead} />
       </p>
@@ -330,7 +331,7 @@ export function Battlecard({
         </p>
       )}
       {pickedByLabel && (
-        <p className="mt-0.5 text-[0.78rem] text-muted">{CALL_PICKED_BY.marked(pickedByLabel)}</p>
+        <p className="mt-0.5 text-[0.78rem] text-muted">{withIcons(CALL_PICKED_BY.marked(pickedByLabel))}</p>
       )}
     </div>
   );
@@ -346,7 +347,7 @@ export function Battlecard({
       <div className="grid grid-cols-[1.2fr_2fr] gap-6">
         {/* Dialer column */}
         <div className="flex flex-col gap-3">
-          <h4 className="text-[0.95rem] font-semibold">📞 Direct Outbound Line</h4>
+          <h4 className="text-[0.95rem] font-semibold"><Ico e="📞" /> Direct Outbound Line</h4>
           {lead.contact_phone ? (
             <PhoneNumberList phones={lead.contact_phone} size="button" />
           ) : (
@@ -361,7 +362,7 @@ export function Battlecard({
           <LinkedInResearchPanel lead={lead} />
           <EditContact lead={lead} />
 
-          <h4 className="mt-2 text-[0.95rem] font-semibold">{BATTLECARD.researchHeading}</h4>
+          <h4 className="mt-2 text-[0.95rem] font-semibold">{withIcons(BATTLECARD.researchHeading)}</h4>
           <div className="flex flex-col gap-1 text-[0.82rem]">
             {lead.company_website && (
               <a
@@ -370,7 +371,7 @@ export function Battlecard({
                 rel="noopener noreferrer"
                 className="text-accent underline"
               >
-                {BATTLECARD.websiteLink}
+                {withIcons(BATTLECARD.websiteLink)}
               </a>
             )}
             {hasUsableEmail(lead.contact_email) && (
@@ -379,7 +380,7 @@ export function Battlecard({
                   href={mailtoUrl(lead.contact_email, lead.subject, lead.body)}
                   className="text-accent underline"
                 >
-                  ✉️ {lead.contact_email}
+                  <Ico e="✉" /> {lead.contact_email}
                 </a>
                 <button
                   type="button"
@@ -388,13 +389,13 @@ export function Battlecard({
                   className="inline-flex cursor-pointer items-center gap-1 text-[0.75rem] text-muted hover:text-accent disabled:cursor-default"
                 >
                   {markEmailSent.isPending && <Loader className="h-3 w-3" />}
-                  {emailMarked ? BATTLECARD.emailMarkedSent : BATTLECARD.markEmailSent}
+                  {withIcons(emailMarked ? BATTLECARD.emailMarkedSent : BATTLECARD.markEmailSent)}
                 </button>
               </div>
             )}
             {markEmailSent.isError && (
               <p className="text-[0.75rem] text-danger">
-                {markEmailSent.error instanceof Error ? markEmailSent.error.message : BATTLECARD.markEmailSentFailed}
+                {withIcons(markEmailSent.error instanceof Error ? markEmailSent.error.message : BATTLECARD.markEmailSentFailed)}
               </p>
             )}
             <a
@@ -403,7 +404,7 @@ export function Battlecard({
               rel="noopener noreferrer"
               className="text-accent underline"
             >
-              {lead.contact_linkedin ? BATTLECARD.linkedInLink : BATTLECARD.linkedInSearchLink}
+              {withIcons(lead.contact_linkedin ? BATTLECARD.linkedInLink : BATTLECARD.linkedInSearchLink)}
             </a>
           </div>
 
@@ -415,11 +416,11 @@ export function Battlecard({
               onClick={() => setContactsOpen(true)}
               className="cursor-pointer text-left text-[0.85rem] font-semibold text-muted hover:text-accent"
             >
-              {BATTLECARD.showContacts}
+              {withIcons(BATTLECARD.showContacts)}
             </button>
           ) : (
             <Button variant="secondary" size="sm" block onClick={() => setContactsOpen(true)}>
-              {BATTLECARD.findContacts}
+              {withIcons(BATTLECARD.findContacts)}
             </Button>
           )}
           <SiteScanPanel lead={lead} />
@@ -428,8 +429,8 @@ export function Battlecard({
             className="rounded-[8px] bg-input px-3 py-2"
             style={{ borderLeft: "3px solid var(--accent)" }}
           >
-            <p className="metric-label !mb-1">{BATTLECARD.whyHelps}</p>
-            <p className="text-[0.82rem]">{lead.reason || BATTLECARD.whyHelpsFallback}</p>
+            <p className="metric-label !mb-1">{withIcons(BATTLECARD.whyHelps)}</p>
+            <p className="text-[0.82rem]">{withIcons(lead.reason || BATTLECARD.whyHelpsFallback)}</p>
           </div>
         </div>
 
@@ -437,7 +438,7 @@ export function Battlecard({
         <div className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h4 className="text-[0.95rem] font-semibold">
-              {BATTLECARD.scriptHeading}
+              {withIcons(BATTLECARD.scriptHeading)}
             </h4>
             <Button
               variant="secondary"
@@ -445,12 +446,12 @@ export function Battlecard({
               onClick={() => generate.mutate()}
               loading={generate.isPending}
             >
-              {generate.isPending ? BATTLECARD.generatingBattlecard : BATTLECARD.generateBattlecard}
+              {withIcons(generate.isPending ? BATTLECARD.generatingBattlecard : BATTLECARD.generateBattlecard)}
             </Button>
           </div>
           {generate.isError && (
             <p className="text-[0.8rem] text-danger">
-              {generate.error instanceof Error ? generate.error.message : BATTLECARD.generateFailed}
+              {withIcons(generate.error instanceof Error ? generate.error.message : BATTLECARD.generateFailed)}
             </p>
           )}
           <p
@@ -466,7 +467,7 @@ export function Battlecard({
               onClick={() => setObjectionsOpen((v) => !v)}
               className="cursor-pointer text-[0.85rem] font-semibold text-muted hover:text-accent"
             >
-              {BATTLECARD.objectionsHeading}
+              {withIcons(BATTLECARD.objectionsHeading)}
             </button>
             {objectionsOpen && (
               <div className="mt-2 whitespace-pre-line rounded-[8px] bg-input px-4 py-3 text-[0.85rem] leading-relaxed">
@@ -482,7 +483,7 @@ export function Battlecard({
               (callPickedBy.variables), `disabled` still blocks the others while it's in flight (a rep
               noticed, 2026-09-23: "loader spinner har button par chal rha hai"). */}
           <div>
-            <p className="mb-1 text-[0.8rem] font-semibold text-muted">{CALL_PICKED_BY.heading}</p>
+            <p className="mb-1 text-[0.8rem] font-semibold text-muted">{withIcons(CALL_PICKED_BY.heading)}</p>
             <div className="flex flex-wrap gap-2">
               {CALL_PICKED_BY.options.map((o) => (
                 <Button
@@ -499,7 +500,7 @@ export function Battlecard({
             </div>
             {callPickedBy.isError && (
               <p className="mt-1 text-[0.75rem] text-danger">
-                {callPickedBy.error instanceof Error ? callPickedBy.error.message : CALL_PICKED_BY.failed}
+                {withIcons(callPickedBy.error instanceof Error ? callPickedBy.error.message : CALL_PICKED_BY.failed)}
               </p>
             )}
           </div>
@@ -507,7 +508,7 @@ export function Battlecard({
           <Field
             label={
               <span className="flex items-center justify-between gap-2">
-                {BATTLECARD.noteLabel}
+                {withIcons(BATTLECARD.noteLabel)}
                 {/* Opens the full edit form in a popup right here, so structured fields -- an email
                     given verbally on the call, for example -- get saved properly instead of typed into
                     this notes box. structure-plan.md Phase 3; popup instead of a new tab per the user
@@ -519,7 +520,7 @@ export function Battlecard({
                       type="button"
                       className="cursor-pointer text-[0.75rem] font-semibold text-accent underline"
                     >
-                      ✏️ Edit
+                      <Ico e="✏" /> Edit
                     </button>
                   }
                 />
@@ -553,32 +554,32 @@ export function Battlecard({
                   )
                 }
               >
-                {addNote.isPending ? "Adding…" : BATTLECARD.addNote}
+                {withIcons(addNote.isPending ? "Adding…" : BATTLECARD.addNote)}
               </Button>
             </div>
             <p className="mt-1 text-[0.75rem] text-muted">{MENTIONS.hint}</p>
           </Field>
           {addNote.isError && (
             <p className="text-[0.8rem] text-danger">
-              {addNote.error instanceof Error ? addNote.error.message : BATTLECARD.addNoteFailed}
+              {withIcons(addNote.error instanceof Error ? addNote.error.message : BATTLECARD.addNoteFailed)}
             </p>
           )}
 
           {booked && (
             <p className="text-[0.9rem] font-semibold text-success">
-              {BATTLECARD.booked(lead.company_name, currency(lead.deal_value))}
+              {withIcons(BATTLECARD.booked(lead.company_name, currency(lead.deal_value)))}
             </p>
           )}
 
-          <p className="date-eyebrow !mb-1.5 mt-2">{BATTLECARD.dispositionsHeading}</p>
+          <p className="date-eyebrow !mb-1.5 mt-2">{withIcons(BATTLECARD.dispositionsHeading)}</p>
           {record.isError && (
             <p className="text-[0.8rem] text-danger">
-              {record.error instanceof Error ? record.error.message : BATTLECARD.recordFailed}
+              {withIcons(record.error instanceof Error ? record.error.message : BATTLECARD.recordFailed)}
             </p>
           )}
           {bookingPrompt ? (
             <div className="flex flex-col gap-2 rounded-[8px] border border-accent bg-input px-3 py-3">
-              <p className="text-[0.85rem] font-semibold">{MEETING_BOOKING.prompt}</p>
+              <p className="text-[0.85rem] font-semibold">{withIcons(MEETING_BOOKING.prompt)}</p>
               <div className="grid grid-cols-2 gap-2">
                 <Field label={MEETING_BOOKING.dateLabel}>
                   <Input
@@ -597,7 +598,7 @@ export function Battlecard({
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <Button variant="secondary" size="sm" onClick={cancelBooking}>
-                  {MEETING_BOOKING.cancel}
+                  {withIcons(MEETING_BOOKING.cancel)}
                 </Button>
                 <Button
                   variant="primary"
@@ -606,13 +607,13 @@ export function Battlecard({
                   disabled={!meetingDate || !meetingTime}
                   onClick={confirmBooking}
                 >
-                  {MEETING_BOOKING.confirm}
+                  {withIcons(MEETING_BOOKING.confirm)}
                 </Button>
               </div>
             </div>
           ) : callbackPrompt ? (
             <div className="flex flex-col gap-2 rounded-[8px] border border-accent bg-input px-3 py-3">
-              <p className="text-[0.85rem] font-semibold">{CALLBACK_BOOKING.prompt}</p>
+              <p className="text-[0.85rem] font-semibold">{withIcons(CALLBACK_BOOKING.prompt)}</p>
               <div className="grid grid-cols-2 gap-2">
                 <Field label={CALLBACK_BOOKING.dateLabel}>
                   <Input type="date" value={callbackDate} onChange={(e) => setCallbackDate(e.target.value)} />
@@ -623,7 +624,7 @@ export function Battlecard({
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <Button variant="secondary" size="sm" onClick={cancelCallback}>
-                  {CALLBACK_BOOKING.cancel}
+                  {withIcons(CALLBACK_BOOKING.cancel)}
                 </Button>
                 <Button
                   variant="primary"
@@ -632,7 +633,7 @@ export function Battlecard({
                   disabled={!callbackDate || !callbackTime}
                   onClick={confirmCallback}
                 >
-                  {CALLBACK_BOOKING.confirm}
+                  {withIcons(CALLBACK_BOOKING.confirm)}
                 </Button>
               </div>
             </div>
@@ -684,11 +685,11 @@ export function Battlecard({
                   })
                 }
               >
-                {EMAIL_SEND.button}
+                {withIcons(EMAIL_SEND.button)}
               </Button>
               {needsEmail.isError && (
                 <p className="text-[0.8rem] text-danger">
-                  {needsEmail.error instanceof Error ? needsEmail.error.message : EMAIL_SEND.failed}
+                  {withIcons(needsEmail.error instanceof Error ? needsEmail.error.message : EMAIL_SEND.failed)}
                 </p>
               )}
             </>

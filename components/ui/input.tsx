@@ -1,4 +1,5 @@
 import * as React from "react";
+import { withIcons } from "@/components/ui/emoji-icon";
 import { cn } from "@/lib/utils";
 
 const fieldClass =
@@ -51,7 +52,7 @@ export function Field({
 }) {
   return (
     <div className={className}>
-      <Label htmlFor={htmlFor}>{label}</Label>
+      <Label htmlFor={htmlFor}>{withIcons(label)}</Label>
       {children}
     </div>
   );

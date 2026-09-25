@@ -10,6 +10,7 @@ import { extractMentions } from "@/lib/mentions";
 import { commentTime } from "@/lib/format";
 import { useStoredName } from "@/hooks/use-stored-name";
 import { PROBLEM_FORM } from "@/lib/constants";
+import { Ico } from "@/components/ui/emoji-icon";
 
 const AUTHOR_KEY = "elipse-author-name";
 
@@ -40,14 +41,14 @@ export function CommentThread({ problemId, count }: { problemId: number; count: 
         onClick={() => setOpen((v) => !v)}
         className="cursor-pointer text-[0.82rem] font-semibold text-muted hover:text-accent"
       >
-        💬 Team Discussion & Solutions ({count})
+        <Ico e="💬" /> Team Discussion & Solutions ({count})
       </button>
 
       {open && (
         <div className="mt-2">
           {comments.map((c) => (
             <div key={c.id} className="comment-card">
-              <span className="comment-author">👤 {c.author_name}</span>
+              <span className="comment-author"><Ico e="👤" /> {c.author_name}</span>
               <span className="comment-time">{commentTime(c.created_at)}</span>
               <p className="comment-body">{c.comment_text}</p>
             </div>
@@ -71,7 +72,7 @@ export function CommentThread({ problemId, count }: { problemId: number; count: 
                 maxLength={5000}
               />
               <Button type="submit" variant="secondary" size="sm" loading={add.isPending} disabled={!text.trim()}>
-                💬 Post Response
+                <Ico e="💬" /> Post Response
               </Button>
             </div>
           </form>

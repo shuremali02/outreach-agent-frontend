@@ -11,6 +11,7 @@ import { VerdictBanner } from "./verdict-banner";
 import { ScreenshotViewer } from "./screenshot-viewer";
 import type { Lead, ScanResult } from "@/types";
 import { EMPTY_STATES, SITE_SCAN, TOASTS } from "@/lib/constants";
+import { withIcons } from "@/components/ui/emoji-icon";
 
 /**
  * render_site_scan_ui — Scan site + Deep enrich, the verdict banner, product
@@ -116,11 +117,11 @@ export function SiteScanPanel({ lead: listLead }: { lead: Lead }) {
       </div>
 
       {findWebsite.isSuccess && !findWebsite.data?.company_website && (
-        <p className="text-[0.8rem] text-muted">{EMPTY_STATES.websiteNotFound}</p>
+        <p className="text-[0.8rem] text-muted">{withIcons(EMPTY_STATES.websiteNotFound)}</p>
       )}
       {findWebsite.isError && (
         <p className="text-[0.8rem] text-danger">
-          {findWebsite.error instanceof Error ? findWebsite.error.message : EMPTY_STATES.websiteNotFound}
+          {withIcons(findWebsite.error instanceof Error ? findWebsite.error.message : EMPTY_STATES.websiteNotFound)}
         </p>
       )}
 
@@ -139,11 +140,11 @@ export function SiteScanPanel({ lead: listLead }: { lead: Lead }) {
       {job?.status === "error" && <p className="text-[0.8rem] text-danger">{job.error}</p>}
 
       {enrich.isSuccess && (
-        <p className="text-[0.8rem] text-success">{SITE_SCAN.enrichComplete}</p>
+        <p className="text-[0.8rem] text-success">{withIcons(SITE_SCAN.enrichComplete)}</p>
       )}
       {enrich.isError && (
         <p className="text-[0.8rem] text-danger">
-          {enrich.error instanceof Error ? enrich.error.message : SITE_SCAN.enrichFailed}
+          {withIcons(enrich.error instanceof Error ? enrich.error.message : SITE_SCAN.enrichFailed)}
         </p>
       )}
 
@@ -156,7 +157,7 @@ export function SiteScanPanel({ lead: listLead }: { lead: Lead }) {
           />
           {effective.product_title.length > 3 && (
             <p className="text-[0.85rem]">
-              <strong>{SITE_SCAN.productLabel}</strong> {effective.product_title}
+              <strong>{withIcons(SITE_SCAN.productLabel)}</strong> {effective.product_title}
             </p>
           )}
           {effective.product_description.length > 12 && (

@@ -3,6 +3,7 @@
 import { useNow } from "@/hooks/use-now";
 import { CALL_WINDOW } from "@/lib/constants";
 import { localClock } from "@/lib/format";
+import { Ico } from "@/components/ui/emoji-icon";
 
 /**
  * "🟢 9:12 AM · Chicago" while that lead is inside local business hours, "🌙
@@ -24,7 +25,7 @@ export function LocalTimeBadge({ tz, hasPhone }: { tz: string; hasPhone: boolean
         style={{ background: "var(--tag)", color: "var(--muted)" }}
         title="This number has no single timezone (toll-free or a multi-zone area code)"
       >
-        🕘 Local time unknown
+        <Ico e="🕘" /> Local time unknown
       </span>
     );
   }
@@ -37,7 +38,7 @@ export function LocalTimeBadge({ tz, hasPhone }: { tz: string; hasPhone: boolean
       style={{ background: spec.bg, color: spec.fg }}
       title={clock.open ? "Inside local business hours" : "Outside local business hours"}
     >
-      {spec.icon} {clock.weekend ? `${clock.weekend} ` : ""}
+      <Ico e={spec.icon} /> {clock.weekend ? `${clock.weekend} ` : ""}
       {clock.time} · {clock.city}
     </span>
   );

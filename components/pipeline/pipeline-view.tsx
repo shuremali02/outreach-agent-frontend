@@ -33,6 +33,7 @@ import {
 import { addedAt, currency, externalUrl, displayDomain, hasUsableEmail, leadSource, shortDate } from "@/lib/format";
 import type { Lead } from "@/types";
 import { EMPTY_STATES } from "@/lib/constants";
+import { CategoryLabel, Ico, stripEmoji, withIcons } from "@/components/ui/emoji-icon";
 
 /** Has a callback (a set time, or a Callback Scheduled disposition) AND is not already Won / Lost. */
 function hasOpenCallback(l: Lead): boolean {
@@ -106,7 +107,7 @@ function PipelineActions({ lead }: { lead: Lead }) {
   if (bookingPrompt) {
     return (
       <div className="flex flex-col gap-2 rounded-[8px] border border-accent bg-input px-3 py-3">
-        <p className="text-[0.85rem] font-semibold">{MEETING_BOOKING.prompt}</p>
+        <p className="text-[0.85rem] font-semibold">{withIcons(MEETING_BOOKING.prompt)}</p>
         <div className="grid grid-cols-2 gap-2">
           <Field label={MEETING_BOOKING.dateLabel}>
             <Input type="date" value={meetingDate} onChange={(e) => setMeetingDate(e.target.value)} />
@@ -117,7 +118,7 @@ function PipelineActions({ lead }: { lead: Lead }) {
         </div>
         <div className="grid grid-cols-2 gap-2">
           <Button variant="secondary" size="sm" onClick={() => setBookingPrompt(false)}>
-            {MEETING_BOOKING.cancel}
+            {withIcons(MEETING_BOOKING.cancel)}
           </Button>
           <Button
             variant="primary"
@@ -126,7 +127,7 @@ function PipelineActions({ lead }: { lead: Lead }) {
             disabled={!meetingDate || !meetingTime}
             onClick={confirmBooking}
           >
-            {MEETING_BOOKING.confirm}
+            {withIcons(MEETING_BOOKING.confirm)}
           </Button>
         </div>
         {update.isError && (
@@ -162,7 +163,7 @@ function PipelineActions({ lead }: { lead: Lead }) {
         disabled={lead.pipeline_stage === "meeting_booked" || outcome.isPending}
         onClick={() => setBookingPrompt(true)}
       >
-        🎯 Meeting Booked
+        <Ico e="🎯" /> Meeting Booked
       </Button>
       {outcome.isError && (
         <p className="col-span-2 text-[0.78rem] text-danger">
@@ -181,7 +182,7 @@ function PipelineActions({ lead }: { lead: Lead }) {
 function PipelineSummary({ lead }: { lead: Lead }) {
   return (
     <div className="flex flex-col gap-3">
-      <h4 className="text-[1rem] font-semibold">⚙️ Deal</h4>
+      <h4 className="text-[1rem] font-semibold"><Ico e="⚙" /> Deal</h4>
       <p className="text-[0.85rem] text-muted">
         <strong>Stage:</strong> {STAGE_LABELS[lead.pipeline_stage]}
       </p>
@@ -208,7 +209,7 @@ function PipelineSummary({ lead }: { lead: Lead }) {
         lead={lead}
         trigger={
           <button type="button" className="cursor-pointer text-left text-[0.85rem] font-semibold text-accent underline">
-            {PIPELINE_CARD.editInContacts}
+            {withIcons(PIPELINE_CARD.editInContacts)}
           </button>
         }
       />
@@ -306,8 +307,12 @@ export function PipelineView({
   // Week's Leads blocks, same "unfiltered by the page's own dropdowns" convention Cold Call Desk's ticker
   // cards use (queueValue there sums `queue`, not the further category/country/source/line-filtered
   // list) -- so these two total the page's full scope (inScope), not the narrower `leads`.
-  // "Opportunity" -- every lead currently active in Pipeline (open, not yet won or lost).
-  const opportunityValue = inScope.reduce((s, l) => s + l.deal_value, 0);
+  // "Opportunity" -- every lead currently active in Pipeline that has NOT reached Proposal Sent yet (open,
+  // not yet won or lost). A lead moves Opportunity -> Proposal Sent -> Client Closed and is only ever in
+  // one of the three cards (user, 2026-09-25).
+  const opportunityValue = inScope
+    .filter((l) => l.pipeline_stage !== "proposal_sent")
+    .reduce((s, l) => s + l.deal_value, 0);
   // "Client Closed" (was "Interested" until 2026-09-24, renamed on request -- it's exactly the leads at stage
   // won, the same label the Client Closed button and Projects use) -- stays 0 until a lead is actually
   // Client Closed (won leaves this page for Projects,
@@ -317,61 +322,73 @@ export function PipelineView({
     [fetchedLeads],
   );
 
+  // "Proposal Sent" (user, 2026-09-25: "purposal send count nhi ho rha ... jese client closed lagaya hai") --
+  // the leads sitting at stage proposal_sent, value and how many. They are taken OUT of Opportunity above
+  // (user: "opportunity sy minus kr do") and leave this card again once they reach Client Closed.
+  // Unfiltered like the other two.
+  const proposalLeads = useMemo(() => inScope.filter((l) => l.pipeline_stage === "proposal_sent"), [inScope]);
+  const proposalValue = proposalLeads.reduce((s, l) => s + l.deal_value, 0);
+
   return (
     <>
-      <div className="my-4 grid grid-cols-2 gap-4">
+      <div className="my-4 grid grid-cols-3 gap-4">
         <MetricCard label="Opportunity" value={currency(opportunityValue)} />
+        <MetricCard
+          label="Proposal Sent"
+          value={currency(proposalValue)}
+          sub={`${proposalLeads.length} ${proposalLeads.length === 1 ? "lead" : "leads"}`}
+        />
         <MetricCard label="Client Closed" value={currency(wonValue)} />
       </div>
 
       <div className="mb-4 grid grid-cols-5 gap-4">
         <Field label={PIPELINE_VIEW_FILTER.label}>
           <Select value={view} onChange={(e) => setView(e.target.value as typeof view)}>
-            <option value="all">{PIPELINE_VIEW_FILTER.all}</option>
-            <option value="callback">{PIPELINE_VIEW_FILTER.callback}</option>
-            <option value="meeting">{PIPELINE_VIEW_FILTER.meeting}</option>
-            <option value="email">{PIPELINE_VIEW_FILTER.email}</option>
-            <option value="proposal">{PIPELINE_VIEW_FILTER.proposal}</option>
-            <option value="starred">{PIPELINE_VIEW_FILTER.starred}</option>
+            <option value="all">{stripEmoji(PIPELINE_VIEW_FILTER.all)}</option>
+            <option value="callback">{stripEmoji(PIPELINE_VIEW_FILTER.callback)}</option>
+            <option value="meeting">{stripEmoji(PIPELINE_VIEW_FILTER.meeting)}</option>
+            <option value="email">{stripEmoji(PIPELINE_VIEW_FILTER.email)}</option>
+            <option value="proposal">{stripEmoji(PIPELINE_VIEW_FILTER.proposal)}</option>
+            <option value="starred">{stripEmoji(PIPELINE_VIEW_FILTER.starred)}</option>
           </Select>
         </Field>
         <Field label="Category Filter">
           <Select value={category} onChange={(e) => setParam("category", e.target.value)}>
-            <option value={ALL_CATEGORIES}>{ALL_CATEGORIES}</option>
+            <option value={ALL_CATEGORIES}>{stripEmoji(ALL_CATEGORIES)}</option>
             {STANDARD_CATEGORIES.map((c) => (
               <option key={c} value={c}>
-                {c}
+                {stripEmoji(c)}
               </option>
             ))}
           </Select>
         </Field>
         <Field label="Country Filter">
           <Select value={country} onChange={(e) => setParam("country", e.target.value)}>
-            <option value={ALL_COUNTRIES}>{ALL_COUNTRIES}</option>
-            <option value={UNKNOWN_COUNTRY}>🏳️ Unknown</option>
+            <option value={ALL_COUNTRIES}>{stripEmoji(ALL_COUNTRIES)}</option>
+            <option value={UNKNOWN_COUNTRY}>Unknown</option>
             {COUNTRIES.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.label}
+                {stripEmoji(c.label)}
               </option>
             ))}
           </Select>
         </Field>
         <Field label="Source Filter">
           <Select value={source} onChange={(e) => setSource(e.target.value)}>
-            <option value={ALL_SOURCES}>{ALL_SOURCES}</option>
+            <option value={ALL_SOURCES}>{stripEmoji(ALL_SOURCES)}</option>
             {Object.entries(LEAD_SOURCE_LABELS).map(([id, label]) => (
               <option key={id} value={id}>
-                {label}
+                {stripEmoji(label)}
               </option>
             ))}
           </Select>
         </Field>
-        <Field label="Last Touched">
+        <Field label="Last Activity">
           <Input type="date" value={lastTouched} onChange={(e) => setLastTouched(e.target.value)} />
         </Field>
       </div>
 
-      {leads.length === 0 && <p className="text-muted">{EMPTY_STATES.pipeline}</p>}
+      {leads.length === 0 && <p className="text-muted">{withIcons(EMPTY_STATES.pipeline)}</p>}
 
       {leads.map((lead) => (
         <LeadCard
@@ -379,17 +396,17 @@ export function PipelineView({
           lead={lead}
           summary={
             <span className="text-[0.95rem]">
-              💼 <strong>{lead.company_name}</strong>
+              <Ico e="💼" /> <strong>{lead.company_name}</strong>
               <span className="text-muted">
                 {" "}
-                — {currency(lead.deal_value)} · {lead.industry_tag} (
+                — {currency(lead.deal_value)} · <CategoryLabel value={lead.industry_tag} /> (
                 {STAGE_LABELS[lead.pipeline_stage]})
               </span>
               {lead.callback_at ? (
                 <span className="ml-2 rounded-[6px] bg-input px-1.5 py-0.5 text-[0.75rem] font-semibold text-muted">
-                  {PIPELINE_CARD.callbackTag(
+                  {withIcons(PIPELINE_CARD.callbackTag(
                     new Date(lead.callback_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-                  )}
+                  ))}
                 </span>
               ) : (
                 lead.last_call_outcome === "callback_scheduled" && (
@@ -398,26 +415,26 @@ export function PipelineView({
                     style={{ background: "var(--warn-tint)", color: "var(--warn)" }}
                     title="Callback Scheduled, but no date/time was captured -- set one via Edit."
                   >
-                    {PIPELINE_CARD.callbackNoTimeTag}
+                    {withIcons(PIPELINE_CARD.callbackNoTimeTag)}
                   </span>
                 )
               )}
               {lead.pipeline_stage === "meeting_booked" && lead.meeting_at && (
                 <span className="ml-2 rounded-[6px] bg-input px-1.5 py-0.5 text-[0.75rem] font-semibold text-muted">
-                  {PIPELINE_CARD.meetingTag(
+                  {withIcons(PIPELINE_CARD.meetingTag(
                     new Date(lead.meeting_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-                  )}
+                  ))}
                 </span>
               )}
               {lead.pipeline_stage === "proposal_sent" && (
                 <span className="ml-2 rounded-[6px] bg-input px-1.5 py-0.5 text-[0.75rem] font-semibold text-muted">
-                  {PIPELINE_CARD.proposalTag}
+                  {withIcons(PIPELINE_CARD.proposalTag)}
                 </span>
               )}
               {/* Ali (Sales Rep, 2026-09-15): leads couldn't be verified
                   without knowing when/how they were added. */}
               <span className="ml-2 text-[0.75rem] text-muted">
-                🕒 {addedAt(lead.created_at)} · {LEAD_SOURCE_LABELS[leadSource(lead.source_prompt)]}
+                <Ico e="🕒" /> {addedAt(lead.created_at)} · {withIcons(LEAD_SOURCE_LABELS[leadSource(lead.source_prompt)])}
                 <LeadWho lead={lead} />
               </span>
             </span>
@@ -427,7 +444,7 @@ export function PipelineView({
               pipeline me nhi dikh rhy") -- the same NotesPanel Leads/Projects/the Meeting popup already use. */}
           <div className="grid grid-cols-[1.4fr_1fr_1.2fr] gap-6">
             <div className="flex flex-col gap-3">
-              <h4 className="text-[1rem] font-semibold">🏢 Company &amp; Contact</h4>
+              <h4 className="text-[1rem] font-semibold"><Ico e="🏢" /> Company &amp; Contact</h4>
               {lead.company_website && (
                 <a
                   href={externalUrl(lead.company_website)}
@@ -435,12 +452,12 @@ export function PipelineView({
                   rel="noopener noreferrer"
                   className="text-[0.85rem] text-accent underline"
                 >
-                  🌐 {displayDomain(lead.company_website)}
+                  <Ico e="🌐" /> {displayDomain(lead.company_website)}
                 </a>
               )}
-              <p className="text-[0.85rem]">👤 {lead.contact_name || "—"}</p>
+              <p className="text-[0.85rem]"><Ico e="👤" /> {lead.contact_name || "—"}</p>
               {hasUsableEmail(lead.contact_email) && (
-                <p className="text-[1rem] font-medium text-text">✉️ {lead.contact_email}</p>
+                <p className="text-[1rem] font-medium text-text"><Ico e="✉" /> {lead.contact_email}</p>
               )}
               {lead.contact_phone && <PhoneNumberList phones={lead.contact_phone} />}
 
@@ -449,7 +466,7 @@ export function PipelineView({
               <SiteScanPanel lead={lead} />
 
               <p className="text-[0.82rem] text-muted">
-                <strong>Category:</strong> {lead.industry_tag}
+                <strong>Category:</strong> <CategoryLabel value={lead.industry_tag} />
               </p>
               <p className="text-[0.82rem] text-muted">
                 <strong>Country:</strong> {lead.country ? countryLabel(lead.country) : "Not specified"}

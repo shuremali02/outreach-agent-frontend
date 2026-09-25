@@ -18,6 +18,7 @@ import {
   TOASTS,
 } from "@/lib/constants";
 import type { Lead, PipelineStage } from "@/types";
+import { Ico, stripEmoji, withIcons } from "@/components/ui/emoji-icon";
 
 /**
  * The one lead-edit form (structure-plan.md Phase 2: everything but notes is edited from Leads/Contacts,
@@ -72,7 +73,7 @@ function LeadEditFormFields({ lead, onDone }: { lead: Lead; onDone?: () => void 
 
   return (
     <div className="flex flex-col gap-3">
-      <h4 className="text-[1rem] font-semibold">✉️ Outreach Draft</h4>
+      <h4 className="text-[1rem] font-semibold"><Ico e="✉" /> Outreach Draft</h4>
       <Field label="Subject">
         <Input value={subject} onChange={(e) => setSubject(e.target.value)} maxLength={500} />
       </Field>
@@ -80,12 +81,12 @@ function LeadEditFormFields({ lead, onDone }: { lead: Lead; onDone?: () => void 
         <Textarea rows={6} value={body} onChange={(e) => setBody(e.target.value)} />
       </Field>
 
-      <h4 className="mt-2 text-[1rem] font-semibold">🏷️ Classification &amp; Deal</h4>
+      <h4 className="mt-2 text-[1rem] font-semibold"><Ico e="🏷" /> Classification &amp; Deal</h4>
       <Field label="Category">
         <Select value={category} onChange={(e) => setCategory(e.target.value)}>
           {STANDARD_CATEGORIES.map((c) => (
             <option key={c} value={c}>
-              {c}
+              {stripEmoji(c)}
             </option>
           ))}
         </Select>
@@ -94,7 +95,7 @@ function LeadEditFormFields({ lead, onDone }: { lead: Lead; onDone?: () => void 
         <Select value={stage} onChange={(e) => setStage(e.target.value as PipelineStage)}>
           {PIPELINE_STAGES.map((s) => (
             <option key={s.id} value={s.id}>
-              {s.label}
+              {stripEmoji(s.label)}
             </option>
           ))}
         </Select>
@@ -122,7 +123,7 @@ function LeadEditFormFields({ lead, onDone }: { lead: Lead; onDone?: () => void 
       )}
       {showCallback && (
         <>
-          <p className="text-[0.85rem] font-semibold">{CALLBACK_BOOKING.prompt}</p>
+          <p className="text-[0.85rem] font-semibold">{withIcons(CALLBACK_BOOKING.prompt)}</p>
           <div className="grid grid-cols-2 gap-2">
             <Field label={CALLBACK_BOOKING.dateLabel}>
               <Input type="date" value={callbackDate} onChange={(e) => setCallbackDate(e.target.value)} />
@@ -153,7 +154,7 @@ function LeadEditFormFields({ lead, onDone }: { lead: Lead; onDone?: () => void 
           <option value="">Not specified</option>
           {COUNTRIES.map((c) => (
             <option key={c.id} value={c.id}>
-              {c.label}
+              {stripEmoji(c.label)}
             </option>
           ))}
         </Select>
@@ -205,7 +206,7 @@ function LeadEditFormFields({ lead, onDone }: { lead: Lead; onDone?: () => void 
           );
         }}
       >
-        💾 Save Lead Details
+        <Ico e="💾" /> Save Lead Details
       </Button>
       {update.isError && (
         <p className="text-[0.8rem] text-danger">
@@ -235,7 +236,7 @@ function LeadEditFormFields({ lead, onDone }: { lead: Lead; onDone?: () => void 
           });
         }}
       >
-        🗑️ Remove
+        <Ico e="🗑" /> Remove
       </Button>
       {remove.isError && (
         <p className="text-[0.8rem] text-danger">

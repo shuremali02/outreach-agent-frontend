@@ -41,6 +41,7 @@ import {
 } from "@/lib/format";
 import type { Lead } from "@/types";
 import { EMPTY_STATES } from "@/lib/constants";
+import { CategoryLabel, Ico, stripEmoji, withIcons } from "@/components/ui/emoji-icon";
 
 /**
  * structure-plan.md Phase 2 -- Contacts is the only place a lead moves onto the Cold Call Desk from.
@@ -65,10 +66,10 @@ function SendToDeskButton({ lead }: { lead: Lead }) {
           })
         }
       >
-        {onDesk ? SEND_TO_DESK.resend : SEND_TO_DESK.send}
+        {withIcons(onDesk ? SEND_TO_DESK.resend : SEND_TO_DESK.send)}
       </Button>
       {onDesk && (
-        <span className="text-[0.78rem] text-muted">{SEND_TO_DESK.onDesk(addedAt(lead.sent_to_desk_at))}</span>
+        <span className="text-[0.78rem] text-muted">{withIcons(SEND_TO_DESK.onDesk(addedAt(lead.sent_to_desk_at)))}</span>
       )}
     </div>
   );
@@ -112,7 +113,7 @@ function CsvExportButton({ leads, category }: { leads: Lead[]; category: string 
 
   return (
     <Button variant="secondary" size="sm" onClick={download}>
-      📥 Export {leads.length} Filtered Contacts to CSV
+      <Ico e="📥" /> Export {leads.length} Filtered Contacts to CSV
     </Button>
   );
 }
@@ -146,31 +147,31 @@ export function ContactsView({ initialLeads, q }: { initialLeads: Lead[]; q: str
       <div className="mb-4 grid grid-cols-3 gap-4">
         <Field label="Category Filter">
           <Select value={category} onChange={(e) => setCategory(e.target.value)}>
-            <option value={ALL_CATEGORIES}>{ALL_CATEGORIES}</option>
+            <option value={ALL_CATEGORIES}>{stripEmoji(ALL_CATEGORIES)}</option>
             {STANDARD_CATEGORIES.map((c) => (
               <option key={c} value={c}>
-                {c}
+                {stripEmoji(c)}
               </option>
             ))}
           </Select>
         </Field>
         <Field label="Country Filter">
           <Select value={country} onChange={(e) => setCountry(e.target.value)}>
-            <option value={ALL_COUNTRIES}>{ALL_COUNTRIES}</option>
-            <option value={UNKNOWN_COUNTRY}>🏳️ Unknown</option>
+            <option value={ALL_COUNTRIES}>{stripEmoji(ALL_COUNTRIES)}</option>
+            <option value={UNKNOWN_COUNTRY}>Unknown</option>
             {COUNTRIES.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.label}
+                {stripEmoji(c.label)}
               </option>
             ))}
           </Select>
         </Field>
         <Field label="Source Filter">
           <Select value={source} onChange={(e) => setSource(e.target.value)}>
-            <option value={ALL_SOURCES}>{ALL_SOURCES}</option>
+            <option value={ALL_SOURCES}>{stripEmoji(ALL_SOURCES)}</option>
             {Object.entries(LEAD_SOURCE_LABELS).map(([id, label]) => (
               <option key={id} value={id}>
-                {label}
+                {stripEmoji(label)}
               </option>
             ))}
           </Select>
@@ -188,7 +189,7 @@ export function ContactsView({ initialLeads, q }: { initialLeads: Lead[]; q: str
         <CsvExportButton leads={leads} category={category} />
       </div>
 
-      {leads.length === 0 && <p className="text-muted">{EMPTY_STATES.contacts(category)}</p>}
+      {leads.length === 0 && <p className="text-muted">{withIcons(EMPTY_STATES.contacts(category))}</p>}
 
       {leads.map((lead) => (
         <LeadCard
@@ -196,14 +197,14 @@ export function ContactsView({ initialLeads, q }: { initialLeads: Lead[]; q: str
           lead={lead}
           summary={
             <span className="text-[0.95rem]">
-              👤 <strong>{contactLabel(lead)}</strong> · <strong>{lead.company_name}</strong>
+              <Ico e="👤" /> <strong>{contactLabel(lead)}</strong> · <strong>{lead.company_name}</strong>
               <span className="text-muted">
                 {" "}
-                — {currency(lead.deal_value)} · {lead.industry_tag} (
+                — {currency(lead.deal_value)} · <CategoryLabel value={lead.industry_tag} /> (
                 {STAGE_LABELS[lead.pipeline_stage]})
               </span>
               <span className="ml-2 text-[0.75rem] text-muted">
-                🕒 {addedAt(lead.created_at)} · {LEAD_SOURCE_LABELS[leadSource(lead.source_prompt)]}
+                <Ico e="🕒" /> {addedAt(lead.created_at)} · {withIcons(LEAD_SOURCE_LABELS[leadSource(lead.source_prompt)])}
                 <LeadWho lead={lead} />
               </span>
             </span>
@@ -214,7 +215,7 @@ export function ContactsView({ initialLeads, q }: { initialLeads: Lead[]; q: str
           </div>
           <div className="grid grid-cols-[1.8fr_1.8fr_1.4fr] gap-6">
             <div className="flex flex-col gap-3">
-              <h4 className="text-[1rem] font-semibold">🏢 Company &amp; Contact</h4>
+              <h4 className="text-[1rem] font-semibold"><Ico e="🏢" /> Company &amp; Contact</h4>
               {lead.company_website && (
                 <a
                   href={externalUrl(lead.company_website)}
@@ -222,19 +223,19 @@ export function ContactsView({ initialLeads, q }: { initialLeads: Lead[]; q: str
                   rel="noopener noreferrer"
                   className="text-[0.85rem] text-accent underline"
                 >
-                  🌐 {displayDomain(lead.company_website)}
+                  <Ico e="🌐" /> {displayDomain(lead.company_website)}
                 </a>
               )}
               <p className="text-[0.85rem]">
-                👤 {lead.contact_name || "—"}
+                <Ico e="👤" /> {lead.contact_name || "—"}
                 {lead.contact_role && <span className="text-muted"> · {lead.contact_role}</span>}
               </p>
               {hasUsableEmail(lead.contact_email) && (
-                <p className="text-[1rem] font-medium text-text">✉️ {lead.contact_email}</p>
+                <p className="text-[1rem] font-medium text-text"><Ico e="✉" /> {lead.contact_email}</p>
               )}
               {lead.contact_phone && <PhoneNumberList phones={lead.contact_phone} />}
               <p className="text-[0.85rem] text-muted">
-                🌍 {lead.country ? countryLabel(lead.country) : "Not specified"}
+                <Ico e="🌍" /> {lead.country ? countryLabel(lead.country) : "Not specified"}
               </p>
 
               <LinkedInResearchPanel lead={lead} />

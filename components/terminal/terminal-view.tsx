@@ -11,6 +11,7 @@ import { currency, num } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { SprintHorizon, TeamMetrics, WeekStats } from "@/types";
 import { FUNNEL_STEPS, PAGE_HEADERS, WEEKLY_VELOCITY } from "@/lib/constants";
+import { Ico, withIcons } from "@/components/ui/emoji-icon";
 
 function FunnelStep({
   label,
@@ -83,7 +84,7 @@ function WeekBlock({ w, defaultOpen }: { w: WeekStats; defaultOpen: boolean }) {
         className="w-full cursor-pointer px-4 py-3 text-left text-[0.9rem]"
       >
         <span className="mr-2 text-muted">{open ? "▾" : "▸"}</span>
-        📅 <strong>{w.title} ({w.dates})</strong>
+        <Ico e="📅" /> <strong>{w.title} ({w.dates})</strong>
         <span className="text-muted">
           {" "}
           — {num(w.attempts)} Dials · {num(w.live_interactions)} Live Calls ·{" "}
@@ -145,7 +146,7 @@ export function TerminalView({ initialData }: { initialData: TeamMetrics }) {
         </div>
         <div className="flex flex-col items-end gap-2">
           <span className={`terminal-pill terminal-pill-${data.is_live ? "green" : "amber"}`}>
-            {data.is_live ? "🟢 LIVE GOOGLE SHEET SYNC" : "🟡 CACHED BASELINE"}
+            {withIcons(data.is_live ? "🟢 LIVE GOOGLE SHEET SYNC" : "🟡 CACHED BASELINE")}
           </span>
           <p className="text-[0.78rem] text-muted">Updated: {data.synced_at}</p>
           <div className="flex gap-2">
@@ -161,7 +162,7 @@ export function TerminalView({ initialData }: { initialData: TeamMetrics }) {
         </div>
       </div>
 
-      <p className="date-eyebrow">⏱️ Select Sprint Horizon</p>
+      <p className="date-eyebrow"><Ico e="⏱️" /> Select Sprint Horizon</p>
       <div className="mb-5 grid grid-cols-4 gap-3">
         {horizons.map((h) => (
           <Button
@@ -263,7 +264,7 @@ export function TerminalView({ initialData }: { initialData: TeamMetrics }) {
           onClick={() => setSettingsOpen((v) => !v)}
           className="cursor-pointer text-[0.85rem] font-semibold text-muted hover:text-accent"
         >
-          ⚙️ Google Sheets Live Ingestion Settings
+          <Ico e="⚙" /> Google Sheets Live Ingestion Settings
         </button>
         {settingsOpen && (
           <Card className="mt-2">
@@ -285,7 +286,7 @@ export function TerminalView({ initialData }: { initialData: TeamMetrics }) {
               className="mt-2"
               onClick={() => setSheetUrl(draftUrl)}
             >
-              💾 Save Sheet URL &amp; Re-sync
+              <Ico e="💾" /> Save Sheet URL &amp; Re-sync
             </Button>
           </Card>
         )}

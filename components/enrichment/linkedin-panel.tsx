@@ -8,6 +8,7 @@ import { useToast } from "@/components/ui/toast";
 import { linkedInXrayUrl, linkedInDirectSearchUrl } from "@/lib/format";
 import type { Lead } from "@/types";
 import { LINKEDIN_PANEL, TOASTS } from "@/lib/constants";
+import { Ico, withIcons } from "@/components/ui/emoji-icon";
 
 /** render_linkedin_research_and_reveal_ui — used on Today, Cold Call, Pipeline, Contacts. */
 export function LinkedInResearchPanel({ lead }: { lead: Lead }) {
@@ -64,7 +65,7 @@ export function LinkedInResearchPanel({ lead }: { lead: Lead }) {
           {/* Was "🔗 Open LinkedIn (Apollo Reveal)" in app.py -- this link
               never calls Apollo, it just opens the saved URL, so the
               "(Apollo Reveal)" suffix was misleading and is dropped here. */}
-          🔗 Open LinkedIn
+          <Ico e="🔗" /> Open LinkedIn
         </a>
       ) : (
         <>
@@ -76,7 +77,7 @@ export function LinkedInResearchPanel({ lead }: { lead: Lead }) {
           >
             {/* Was "🌐 Google X-Ray Search (Apollo Reveal)" in app.py -- this
                 is a manual Google search link, not an Apollo API call. */}
-            🌐 Google X-Ray Search
+            <Ico e="🌐" /> Google X-Ray Search
           </a>
           <a
             href={linkedInDirectSearchUrl(lead.contact_name, lead.company_name)}
@@ -84,7 +85,7 @@ export function LinkedInResearchPanel({ lead }: { lead: Lead }) {
             rel="noopener noreferrer"
             className="text-center text-[0.75rem] text-muted underline"
           >
-            {LINKEDIN_PANEL.directSearch}
+            {withIcons(LINKEDIN_PANEL.directSearch)}
           </a>
         </>
       )}

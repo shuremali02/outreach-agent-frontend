@@ -14,6 +14,7 @@ import { TabButton } from "@/components/common/tab-button";
 import { COUNTRIES, LEAD_FINDER, MAPS_FINDER, QUALIFY, STANDARD_CATEGORIES } from "@/lib/constants";
 import { QualifySummary } from "./qualify-summary";
 import type { DiscoverJobResult, QualifyJobResult } from "@/types";
+import { stripEmoji, withIcons } from "@/components/ui/emoji-icon";
 
 /**
  * /jobs/discover result -- a single ungrounded Gemini pass that saves
@@ -34,10 +35,10 @@ function DiscoverSummary({ result }: { result: DiscoverJobResult }) {
   return (
     <div className="flex flex-col gap-1 text-[0.85rem]">
       <p className="text-success">
-        {result.saved > 0 ? LEAD_FINDER.success(result.saved) : LEAD_FINDER.empty}
+        {withIcons(result.saved > 0 ? LEAD_FINDER.success(result.saved) : LEAD_FINDER.empty)}
       </p>
       {result.skipped_duplicates.length > 0 && (
-        <p className="text-muted">{LEAD_FINDER.skipped(result.skipped_duplicates.length)}</p>
+        <p className="text-muted">{withIcons(LEAD_FINDER.skipped(result.skipped_duplicates.length))}</p>
       )}
     </div>
   );
@@ -127,10 +128,10 @@ export function DiscoveryForm() {
             </Field>
             <Field label={LEAD_FINDER.countryLabel}>
               <Select value={country} onChange={(e) => setCountry(e.target.value)}>
-                <option value="">{LEAD_FINDER.countryAny}</option>
+                <option value="">{stripEmoji(LEAD_FINDER.countryAny)}</option>
                 {COUNTRIES.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.label}
+                    {stripEmoji(c.label)}
                   </option>
                 ))}
               </Select>
@@ -152,17 +153,17 @@ export function DiscoveryForm() {
                 <Select value={category} onChange={(e) => setCategory(e.target.value)}>
                   {STANDARD_CATEGORIES.map((c) => (
                     <option key={c} value={c}>
-                      {c}
+                      {stripEmoji(c)}
                     </option>
                   ))}
                 </Select>
               </Field>
               <Field label={LEAD_FINDER.countryLabel}>
                 <Select value={country} onChange={(e) => setCountry(e.target.value)}>
-                  <option value="">{LEAD_FINDER.countryAny}</option>
+                  <option value="">{stripEmoji(LEAD_FINDER.countryAny)}</option>
                   {COUNTRIES.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.label}
+                      {stripEmoji(c.label)}
                     </option>
                   ))}
                 </Select>
@@ -197,7 +198,7 @@ export function DiscoveryForm() {
         </p>
 
         <Button type="submit" variant="primary" loading={running} disabled={!ready}>
-          {running ? QUALIFY.running : source === "maps" ? MAPS_FINDER.button : LEAD_FINDER.button}
+          {withIcons(running ? QUALIFY.running : source === "maps" ? MAPS_FINDER.button : LEAD_FINDER.button)}
         </Button>
 
         <JobProgress job={job} />

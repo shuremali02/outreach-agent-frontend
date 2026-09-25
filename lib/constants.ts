@@ -84,6 +84,7 @@ export const COUNTRIES: { id: string; label: string }[] = [
   { id: "CZ", label: "🇨🇿 Czech Republic" },
   { id: "RO", label: "🇷🇴 Romania" },
   { id: "HU", label: "🇭🇺 Hungary" },
+  { id: "EG", label: "🇪🇬 Egypt" },
 ];
 
 export function countryLabel(code: string): string {
@@ -97,7 +98,7 @@ export function countryLabel(code: string): string {
  * Cold Call Desk's filter dropdowns keep the full COUNTRIES list above so leads already in the CRM from any
  * other country (Pakistan, etc.) stay filterable regardless of what this popover offers.
  */
-export const ADD_LEAD_COUNTRIES = COUNTRIES.filter((c) => ["US", "GB", "CA", "FR", "SA", "AE"].includes(c.id));
+export const ADD_LEAD_COUNTRIES = COUNTRIES.filter((c) => ["US", "GB", "CA", "FR", "SA", "AE", "QA", "EG"].includes(c.id));
 
 export const ALL_SOURCES = "All Sources";
 
@@ -250,7 +251,10 @@ export const NAV_ITEMS = [
   { name: "Cold Call Desk", icon: "⚡", href: "/cold-call", badge: null },
   // Placeholder (user, 2026-09-22): reserved for a future dedicated Email view. No page behind it yet.
   { name: "Email", icon: "✉️", href: "/email", badge: null },
-  { name: "Pipeline", icon: "💼", href: "/pipeline", badge: "pipeline_count" },
+  // Count hidden for now (user, 2026-09-25: the CSV-imported leads are not in this number yet). To bring it
+  // back set badge to "pipeline_count" -- the backend still sends it (crud/leads.py get_crm_metrics).
+  // { name: "Pipeline", icon: "💼", href: "/pipeline", badge: "pipeline_count" },
+  { name: "Pipeline", icon: "💼", href: "/pipeline", badge: null },
   // Retired by structure-plan.md Phase 6: the Follow-ups page is gone -- voicemail/callback chasing
   // moved to Cold Call Desk (Phase 3), post-meeting follow-up to Meetings (Phase 5).
   { name: "Meetings", icon: "🗓️", href: "/meetings", badge: "meetings_count" },
@@ -719,7 +723,7 @@ export const NEEDS_FOLLOWUP = {
   // Renamed from "Needs Follow-up" (user request, 2026-09-22): read as the old, removed Follow-ups page
   // coming back. This is still exactly the old "After meetings" tab, nothing else -- name now says so.
   heading: (n: number) => `🔁 After Meetings (${n})`,
-  note: "Leads you have already met and marked Needs Follow-up. Call or email again, then update the stage below.",
+  note: "Every lead whose meeting date has passed, whatever stage it is at now. Call or email again, then update the stage.",
   empty: "No leads are waiting after a meeting right now.",
   searchPlaceholder: "Company, contact or email…",
   sortRecent: "Recently updated first",
@@ -924,7 +928,7 @@ export const EMAIL_SEND = {
 export const LAST_TOUCH = {
   lowPriorityHeading: (count: number) => `⏳ Voicemail & Hang Ups (${count})`,
   clickToLoad: "click to load",
-  label: (when: string) => `Last touched ${when}`,
+  label: (when: string) => `Last activity ${when}`,
 } as const;
 
 export const LOST_STAGE_CONFIRM = {

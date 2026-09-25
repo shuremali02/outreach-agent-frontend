@@ -2,6 +2,7 @@
 
 import * as Collapsible from "@radix-ui/react-collapsible";
 import { useState } from "react";
+import { Ico } from "@/components/ui/emoji-icon";
 
 /**
  * In Streamlit this was st.checkbox — a workaround, because nested expanders
@@ -15,7 +16,7 @@ export function ScreenshotViewer({ src, alt }: { src: string; alt: string }) {
   return (
     <Collapsible.Root open={open} onOpenChange={setOpen}>
       <Collapsible.Trigger className="cursor-pointer text-[0.82rem] font-semibold text-muted hover:text-accent">
-        🖼️ {open ? "Hide" : "Show"} site screenshot
+        <Ico e="🖼" /> {open ? "Hide" : "Show"} site screenshot
       </Collapsible.Trigger>
       <Collapsible.Content className="mt-2">
         {/* eslint-disable-next-line @next/next/no-img-element */}

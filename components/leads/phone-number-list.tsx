@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { telUrl } from "@/lib/format";
+import { Ico } from "@/components/ui/emoji-icon";
 
 /**
  * Splits a comma-joined phone field (a contact/lead can now carry several --
@@ -57,7 +58,7 @@ function PhoneRow({ number, big }: { number: string; big: boolean }) {
           href={telUrl(number)}
           className="block flex-1 rounded-[8px] bg-success px-3 py-2.5 text-center font-mono text-[1.05rem] font-bold text-white no-underline shadow-[var(--shadow-call)]"
         >
-          📞 Call {number}
+          <Ico e="📞" /> Call {number}
         </a>
         <button
           type="button"
@@ -65,7 +66,7 @@ function PhoneRow({ number, big }: { number: string; big: boolean }) {
           title="Copy number"
           className="shrink-0 cursor-pointer rounded-[8px] border border-border px-3 py-2.5 text-[0.9rem] text-muted hover:text-accent"
         >
-          {copied ? "✅" : "📋"}
+          <Ico e={copied ? "✅" : "📋"} />
         </button>
       </div>
     );
@@ -80,7 +81,7 @@ function PhoneRow({ number, big }: { number: string; big: boolean }) {
         href={telUrl(number)}
         className="text-[1rem] font-semibold tabular-nums text-text underline decoration-accent decoration-2 underline-offset-4 hover:text-accent"
       >
-        📞 {number}
+        <Ico e="📞" /> {number}
       </a>
       <button
         type="button"
@@ -88,7 +89,7 @@ function PhoneRow({ number, big }: { number: string; big: boolean }) {
         title="Copy number"
         className="cursor-pointer text-[0.95rem] text-muted hover:text-accent"
       >
-        {copied ? "✅" : "📋"}
+        <Ico e={copied ? "✅" : "📋"} />
       </button>
     </div>
   );

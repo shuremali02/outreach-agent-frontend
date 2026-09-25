@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { MeetingDetailDialog } from "./meeting-detail-dialog";
 import { EMPTY_STATES, MEETINGS_CALENDAR, STAGE_LABELS } from "@/lib/constants";
 import type { Lead } from "@/types";
+import { withIcons } from "@/components/ui/emoji-icon";
 
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -67,7 +68,7 @@ function MeetingEntry({ lead }: { lead: Lead }) {
             className="rounded-[4px] px-1 py-[1px] text-[0.62rem] font-medium leading-tight no-underline"
             style={{ background: pill.bg, color: pill.fg }}
           >
-            {STAGE_LABELS[lead.pipeline_stage]}
+            {withIcons(STAGE_LABELS[lead.pipeline_stage])}
           </span>
         </button>
       }
@@ -176,7 +177,7 @@ export function MeetingsCalendar({ initialLeads }: { initialLeads: Lead[] }) {
           className="rounded-[8px] px-3 py-2 text-[0.9rem]"
           style={{ background: "var(--info-tint)", color: "var(--info)" }}
         >
-          {EMPTY_STATES.meetings(monthLabel)}
+          {withIcons(EMPTY_STATES.meetings(monthLabel))}
         </p>
       ) : (
         <div className="overflow-hidden rounded-[12px] border border-border">

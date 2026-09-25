@@ -19,6 +19,7 @@ import type { ProblemFilter } from "@/types";
 import { shortDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { EMPTY_STATES, PROBLEM_DESK_HEADER, PROBLEM_FORM } from "@/lib/constants";
+import { Ico, withIcons } from "@/components/ui/emoji-icon";
 
 const FILTERS: ProblemFilter[] = ["All Open", "High Priority", "Normal Priority", "Resolved"];
 const FILTER_LABELS: Record<ProblemFilter, string> = {
@@ -63,10 +64,10 @@ export function ProblemDesk({ defaultExpanded = false }: { defaultExpanded?: boo
           </div>
           <div className="flex shrink-0 flex-col items-end gap-1.5">
             <span className="terminal-pill" style={{ background: "var(--danger-tint)", color: "var(--danger)" }}>
-              🔴 {highCount} High Priority
+              <Ico e="🔴" /> {highCount} High Priority
             </span>
             <span className="terminal-pill" style={{ background: "var(--warn-tint)", color: "var(--warn)" }}>
-              🟡 {normalCount} Normal Priority
+              <Ico e="🟡" /> {normalCount} Normal Priority
             </span>
           </div>
         </div>
@@ -78,7 +79,7 @@ export function ProblemDesk({ defaultExpanded = false }: { defaultExpanded?: boo
           onClick={() => setFormOpen((v) => !v)}
           className="cursor-pointer text-[0.85rem] font-semibold text-muted hover:text-accent"
         >
-          ➕ Log a Top-Priority Sales Problem
+          <Ico e="➕" /> Log a Top-Priority Sales Problem
         </button>
 
         {formOpen && (
@@ -115,7 +116,7 @@ export function ProblemDesk({ defaultExpanded = false }: { defaultExpanded?: boo
                         onChange={() => setPriority(p)}
                         className="accent-[var(--accent)]"
                       />
-                      {p}
+                      {withIcons(p)}
                     </label>
                   ))}
                 </div>
@@ -130,7 +131,7 @@ export function ProblemDesk({ defaultExpanded = false }: { defaultExpanded?: boo
               </Field>
             </div>
             <Button type="submit" variant="primary" size="sm" className="mt-3" loading={create.isPending}>
-              🚨 Submit Problem to Desk
+              <Ico e="🚨" /> Submit Problem to Desk
             </Button>
           </form>
         )}
@@ -150,14 +151,14 @@ export function ProblemDesk({ defaultExpanded = false }: { defaultExpanded?: boo
                 : "border-border bg-card text-muted hover:border-accent hover:text-accent",
             )}
           >
-            {FILTER_LABELS[f]}
+            {withIcons(FILTER_LABELS[f])}
           </button>
         ))}
       </div>
 
       {isLoading && <p className="text-[0.9rem] text-muted">Loading problems…</p>}
       {!isLoading && problems.length === 0 && (
-        <p className="text-[0.9rem] text-muted">{EMPTY_STATES.problems}</p>
+        <p className="text-[0.9rem] text-muted">{withIcons(EMPTY_STATES.problems)}</p>
       )}
 
       {problems.map((p) => {
@@ -172,7 +173,7 @@ export function ProblemDesk({ defaultExpanded = false }: { defaultExpanded?: boo
                   color: high ? "var(--danger)" : "var(--warn)",
                 }}
               >
-                {high ? "🔴 High Priority" : "🟡 Normal Priority"}
+                {withIcons(high ? "🔴 High Priority" : "🟡 Normal Priority")}
               </span>
               <span
                 className="terminal-pill"
@@ -199,7 +200,7 @@ export function ProblemDesk({ defaultExpanded = false }: { defaultExpanded?: boo
                   size="sm"
                   onClick={() => setStatus.mutate({ id: p.id, status: "Resolved" })}
                 >
-                  ✅ Mark Resolved
+                  <Ico e="✅" /> Mark Resolved
                 </Button>
               ) : (
                 <Button
@@ -207,11 +208,11 @@ export function ProblemDesk({ defaultExpanded = false }: { defaultExpanded?: boo
                   size="sm"
                   onClick={() => setStatus.mutate({ id: p.id, status: "Open" })}
                 >
-                  🔄 Reopen
+                  <Ico e="🔄" /> Reopen
                 </Button>
               )}
               <Button variant="danger" size="sm" onClick={() => remove.mutate(p.id)}>
-                🗑️ Delete
+                <Ico e="🗑" /> Delete
               </Button>
             </div>
 

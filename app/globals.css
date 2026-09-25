@@ -309,3 +309,15 @@
     animation: none;
   }
 }
+
+/* Coloured icons (components/ui/emoji-icon.tsx) go back to the text colour where a tone would be unreadable or
+   clash: on a filled accent / white-text control, in the active tab, and inside coloured pills and tags. */
+.bg-accent .ico,
+.bg-accent-hover .ico,
+.text-white .ico,
+[data-state="active"] .ico,
+[aria-pressed="true"] .ico,
+.terminal-pill .ico,
+.stage-tag .ico {
+  color: inherit !important;
+}

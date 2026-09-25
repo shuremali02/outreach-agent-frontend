@@ -4,6 +4,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { useState } from "react";
 import { LeadEditForm } from "./lead-edit-form";
 import type { Lead } from "@/types";
+import { Ico } from "@/components/ui/emoji-icon";
 
 /**
  * The full lead-edit form as a popup -- structure-plan.md Phase 2-4 moved all editing to Leads
@@ -29,7 +30,7 @@ export function EditLeadDialog({ lead, trigger }: { lead: Lead; trigger: React.R
                 aria-label="Close"
                 className="cursor-pointer text-[1.1rem] leading-none text-muted hover:text-text"
               >
-                ✕
+                <Ico e="✕" />
               </button>
             </Dialog.Close>
           </div>

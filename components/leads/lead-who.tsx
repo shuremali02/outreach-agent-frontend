@@ -3,9 +3,10 @@
 import { useMounted } from "@/hooks/use-mounted";
 import { useUserNames } from "@/hooks/use-users";
 import type { Lead } from "@/types";
+import { Ico } from "@/components/ui/emoji-icon";
 
 /**
- * "👤 Added by Ali · Last touched by Sara" -- who put the lead in and who worked it last (auth-plan.md).
+ * "👤 Added by Ali · Last activity by Sara" -- who put the lead in and who worked it last (auth-plan.md).
  * Nothing renders for a lead from before sign-in existed, or while login is off.
  *
  * `mounted` fixes a hydration mismatch found live 2026-09-23: useUsers() (hooks/use-users.ts) has no
@@ -24,8 +25,18 @@ export function LeadWho({ lead }: { lead: Lead }) {
   if (!mounted || (!added && !touched)) return null;
   return (
     <>
-      {added && ` · 👤 Added by ${added}`}
-      {touched && touched !== added && ` · ✍️ Last touched by ${touched}`}
+      {added && (
+        <>
+          {" · "}
+          <Ico e="👤" /> Added by {added}
+        </>
+      )}
+      {touched && touched !== added && (
+        <>
+          {" · "}
+          <Ico e="✍️" /> Last activity by {touched}
+        </>
+      )}
     </>
   );
 }

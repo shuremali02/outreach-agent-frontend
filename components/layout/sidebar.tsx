@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { Logo, LogoMark } from "./logo";
 import { SystemStatusPanel } from "./system-status";
 import type { CrmMetrics, SystemStatus } from "@/types";
+import { Ico } from "@/components/ui/emoji-icon";
 
 function Eyebrow({ children }: { children: React.ReactNode }) {
   return <p className="date-eyebrow !mb-2">{children}</p>;
@@ -120,7 +121,7 @@ export function Sidebar({
               )}
             >
               <span aria-hidden className={collapsed ? "text-[1.15rem]" : "mr-2"}>
-                {item.icon}
+                <Ico e={item.icon} />
               </span>
               {!collapsed && item.name}
               {!collapsed && count !== null && ` (${count})`}

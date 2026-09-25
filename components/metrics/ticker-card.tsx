@@ -1,4 +1,5 @@
 import { Card } from "@/components/ui/card";
+import { withIcons } from "@/components/ui/emoji-icon";
 import { TerminalPill } from "@/components/ui/tag";
 import { cn } from "@/lib/utils";
 
@@ -36,7 +37,7 @@ export function TickerCard({
     <Card
       className={cn("!p-[1.15rem]", accentBorder && "!border-[1.5px] !border-accent")}
     >
-      <p className="metric-label">{label}</p>
+      <p className="metric-label">{withIcons(label)}</p>
       <p className={cn("terminal-ticker", colorClass, size === "md" && "!text-[1.8rem]")}>{value}</p>
       {pill && (
         <div className="mt-1.5">

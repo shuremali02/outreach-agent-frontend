@@ -31,11 +31,17 @@ import {
 import { currency, leadSource, localClock, num } from "@/lib/format";
 import type { Lead } from "@/types";
 import { EMPTY_STATES } from "@/lib/constants";
+import { stripEmoji, withIcons } from "@/components/ui/emoji-icon";
 
 // Module-level, not component-scoped: a `new Set(...)` recreated every render was never referentially
 // stable, so the lint rule correctly flagged it as unusable in a useMemo dependency array -- adding it
 // would have defeated the memo (it "changes" every render). The set of outcomes itself never changes.
 const TRIED_OUTCOMES = new Set(["voicemail", "hang_up"]);
+
+// Stages that belong to Pipeline / Projects / closed, never to this desk -- mirrors DESK_EXCLUDED_STAGES in
+// the backend (crud/leads.py). Also applied here because a lead edited to one of them stays in the cached
+// desk list until the next refetch.
+const NOT_ON_DESK_STAGES = new Set(["contacted", "meeting_booked", "proposal_sent", "won", "lost"]);
 
 /** "direct" (a person's verified line) | "switchboard" (business line) | "none". */
 function lineOf(l: Lead): string {
@@ -133,7 +139,10 @@ export function ColdCallView({ initialLeads, q }: { initialLeads: Lead[]; q: str
    * clears sent_to_desk_at the moment a call outcome or Email Send takes a lead elsewhere (Wrong Number
    * -> Contacts, Callback/Meeting/Closed -> Pipeline), so this list only ever needs the one field.
    */
-  const queue = useMemo(() => allLeads.filter((l) => Boolean(l.sent_to_desk_at)), [allLeads]);
+  const queue = useMemo(
+    () => allLeads.filter((l) => Boolean(l.sent_to_desk_at) && !NOT_ON_DESK_STAGES.has(l.pipeline_stage)),
+    [allLeads],
+  );
 
   const filtered = useMemo(
     () =>
@@ -240,31 +249,31 @@ export function ColdCallView({ initialLeads, q }: { initialLeads: Lead[]; q: str
       <div className="mb-4 grid grid-cols-4 gap-4">
         <Field label="Category Filter">
           <Select value={category} onChange={(e) => setCategory(e.target.value)}>
-            <option value={ALL_CATEGORIES}>{ALL_CATEGORIES}</option>
+            <option value={ALL_CATEGORIES}>{stripEmoji(ALL_CATEGORIES)}</option>
             {STANDARD_CATEGORIES.map((c) => (
               <option key={c} value={c}>
-                {c}
+                {stripEmoji(c)}
               </option>
             ))}
           </Select>
         </Field>
         <Field label="Country Filter">
           <Select value={country} onChange={(e) => setCountry(e.target.value)}>
-            <option value={ALL_COUNTRIES}>{ALL_COUNTRIES}</option>
-            <option value={UNKNOWN_COUNTRY}>🏳️ Unknown</option>
+            <option value={ALL_COUNTRIES}>{stripEmoji(ALL_COUNTRIES)}</option>
+            <option value={UNKNOWN_COUNTRY}>Unknown</option>
             {COUNTRIES.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.label}
+                {stripEmoji(c.label)}
               </option>
             ))}
           </Select>
         </Field>
         <Field label="Source Filter">
           <Select value={source} onChange={(e) => setSource(e.target.value)}>
-            <option value={ALL_SOURCES}>{ALL_SOURCES}</option>
+            <option value={ALL_SOURCES}>{stripEmoji(ALL_SOURCES)}</option>
             {Object.entries(LEAD_SOURCE_LABELS).map(([id, label]) => (
               <option key={id} value={id}>
-                {label}
+                {stripEmoji(label)}
               </option>
             ))}
           </Select>
@@ -279,7 +288,7 @@ export function ColdCallView({ initialLeads, q }: { initialLeads: Lead[]; q: str
           >
             {COLD_CALL_QUEUE.lineOptions.map((o) => (
               <option key={o.id} value={o.id}>
-                {o.label}
+                {stripEmoji(o.label)}
               </option>
             ))}
           </Select>
@@ -304,7 +313,7 @@ export function ColdCallView({ initialLeads, q }: { initialLeads: Lead[]; q: str
               triedRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
             }}
           >
-            {LAST_TOUCH.lowPriorityHeading(triedTotal)}
+            {withIcons(LAST_TOUCH.lowPriorityHeading(triedTotal))}
           </Button>
           <Button
             variant="secondary"
@@ -312,7 +321,7 @@ export function ColdCallView({ initialLeads, q }: { initialLeads: Lead[]; q: str
             title={COLD_CALL_QUEUE.resortHelp}
             onClick={() => setSortAt(Date.now())}
           >
-            {COLD_CALL_QUEUE.resort}
+            {withIcons(COLD_CALL_QUEUE.resort)}
           </Button>
         </div>
       </div>
@@ -322,14 +331,14 @@ export function ColdCallView({ initialLeads, q }: { initialLeads: Lead[]; q: str
           className="rounded-[8px] px-3 py-2 text-[0.9rem]"
           style={{ background: "var(--info-tint)", color: "var(--info)" }}
         >
-          {EMPTY_STATES.coldCallQueue}
+          {withIcons(EMPTY_STATES.coldCallQueue)}
         </p>
       )}
 
       {newLeads.length > 0 && (
         <div className="mb-4">
           <h3 className="mb-2 text-[1.05rem] font-semibold">
-            {COLD_CALL_QUEUE.newHeading(newLeads.length)}
+            {withIcons(COLD_CALL_QUEUE.newHeading(newLeads.length))}
           </h3>
           {newLeads.map((lead) => (
             <Battlecard key={lead.id} lead={lead} onActionTaken={dismiss} />
@@ -340,7 +349,7 @@ export function ColdCallView({ initialLeads, q }: { initialLeads: Lead[]; q: str
       {noAnswerLeads.length > 0 && (
         <div className="mb-4">
           <h3 className="mb-2 text-[1.05rem] font-semibold">
-            {COLD_CALL_QUEUE.followUpHeading(noAnswerLeads.length)}
+            {withIcons(COLD_CALL_QUEUE.followUpHeading(noAnswerLeads.length))}
           </h3>
           {noAnswerLeads.map((lead) => (
             <Battlecard key={lead.id} lead={lead} onActionTaken={dismiss} />
@@ -360,9 +369,9 @@ export function ColdCallView({ initialLeads, q }: { initialLeads: Lead[]; q: str
             <span className="text-[0.8rem] text-muted" aria-hidden>
               {showTried ? "▾" : "▸"}
             </span>
-            {LAST_TOUCH.lowPriorityHeading(showTried && tried.data ? triedLeads.length : triedTotal)}
+            {withIcons(LAST_TOUCH.lowPriorityHeading(showTried && tried.data ? triedLeads.length : triedTotal))}
             {showTried && tried.isFetching && <Loader className="h-4 w-4" />}
-            {!showTried && <span className="text-[0.8rem] font-normal text-muted">{LAST_TOUCH.clickToLoad}</span>}
+            {!showTried && <span className="text-[0.8rem] font-normal text-muted">{withIcons(LAST_TOUCH.clickToLoad)}</span>}
           </button>
           {showTried && triedLeads.map((lead) => (
             <Battlecard key={lead.id} lead={lead} onActionTaken={dismiss} />

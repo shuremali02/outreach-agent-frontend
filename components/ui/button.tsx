@@ -3,6 +3,7 @@ import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { Loader } from "@/components/ui/loader";
+import { withIcons } from "@/components/ui/emoji-icon";
 
 /**
  * Ported from the Streamlit button CSS:
@@ -57,10 +58,14 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         {loading && !asChild ? (
           <>
             <Loader />
-            {children}
+            {withIcons(children)}
           </>
-        ) : (
+        ) : asChild ? (
           children
+        ) : (
+          // Emoji in a label -> lucide icon (components/ui/emoji-icon.tsx). Not under asChild: Slot needs the
+          // one child element untouched.
+          withIcons(children)
         )}
       </Comp>
     );

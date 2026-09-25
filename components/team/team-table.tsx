@@ -2,6 +2,7 @@ import { TEAM_ACTIVITY } from "@/lib/constants";
 import { num } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { TeamRow } from "@/types";
+import { withIcons } from "@/components/ui/emoji-icon";
 
 const COLS: (keyof typeof TEAM_ACTIVITY.columns)[] = [
   "calls", "connected", "voicemail", "receptionist", "decision_maker",
@@ -32,10 +33,10 @@ export function TeamTable({ rows, total }: { rows: TeamRow[]; total: TeamRow }) 
         <table className="w-full min-w-[820px] border-collapse text-[0.9rem]">
           <thead>
             <tr className="border-b border-border text-left text-[0.72rem] uppercase tracking-wide text-muted">
-              <th className="px-3 py-2 font-semibold">{TEAM_ACTIVITY.person}</th>
+              <th className="px-3 py-2 font-semibold">{withIcons(TEAM_ACTIVITY.person)}</th>
               {COLS.map((c) => (
                 <th key={c} className="px-3 py-2 text-right font-semibold">
-                  {TEAM_ACTIVITY.columns[c]}
+                  {withIcons(TEAM_ACTIVITY.columns[c])}
                 </th>
               ))}
             </tr>
@@ -65,7 +66,7 @@ export function TeamTable({ rows, total }: { rows: TeamRow[]; total: TeamRow }) 
           </tbody>
         </table>
       </div>
-      {hasUnassigned && <p className="mt-1.5 text-[0.78rem] text-muted">{TEAM_ACTIVITY.unassignedNote}</p>}
+      {hasUnassigned && <p className="mt-1.5 text-[0.78rem] text-muted">{withIcons(TEAM_ACTIVITY.unassignedNote)}</p>}
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { ProblemDesk } from "@/components/problems/problem-desk";
 import { MetricCard } from "@/components/metrics/metric-card";
 import { leadsApi, metricsApi } from "@/lib/api";
 import { currency, num, todayEyebrow } from "@/lib/format";
+import { Ico } from "@/components/ui/emoji-icon";
 
 // See meetings/page.tsx -- no dynamic API here either, so this would fail
 // `next build` the same way once that page's error is fixed.
@@ -59,7 +60,7 @@ export default async function TodayPage() {
         />
       </div>
 
-      <h2 className="mb-3 text-[1.35rem] font-semibold">🎯 Priority Outreach Items</h2>
+      <h2 className="mb-3 text-[1.35rem] font-semibold"><Ico e="🎯" /> Priority Outreach Items</h2>
       <PriorityOutreachList initialLeads={leads} />
     </div>
   );

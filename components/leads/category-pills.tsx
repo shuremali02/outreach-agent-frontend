@@ -3,6 +3,7 @@
 import { ALL_CATEGORIES, STANDARD_CATEGORIES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import type { Lead } from "@/types";
+import { CategoryLabel, withIcons } from "@/components/ui/emoji-icon";
 
 /** st.pills — used on the Cold Call queue and the Contacts directory. */
 export function CategoryPills({
@@ -31,7 +32,13 @@ export function CategoryPills({
       {options.map((cat) => {
         const active = selected === cat;
         const label =
-          cat === ALL_CATEGORIES ? `🌐 ${allLabel} (${leads.length})` : `${cat} (${counts.get(cat)})`;
+          cat === ALL_CATEGORIES ? (
+            withIcons(`🌐 ${allLabel} (${leads.length})`)
+          ) : (
+            <>
+              <CategoryLabel value={cat} /> ({counts.get(cat)})
+            </>
+          );
         return (
           <button
             key={cat}

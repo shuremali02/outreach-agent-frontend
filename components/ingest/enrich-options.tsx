@@ -1,6 +1,7 @@
 "use client";
 
 import { ENRICH_OPTIONS } from "@/lib/constants";
+import { withIcons } from "@/components/ui/emoji-icon";
 
 /** app.py:1717-1719 — the scan/enrich checkbox pair shared by the CSV and Apollo tabs. */
 export function EnrichOptions({
@@ -26,7 +27,7 @@ export function EnrichOptions({
           onChange={(e) => onScrape(e.target.checked)}
           className="accent-[var(--accent)]"
         />
-        {ENRICH_OPTIONS.scrapeLabel}
+        {withIcons(ENRICH_OPTIONS.scrapeLabel)}
       </label>
       <label
         className="flex cursor-pointer items-center gap-2 text-[0.85rem]"
@@ -38,7 +39,7 @@ export function EnrichOptions({
           onChange={(e) => onEnrich(e.target.checked)}
           className="accent-[var(--accent)]"
         />
-        {ENRICH_OPTIONS.enrichLabel}
+        {withIcons(ENRICH_OPTIONS.enrichLabel)}
       </label>
     </div>
   );

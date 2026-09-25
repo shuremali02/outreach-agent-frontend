@@ -10,6 +10,7 @@ import { STAGE_LABELS } from "@/lib/constants";
 import { currency, externalUrl, displayDomain, hasUsableEmail, telUrl } from "@/lib/format";
 import type { Lead } from "@/types";
 import { EMPTY_STATES } from "@/lib/constants";
+import { CategoryLabel, Ico, withIcons } from "@/components/ui/emoji-icon";
 
 /** The 5 most recent leads, matching app.py's "Priority Outreach Items". */
 export function PriorityOutreachList({ initialLeads }: { initialLeads: Lead[] }) {
@@ -17,7 +18,7 @@ export function PriorityOutreachList({ initialLeads }: { initialLeads: Lead[] })
   const top = leads.slice(0, 5);
 
   if (top.length === 0) {
-    return <p className="text-muted">{EMPTY_STATES.coldCallQueue}</p>;
+    return <p className="text-muted">{withIcons(EMPTY_STATES.coldCallQueue)}</p>;
   }
 
   return (
@@ -31,7 +32,7 @@ export function PriorityOutreachList({ initialLeads }: { initialLeads: Lead[] })
               <strong>{lead.company_name}</strong>
               <span className="text-muted">
                 {" "}
-                — {currency(lead.deal_value)} · {lead.industry_tag} (
+                — {currency(lead.deal_value)} · <CategoryLabel value={lead.industry_tag} /> (
                 {STAGE_LABELS[lead.pipeline_stage]})
               </span>
             </span>
@@ -60,7 +61,7 @@ function PriorityDetails({ lead: listLead }: { lead: Lead }) {
         </p>
 
         <p className="text-[0.85rem] text-muted">
-          {hasUsableEmail(lead.contact_email) && <>✉️ {lead.contact_email} · </>}
+          {hasUsableEmail(lead.contact_email) && <><Ico e="✉" /> {lead.contact_email} · </>}
           {lead.contact_phone && (
             // Dense one-line summary, not the main dialer -- links only
             // the first number (telUrl() already does this on its own
@@ -69,7 +70,7 @@ function PriorityDetails({ lead: listLead }: { lead: Lead }) {
             // detail views this card expands from.
             <>
               <a href={telUrl(lead.contact_phone)} className="text-accent underline">
-                📞 {lead.contact_phone}
+                <Ico e="📞" /> {lead.contact_phone}
               </a>{" "}
               ·{" "}
             </>
@@ -81,7 +82,7 @@ function PriorityDetails({ lead: listLead }: { lead: Lead }) {
               rel="noopener noreferrer"
               className="text-accent underline"
             >
-              🌐 {displayDomain(lead.company_website)}
+              <Ico e="🌐" /> {displayDomain(lead.company_website)}
             </a>
           )}
         </p>

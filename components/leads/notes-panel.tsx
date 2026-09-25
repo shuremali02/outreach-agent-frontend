@@ -12,6 +12,7 @@ import { useUsers } from "@/hooks/use-users";
 import { extractMentions } from "@/lib/mentions";
 import { MENTIONS } from "@/lib/constants";
 import type { Lead } from "@/types";
+import { Ico } from "@/components/ui/emoji-icon";
 
 /**
  * Shared with components/contacts/contacts-view.tsx (extracted so the
@@ -41,7 +42,7 @@ export function NotesPanel({ lead: listLead }: { lead: Lead }) {
 
   return (
     <div className="flex flex-col gap-3">
-      <h4 className="text-[1rem] font-semibold">📝 Notes &amp; Actions</h4>
+      <h4 className="text-[1rem] font-semibold"><Ico e="📝" /> Notes &amp; Actions</h4>
       {editing ? (
         <div className="flex flex-col gap-2">
           <Textarea
@@ -75,7 +76,7 @@ export function NotesPanel({ lead: listLead }: { lead: Lead }) {
                 )
               }
             >
-              💾 Save Notes
+              <Ico e="💾" /> Save Notes
             </Button>
             <Button variant="secondary" size="sm" disabled={editNotes.isPending} onClick={() => setEditing(null)}>
               Cancel
@@ -91,7 +92,7 @@ export function NotesPanel({ lead: listLead }: { lead: Lead }) {
               onClick={() => setEditing({ from: lead.notes, text: lead.notes })}
               className="cursor-pointer self-start text-[0.8rem] font-semibold text-accent hover:underline"
             >
-              ✏️ Edit notes
+              <Ico e="✏" /> Edit notes
             </button>
           </div>
         )

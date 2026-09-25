@@ -1,6 +1,7 @@
 "use client";
 
 import type { Job } from "@/types";
+import { Ico } from "@/components/ui/emoji-icon";
 
 /** Replaces st.progress — driven by polling instead of a blocked script thread. */
 export function JobProgress({ job }: { job: Job | undefined }) {
@@ -28,7 +29,7 @@ export function JobProgress({ job }: { job: Job | undefined }) {
     // a visibly contradictory pair. This job only ran to completion without
     // crashing -- the actual outcome belongs to whichever result summary
     // reads job.result right after this component, in every caller.
-    return <p className="text-[0.85rem] text-success">✅ Job finished.</p>;
+    return <p className="text-[0.85rem] text-success"><Ico e="✅" /> Job finished.</p>;
   }
 
   return (

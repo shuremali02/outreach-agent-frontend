@@ -6,6 +6,7 @@ import { useToast } from "@/components/ui/toast";
 import { Select } from "@/components/ui/input";
 import { useUpdateLead } from "@/hooks/use-leads";
 import type { PipelineStage } from "@/types";
+import { stripEmoji } from "@/components/ui/emoji-icon";
 
 /** Changing the stage saves immediately, as the Streamlit selectbox did. */
 export function StageSelect({
@@ -52,7 +53,7 @@ export function StageSelect({
       >
         {PIPELINE_STAGES.map((s) => (
           <option key={s.id} value={s.id}>
-            {s.label}
+            {stripEmoji(s.label)}
           </option>
         ))}
       </Select>

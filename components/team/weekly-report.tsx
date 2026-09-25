@@ -11,6 +11,7 @@ import { num } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useUsers } from "@/hooks/use-users";
 import type { ActivityFeedItem, PipelineStage, TeamWeeks } from "@/types";
+import { stripEmoji, withIcons } from "@/components/ui/emoji-icon";
 
 /** A "month" here is a block of 4 weeks (not a calendar month) -- see WeeklyReport below. */
 const WEEKS_PER_BLOCK = 4;
@@ -47,20 +48,20 @@ function ActivityFeed() {
   return (
     <section className="mt-8">
       <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
-        <h2 className="text-[1.2rem] font-semibold">{TEAM_ACTIVITY.feedHeading}</h2>
+        <h2 className="text-[1.2rem] font-semibold">{withIcons(TEAM_ACTIVITY.feedHeading)}</h2>
         <Field label={TEAM_ACTIVITY.feedFilter} className="w-56">
           <Select value={person} onChange={(e) => setPerson(e.target.value)}>
-            <option value="all">{TEAM_ACTIVITY.allPeople}</option>
+            <option value="all">{stripEmoji(TEAM_ACTIVITY.allPeople)}</option>
             {users.map((u) => (
               <option key={u.id} value={u.id}>
-                {u.name || u.email}
+                {stripEmoji(u.name || u.email)}
               </option>
             ))}
           </Select>
         </Field>
       </div>
       {feed.length === 0 ? (
-        <p className="text-[0.9rem] text-muted">{TEAM_ACTIVITY.feedEmpty}</p>
+        <p className="text-[0.9rem] text-muted">{withIcons(TEAM_ACTIVITY.feedEmpty)}</p>
       ) : (
         <ul className="overflow-hidden rounded-[10px] border border-border bg-card">
           {feed.map((i) => (
@@ -100,7 +101,7 @@ export function WeeklyReport({ initialData }: { initialData: TeamWeeks }) {
     return (
       <>
         <p className="rounded-[8px] px-3 py-2 text-[0.9rem]" style={{ background: "var(--info-tint)", color: "var(--info)" }}>
-          {TEAM_ACTIVITY.weekNotStarted(fmtRange(data.week1_start, data.week1_start).split(" to ")[0])}
+          {withIcons(TEAM_ACTIVITY.weekNotStarted(fmtRange(data.week1_start, data.week1_start).split(" to ")[0]))}
         </p>
         <ActivityFeed />
       </>
@@ -189,7 +190,7 @@ export function WeeklyReport({ initialData }: { initialData: TeamWeeks }) {
             </h2>
             {week.in_progress && (
               <span className="rounded-full bg-info-tint px-2 py-0.5 text-[0.75rem] font-semibold text-info" style={{ background: "var(--info-tint)", color: "var(--info)" }}>
-                {TEAM_ACTIVITY.inProgress}
+                {withIcons(TEAM_ACTIVITY.inProgress)}
               </span>
             )}
             <span className="text-[0.9rem] text-muted">

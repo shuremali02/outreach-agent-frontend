@@ -1,4 +1,5 @@
 import type { PhoneStatus } from "@/types";
+import { withIcons } from "@/components/ui/emoji-icon";
 
 /** The Cold Call Desk phone badge: verified / switchboard / needs direct line. */
 export function PhoneBadge({ status, phone }: { status: PhoneStatus; phone: string }) {
@@ -14,7 +15,7 @@ export function PhoneBadge({ status, phone }: { status: PhoneStatus; phone: stri
       className="terminal-pill"
       style={{ background: spec.bg, color: spec.fg }}
     >
-      {spec.text}
+      {withIcons(spec.text)}
     </span>
   );
 }

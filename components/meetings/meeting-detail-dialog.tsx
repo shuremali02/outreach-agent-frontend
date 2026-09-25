@@ -11,6 +11,7 @@ import { useToast } from "@/components/ui/toast";
 import { EMAIL_SEND, MEETING_OUTCOMES, STAGE_LABELS, TOASTS, countryLabel } from "@/lib/constants";
 import { currency, displayDomain, externalUrl, hasUsableEmail } from "@/lib/format";
 import type { Lead } from "@/types";
+import { CategoryLabel, Ico, withIcons } from "@/components/ui/emoji-icon";
 
 /**
  * Clicking a meeting on the calendar (components/meetings/meetings-calendar.tsx)
@@ -82,13 +83,13 @@ export function MeetingDetailDialog({
                 aria-label="Close"
                 className="cursor-pointer text-[1.1rem] leading-none text-muted hover:text-text"
               >
-                ✕
+                <Ico e="✕" />
               </button>
             </Dialog.Close>
           </div>
 
           <p className="mb-4 text-[0.85rem] text-muted">
-            📅{" "}
+            <Ico e="📅" />{" "}
             {new Date(lead.meeting_at).toLocaleString("en-US", {
               weekday: "short",
               month: "short",
@@ -106,20 +107,20 @@ export function MeetingDetailDialog({
                 rel="noopener noreferrer"
                 className="text-[0.85rem] text-accent underline"
               >
-                🌐 {displayDomain(lead.company_website)}
+                <Ico e="🌐" /> {displayDomain(lead.company_website)}
               </a>
             )}
             <p className="text-[0.85rem]">
-              👤 {lead.contact_name || "—"}
+              <Ico e="👤" /> {lead.contact_name || "—"}
               {lead.contact_role && <span className="text-muted"> · {lead.contact_role}</span>}
             </p>
             {hasUsableEmail(lead.contact_email) && (
-              <p className="text-[1rem] font-medium text-text">✉️ {lead.contact_email}</p>
+              <p className="text-[1rem] font-medium text-text"><Ico e="✉" /> {lead.contact_email}</p>
             )}
             {lead.contact_phone && <PhoneNumberList phones={lead.contact_phone} />}
             <p className="text-[0.85rem] text-muted">
-              🌍 {lead.country ? countryLabel(lead.country) : "Not specified"} · {currency(lead.deal_value)} ·{" "}
-              {lead.industry_tag}
+              <Ico e="🌍" /> {lead.country ? countryLabel(lead.country) : "Not specified"} · {currency(lead.deal_value)} ·{" "}
+              <CategoryLabel value={lead.industry_tag} />
             </p>
             {lead.reason && (
               <p className="text-[0.82rem] text-muted">
@@ -172,11 +173,11 @@ export function MeetingDetailDialog({
                   })
                 }
               >
-                {EMAIL_SEND.button}
+                {withIcons(EMAIL_SEND.button)}
               </Button>
               {needsEmail.isError && (
                 <p className="mt-2 text-[0.78rem] text-danger">
-                  {needsEmail.error instanceof Error ? needsEmail.error.message : EMAIL_SEND.failed}
+                  {withIcons(needsEmail.error instanceof Error ? needsEmail.error.message : EMAIL_SEND.failed)}
                 </p>
               )}
             </div>

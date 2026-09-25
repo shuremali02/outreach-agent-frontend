@@ -12,6 +12,7 @@ import { MentionField } from "@/components/common/mention-field";
 import { useUsers } from "@/hooks/use-users";
 import { extractMentions } from "@/lib/mentions";
 import type { CreateLeadInput, ExtraContactInput, PipelineStage } from "@/types";
+import { Ico, stripEmoji } from "@/components/ui/emoji-icon";
 
 /** A fresh, empty row for "+ Add Another Contact" -- a stable per-row id
  * (not the array index) keeps React's reconciliation correct if a middle
@@ -90,7 +91,7 @@ export function AddLeadPopover() {
     <Popover.Root open={open} onOpenChange={setOpen}>
       <Popover.Trigger asChild>
         <Button variant="secondary" size="sm">
-          ➕ Add a Lead
+          <Ico e="➕" /> Add a Lead
         </Button>
       </Popover.Trigger>
       <Popover.Portal>
@@ -195,7 +196,7 @@ export function AddLeadPopover() {
                     onClick={() => setExtraContacts((rows) => rows.filter((r) => r._rowId !== row._rowId))}
                     className="cursor-pointer text-[0.78rem] text-danger"
                   >
-                    ✕ Remove
+                    <Ico e="✕" /> Remove
                   </button>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
@@ -257,7 +258,7 @@ export function AddLeadPopover() {
                 >
                   {PIPELINE_STAGES.map((s) => (
                     <option key={s.id} value={s.id}>
-                      {s.label}
+                      {stripEmoji(s.label)}
                     </option>
                   ))}
                 </Select>
@@ -296,7 +297,7 @@ export function AddLeadPopover() {
                   </option>
                   {STANDARD_CATEGORIES.map((c) => (
                     <option key={c} value={c}>
-                      {c}
+                      {stripEmoji(c)}
                     </option>
                   ))}
                 </Select>
@@ -308,7 +309,7 @@ export function AddLeadPopover() {
                   </option>
                   {ADD_LEAD_COUNTRIES.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.label}
+                      {stripEmoji(c.label)}
                     </option>
                   ))}
                 </Select>

@@ -2,6 +2,7 @@ import type { ScanResult } from "@/types";
 import { resolveVerdict } from "@/lib/verdict";
 import { SITE_SCAN } from "@/lib/constants";
 import { externalUrl } from "@/lib/format";
+import { withIcons } from "@/components/ui/emoji-icon";
 
 /**
  * app.py:996-1027 — agent_core.site_matches_lead() rendered as the four states.
@@ -32,7 +33,7 @@ export function VerdictBanner({
   return (
     <div className="flex flex-col gap-1.5">
       {scan.error && (
-        <p className="text-[0.78rem] text-muted">{SITE_SCAN.scanIssue(scan.error)}</p>
+        <p className="text-[0.78rem] text-muted">{withIcons(SITE_SCAN.scanIssue(scan.error))}</p>
       )}
 
       {verdict === "blocked" && (
@@ -40,10 +41,10 @@ export function VerdictBanner({
           className="rounded-[8px] px-3 py-2 text-[0.85rem]"
           style={{ background: "var(--warn-tint)", color: "var(--warn)" }}
         >
-          {SITE_SCAN.blocked(scan.http_status, detail)}
+          {withIcons(SITE_SCAN.blocked(scan.http_status, detail))}
           {website && (
             <>
-              {SITE_SCAN.blockedLinkPrefix}
+              {withIcons(SITE_SCAN.blockedLinkPrefix)}
               <a
                 href={externalUrl(website)}
                 target="_blank"
@@ -52,7 +53,7 @@ export function VerdictBanner({
               >
                 {website}
               </a>
-              {SITE_SCAN.blockedLinkSuffix}
+              {withIcons(SITE_SCAN.blockedLinkSuffix)}
             </>
           )}
         </p>
@@ -63,7 +64,7 @@ export function VerdictBanner({
           className="rounded-[8px] px-3 py-2 text-[0.85rem]"
           style={{ background: "var(--danger-tint)", color: "var(--danger)" }}
         >
-          {SITE_SCAN.mismatch(website, detail)}
+          {withIcons(SITE_SCAN.mismatch(website, detail))}
         </p>
       )}
 
@@ -71,7 +72,7 @@ export function VerdictBanner({
         <div className="text-[0.85rem]">
           {scan.has_3d ? (
             <p className="text-text">
-              <strong>{SITE_SCAN.signalsLabel}</strong>{" "}
+              <strong>{withIcons(SITE_SCAN.signalsLabel)}</strong>{" "}
               <code className="font-mono text-[0.8rem] text-accent">
                 {scan.matched_signals.join(", ")}
               </code>{" "}
@@ -79,16 +80,16 @@ export function VerdictBanner({
             </p>
           ) : verdict === "unknown" ? (
             <p className="text-muted">
-              <strong>{SITE_SCAN.signalsLabel}</strong> {SITE_SCAN.unknown}
+              <strong>{withIcons(SITE_SCAN.signalsLabel)}</strong> {SITE_SCAN.unknown}
             </p>
           ) : (
             <p className="text-text">
-              <strong>{SITE_SCAN.signalsLabel}</strong> {SITE_SCAN.fit}
+              <strong>{withIcons(SITE_SCAN.signalsLabel)}</strong> {SITE_SCAN.fit}
             </p>
           )}
           {scan.weak_signals.length > 0 && (
             <p className="mt-1 text-[0.78rem] text-muted">
-              {SITE_SCAN.weakSignals(scan.weak_signals.join(", "))}
+              {withIcons(SITE_SCAN.weakSignals(scan.weak_signals.join(", ")))}
             </p>
           )}
         </div>

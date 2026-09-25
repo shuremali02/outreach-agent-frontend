@@ -1,8 +1,9 @@
 import { cn } from "@/lib/utils";
+import { withIcons } from "@/components/ui/emoji-icon";
 
 /** .stage-tag */
 export function StageTag({ className, children }: { className?: string; children: React.ReactNode }) {
-  return <span className={cn("stage-tag", className)}>{children}</span>;
+  return <span className={cn("stage-tag", className)}>{withIcons(children)}</span>;
 }
 
 /** .terminal-pill-{green|amber|blue} */
@@ -16,6 +17,6 @@ export function TerminalPill({
   children: React.ReactNode;
 }) {
   return (
-    <span className={cn("terminal-pill", `terminal-pill-${variant}`, className)}>{children}</span>
+    <span className={cn("terminal-pill", `terminal-pill-${variant}`, className)}>{withIcons(children)}</span>
   );
 }

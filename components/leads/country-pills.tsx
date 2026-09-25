@@ -3,6 +3,7 @@
 import { ALL_COUNTRIES, UNKNOWN_COUNTRY, countryLabel } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import type { Lead } from "@/types";
+import { withIcons } from "@/components/ui/emoji-icon";
 
 /** Mirrors category-pills.tsx exactly, keyed on lead.country instead of industry_tag. */
 export function CountryPills({
@@ -46,7 +47,7 @@ export function CountryPills({
                 : "border-border bg-card text-muted hover:border-accent hover:text-accent",
             )}
           >
-            {label}
+            {withIcons(label)}
           </button>
         );
       })}

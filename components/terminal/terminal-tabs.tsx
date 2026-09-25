@@ -6,6 +6,7 @@ import { TabButton } from "@/components/common/tab-button";
 import { TerminalView } from "@/components/terminal/terminal-view";
 import { TEAM_ACTIVITY } from "@/lib/constants";
 import type { TeamMetrics, TeamWeeks } from "@/types";
+import { withIcons } from "@/components/ui/emoji-icon";
 
 /**
  * Sales Terminal: the new CRM-backed Weekly Report first, the original Google Sheet history
@@ -22,14 +23,14 @@ export function TerminalTabs({
   return (
     <Tabs.Root defaultValue={weeks ? "weekly" : "sheet"}>
       <Tabs.List className="mb-5 flex gap-2">
-        <TabButton value="weekly">{TEAM_ACTIVITY.weeklyTab}</TabButton>
-        <TabButton value="sheet">{TEAM_ACTIVITY.sheetTab}</TabButton>
+        <TabButton value="weekly">{withIcons(TEAM_ACTIVITY.weeklyTab)}</TabButton>
+        <TabButton value="sheet">{withIcons(TEAM_ACTIVITY.sheetTab)}</TabButton>
       </Tabs.List>
       <Tabs.Content value="weekly">
-        {weeks ? <WeeklyReport initialData={weeks} /> : <p className="text-muted">{TEAM_ACTIVITY.sheetUnavailable}</p>}
+        {weeks ? <WeeklyReport initialData={weeks} /> : <p className="text-muted">{withIcons(TEAM_ACTIVITY.sheetUnavailable)}</p>}
       </Tabs.Content>
       <Tabs.Content value="sheet">
-        {sheet ? <TerminalView initialData={sheet} /> : <p className="text-muted">{TEAM_ACTIVITY.sheetUnavailable}</p>}
+        {sheet ? <TerminalView initialData={sheet} /> : <p className="text-muted">{withIcons(TEAM_ACTIVITY.sheetUnavailable)}</p>}
       </Tabs.Content>
     </Tabs.Root>
   );

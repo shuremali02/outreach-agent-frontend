@@ -2,12 +2,13 @@
 
 import { useSystemStatus } from "@/hooks/use-metrics";
 import type { SystemStatus } from "@/types";
+import { Ico } from "@/components/ui/emoji-icon";
 
 /** 🟢 connected · 🔴 required but missing · ⚪ optional and not configured */
 function Row({ dot, label, value }: { dot: string; label: string; value: string }) {
   return (
     <p className="text-[0.78rem] leading-6 text-muted">
-      <span aria-hidden>{dot}</span>{" "}
+      <span aria-hidden><Ico e={dot} /></span>{" "}
       <span className="font-bold text-text">{label}:</span> {value}
     </p>
   );
@@ -49,7 +50,7 @@ export function SystemStatusPanel({ initialData }: { initialData?: SystemStatus 
         value={data.playwright ? "Ready" : "Not installed"}
       />
       <p className="mt-1 truncate text-[0.78rem] text-muted">
-        <span aria-hidden>📅</span> <span className="font-bold text-text">Calendar:</span>{" "}
+        <span aria-hidden><Ico e="📅" /></span> <span className="font-bold text-text">Calendar:</span>{" "}
         <code className="font-mono text-[0.72rem]">{data.calendar_link.slice(0, 26)}…</code>
       </p>
     </div>

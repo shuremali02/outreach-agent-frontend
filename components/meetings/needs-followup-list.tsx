@@ -2,15 +2,17 @@
 
 import { useMemo, useState } from "react";
 import { useLeads, useUpdateLead } from "@/hooks/use-leads";
+import { useNow } from "@/hooks/use-now";
 import { EditLeadDialog } from "@/components/leads/edit-lead-dialog";
 import { LeadCard } from "@/components/leads/lead-card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { Field, Input, Select, Textarea } from "@/components/ui/input";
 import { MailtoButton } from "@/components/common/mailto-button";
-import { LEAD_CARD, NEEDS_FOLLOWUP, PIPELINE_CARD, TOASTS } from "@/lib/constants";
+import { LEAD_CARD, NEEDS_FOLLOWUP, PIPELINE_CARD, STAGE_LABELS, TOASTS } from "@/lib/constants";
 import { addedAt, hasUsableEmail } from "@/lib/format";
 import type { Lead } from "@/types";
+import { Ico, stripEmoji, withIcons } from "@/components/ui/emoji-icon";
 
 /** The pre-composed 2nd-touch draft from app.py, with the calendar link inlined. Same text the old
  * Follow-ups page's "After meetings" tab used. */
@@ -39,18 +41,19 @@ function NeedsFollowUpCard({ lead, calendarLink }: { lead: Lead; calendarLink: s
       lead={lead}
       summary={
         <span className="text-[0.95rem]">
-          🔁 <strong>{lead.company_name}</strong>
+          <Ico e="🔁" /> <strong>{lead.company_name}</strong>
           <span className="text-muted">
             {" "}
             — Next Step for {lead.contact_name || "this account"}
             {lead.meeting_at && ` · met ${addedAt(lead.meeting_at)}`}
           </span>
+          <span className="stage-tag ml-2">{STAGE_LABELS[lead.pipeline_stage]}</span>
         </span>
       }
     >
       <div className="flex flex-col gap-3">
         {hasUsableEmail(lead.contact_email) && (
-          <p className="text-[1rem] font-medium text-text">✉️ {lead.contact_email}</p>
+          <p className="text-[1rem] font-medium text-text"><Ico e="✉" /> {lead.contact_email}</p>
         )}
         {lead.subject && (
           <p className="text-[0.85rem] text-muted">
@@ -59,12 +62,12 @@ function NeedsFollowUpCard({ lead, calendarLink }: { lead: Lead; calendarLink: s
         )}
         {lead.notes && (
           <div>
-            <h4 className="mb-1 text-[1rem] font-semibold">📝 Notes</h4>
+            <h4 className="mb-1 text-[1rem] font-semibold"><Ico e="📝" /> Notes</h4>
             <p className="whitespace-pre-line rounded-[8px] bg-input px-3 py-2 text-[0.85rem]">{lead.notes}</p>
           </div>
         )}
         <div>
-          <h4 className="mb-1 text-[1rem] font-semibold">⚡ Quick Follow-up Draft</h4>
+          <h4 className="mb-1 text-[1rem] font-semibold"><Ico e="⚡" /> Quick Follow-up Draft</h4>
           <Textarea rows={6} value={draft} onChange={(e) => setDraft(e.target.value)} />
         </div>
         <div className="grid grid-cols-2 gap-3">
@@ -75,6 +78,9 @@ function NeedsFollowUpCard({ lead, calendarLink }: { lead: Lead; calendarLink: s
             label="📧 Send Follow-up (1-Click)"
             block
           />
+          {/* Only meaningful for a lead that is waiting at Needs Follow-up; one already at another stage
+              (Meeting Booked, Proposal Sent, ...) changes stage from Edit below or the calendar popup. */}
+          {lead.pipeline_stage === "followup_due" && (
           <Button
             variant="primary"
             loading={update.isPending}
@@ -88,8 +94,9 @@ function NeedsFollowUpCard({ lead, calendarLink }: { lead: Lead; calendarLink: s
               )
             }
           >
-            ✅ Mark as Meeting Booked
+            <Ico e="✅" /> Mark as Meeting Booked
           </Button>
+          )}
         </div>
         {update.isError && (
           <p className="text-[0.8rem] text-danger">
@@ -101,7 +108,7 @@ function NeedsFollowUpCard({ lead, calendarLink }: { lead: Lead; calendarLink: s
           lead={lead}
           trigger={
             <button type="button" className="cursor-pointer text-left text-[0.82rem] font-semibold text-accent underline">
-              {PIPELINE_CARD.editInContacts}
+              {withIcons(PIPELINE_CARD.editInContacts)}
             </button>
           }
         />
@@ -111,21 +118,35 @@ function NeedsFollowUpCard({ lead, calendarLink }: { lead: Lead; calendarLink: s
 }
 
 /**
- * The one piece the old Follow-ups page's "After meetings" tab left behind (structure-plan.md Phase 5) --
- * leads a meeting outcome marked Needs Follow-up (pipeline_stage "followup_due"). Deliberately narrower
- * than that old tab's filter: a Cold Call Desk voicemail/no-answer/hang-up ALSO lands on "followup_due",
- * so this also requires meeting_at (proves an actual meeting happened) and excludes anything currently
- * back on the desk (sent_to_desk_at set) -- a lead re-sent to Cold Call Desk after a meeting belongs
- * there, not here, even if it still carries an old meeting_at.
+ * "After Meetings": every lead whose meeting time has already passed, at ANY stage (user, 2026-09-25: "har
+ * lead jiski meeting ho chuki" -- it used to be only the ones a meeting outcome marked Needs Follow-up, so
+ * a lead still sitting at Meeting Booked after its date, or moved on to Proposal Sent / Client Closed,
+ * never showed). Not Interested / Closed Lost leads are left out (hidden ones never reach the list at all --
+ * crud.list_leads() drops them -- and a lead merely staged "lost" is filtered below).
+ *
+ * One exception kept from before: a lead at "followup_due" that is back on the Cold Call Desk
+ * (sent_to_desk_at set) belongs there -- a Cold Call voicemail/no-answer/hang-up ALSO lands on
+ * "followup_due" and still carries any old meeting_at.
  */
 export function NeedsFollowUpList({ initialLeads, calendarLink }: { initialLeads: Lead[]; calendarLink: string }) {
   const { data: allLeads = [] } = useLeads({}, initialLeads);
+  // null on the server and during hydration (see hooks/use-now.ts) -- nothing is painted until the clock is known.
+  const now = useNow();
   const scoped = useMemo(
     () =>
-      allLeads.filter(
-        (l) => l.pipeline_stage === "followup_due" && Boolean(l.meeting_at) && !l.sent_to_desk_at,
-      ),
-    [allLeads],
+      now === null
+        ? []
+        : allLeads.filter(
+            (l) =>
+              Boolean(l.meeting_at) &&
+              // Not Interested / Closed Lost never shows here (user, 2026-09-25) -- also covers a lost lead that
+              // was set through the Edit form, which does not hide it the way the meeting popup's button does.
+              l.pipeline_stage !== "lost" &&
+              // meeting_at is a naive wall-clock ISO string; new Date() reads it as local time, same as it was typed.
+              new Date(l.meeting_at as string).getTime() <= now &&
+              !(l.pipeline_stage === "followup_due" && l.sent_to_desk_at),
+          ),
+    [allLeads, now],
   );
 
   const [search, setSearch] = useState("");
@@ -149,7 +170,7 @@ export function NeedsFollowUpList({ initialLeads, calendarLink }: { initialLeads
   return (
     <div className="mb-6">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <h3 className="text-[1.05rem] font-semibold">{NEEDS_FOLLOWUP.heading(scoped.length)}</h3>
+        <h3 className="text-[1.05rem] font-semibold">{withIcons(NEEDS_FOLLOWUP.heading(scoped.length))}</h3>
         <Input
           type="search"
           value={search}
@@ -165,14 +186,14 @@ export function NeedsFollowUpList({ initialLeads, calendarLink }: { initialLeads
       <div className="mb-3 max-w-xs">
         <Field label="Sort By">
           <Select value={sortRecent ? "recent" : "oldest"} onChange={(e) => setSortRecent(e.target.value === "recent")}>
-            <option value="recent">{NEEDS_FOLLOWUP.sortRecent}</option>
-            <option value="oldest">{NEEDS_FOLLOWUP.sortOldest}</option>
+            <option value="recent">{stripEmoji(NEEDS_FOLLOWUP.sortRecent)}</option>
+            <option value="oldest">{stripEmoji(NEEDS_FOLLOWUP.sortOldest)}</option>
           </Select>
         </Field>
       </div>
       {leads.length === 0 ? (
         <p className="rounded-[8px] px-3 py-2 text-[0.9rem]" style={{ background: "var(--info-tint)", color: "var(--info)" }}>
-          {NEEDS_FOLLOWUP.empty}
+          {withIcons(NEEDS_FOLLOWUP.empty)}
         </p>
       ) : (
         leads.map((lead) => <NeedsFollowUpCard key={lead.id} lead={lead} calendarLink={calendarLink} />)

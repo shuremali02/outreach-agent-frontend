@@ -4,6 +4,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { AlertTriangle, HelpCircle } from "lucide-react";
 import { createContext, useCallback, useContext, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { withIcons } from "@/components/ui/emoji-icon";
 import { cn } from "@/lib/utils";
 
 /**
@@ -77,11 +78,11 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
               />
               <div className="min-w-0">
                 <Dialog.Title className="text-[1.1rem] font-semibold leading-snug text-text">
-                  {options?.title}
+                  {withIcons(options?.title)}
                 </Dialog.Title>
                 <Dialog.Description asChild>
                   <p className="mt-2 whitespace-pre-line text-[0.95rem] leading-relaxed text-muted">
-                    {options?.description ?? ""}
+                    {withIcons(options?.description ?? "")}
                   </p>
                 </Dialog.Description>
               </div>

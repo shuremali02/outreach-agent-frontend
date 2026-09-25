@@ -4,6 +4,7 @@ import { ALL_SOURCES, LEAD_SOURCE_LABELS } from "@/lib/constants";
 import { leadSource } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { Lead } from "@/types";
+import { withIcons } from "@/components/ui/emoji-icon";
 
 /** Mirrors country-pills.tsx exactly, keyed on leadSource(lead.source_prompt). */
 export function SourcePills({
@@ -45,7 +46,7 @@ export function SourcePills({
                 : "border-border bg-card text-muted hover:border-accent hover:text-accent",
             )}
           >
-            {label}
+            {withIcons(label)}
           </button>
         );
       })}
