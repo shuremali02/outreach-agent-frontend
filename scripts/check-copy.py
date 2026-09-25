@@ -70,6 +70,8 @@ ALLOWED = {
     "This view failed to load",
     "Checking services…",
     "Loading problems…",
+    "Loading lead…",
+    "Could not load this lead's full details. Close this and try again.",
     "Searching Hunter.io…",
     # Client-side validation Streamlit did server-side on submit.
     "Company name is required.",

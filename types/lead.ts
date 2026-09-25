@@ -95,6 +95,13 @@ export interface Lead {
   /** ISO datetime, "" = not starred. "Star" priority mark -- tag only, never changes pipeline_stage.
    * User request, 2026-09-23. */
   starred_at: string;
+  /**
+   * true on a row from the slim list (GET /leads?slim=1, what every page but Cold Call Desk loads):
+   * body, phone_script, objection_notes, product_description, qualification_notes and discovery_citations
+   * are then empty, not missing. Anything that shows or edits those must go through useFullLead()
+   * (hooks/use-leads.ts). Absent/false = a full lead.
+   */
+  slim?: boolean;
   signalhire_uid: string;
   /** URLs the discovery agent actually read, so a lead can be audited. */
   discovery_citations: string[];
@@ -193,6 +200,12 @@ export interface LeadFilters {
   /** ISO 3166-1 alpha-2, "unknown" for leads with no country recorded, or "all". */
   country?: string;
   q?: string;
+  /** Default true: the list omits the long text columns (see Lead.slim). Cold Call Desk passes false. */
+  slim?: boolean;
+  /** Cold Call Desk only: just the leads sent to the desk (server-side, not filtered in the browser). */
+  onDesk?: boolean;
+  /** With onDesk: false = leave out the Voicemail / Hang Up group, true = only that group. */
+  tried?: boolean;
 }
 
 /** Payload for POST /leads — the Add a Lead form. */
