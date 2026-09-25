@@ -118,6 +118,11 @@ export function ColdCallView({ initialLeads, q }: { initialLeads: Lead[]; q: str
   // cards under a rep mid-call; the order refreshes on mount, on a filter
   // change, or when the rep clicks "Re-sort by local time".
   const [sortAt, setSortAt] = useState(() => Date.now());
+  // Default order is NEWEST FIRST (user, 2026-09-22 and again 2026-09-25: the leads that just came in must
+  // be on top). Sorting by who is at their desk right now used to be the default, which pushed every fresh
+  // lead below older ones whose local time happened to be open -- e.g. a batch of US leads pulled in during
+  // Pakistan's afternoon (US night) sank under the whole UK/Gulf list. Local-time order is now opt-in via the button.
+  const [byLocalTime, setByLocalTime] = useState(false);
 
   // Confirmed live 2026-09-18: a disposition on a lead already in the
   // Follow-up section (e.g. a 2nd Voicemail) keeps it at followup_due --
@@ -196,8 +201,12 @@ export function ColdCallView({ initialLeads, q }: { initialLeads: Lead[]; q: str
     () =>
       filtered
         .filter((l) => l.last_call_outcome !== "no_answer" && !TRIED_OUTCOMES.has(l.last_call_outcome))
-        .sort((a, b) => rank(a) - rank(b) || b.created_at.localeCompare(a.created_at)),
-    [filtered, rank],
+        .sort((a, b) =>
+          byLocalTime
+            ? rank(a) - rank(b) || b.created_at.localeCompare(a.created_at)
+            : b.created_at.localeCompare(a.created_at),
+        ),
+    [filtered, rank, byLocalTime],
   );
 
   const verifiedLines = queue.filter(
@@ -319,10 +328,19 @@ export function ColdCallView({ initialLeads, q }: { initialLeads: Lead[]; q: str
             variant="secondary"
             size="sm"
             title={COLD_CALL_QUEUE.resortHelp}
-            onClick={() => setSortAt(Date.now())}
+            onClick={() => {
+              // Not on local-time order -> switch to it; already on it -> refresh it (the order is a snapshot).
+              setSortAt(Date.now());
+              setByLocalTime(true);
+            }}
           >
-            {withIcons(COLD_CALL_QUEUE.resort)}
+            {withIcons(byLocalTime ? COLD_CALL_QUEUE.resortAgain : COLD_CALL_QUEUE.resort)}
           </Button>
+          {byLocalTime && (
+            <Button variant="secondary" size="sm" onClick={() => setByLocalTime(false)}>
+              {withIcons(COLD_CALL_QUEUE.newestFirst)}
+            </Button>
+          )}
         </div>
       </div>
 

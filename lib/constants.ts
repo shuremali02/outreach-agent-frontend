@@ -686,7 +686,9 @@ export const COLD_CALL_QUEUE = {
     { id: "none", label: "⚪ No usable number" },
   ],
   openNowCard: "Open Now (Local Time)",
-  resort: "🕘 Re-sort by local time",
+  resort: "🕘 Sort by local time",
+  resortAgain: "🕘 Re-sort by local time",
+  newestFirst: "Newest first",
   resortHelp:
     "Leads whose local time is inside business hours come first. Order only refreshes when you click this, so cards don't jump while you work.",
 } as const;
