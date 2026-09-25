@@ -28,7 +28,7 @@ export function todayEyebrow(d = new Date()): string {
 }
 
 /**
- * "2026-09-17 16:40" in the VIEWER's own local time. Backend timestamps
+ * "2026-09-17 16:40" in TEAM time (PKT, see below). Backend timestamps
  * (created_at etc.) are real UTC instants marked with a trailing "Z" (see
  * app/schemas/lead.py _dt_utc()) specifically so `new Date(iso)` converts
  * correctly here -- confirmed live 2026-09-17: without that marker, and
@@ -38,19 +38,26 @@ export function todayEyebrow(d = new Date()): string {
  * -- slicing the original UTC string can show the wrong calendar DATE too,
  * not just the wrong time, for anything within ~5 hours of UTC midnight.
  */
-function localDateTimeParts(iso: string): { date: string; d: Date } | null {
+function localDateTimeParts(iso: string): { date: string; hour: number; minute: number } | null {
   if (!iso) return null;
   const d = new Date(iso);
-  const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-  return { date, d };
+  if (Number.isNaN(d.getTime())) return null;
+  // Team time (Pakistan, fixed UTC+5, no DST -- same constant the Today/This Week blocks below use), NOT the
+  // machine's timezone. Vercel renders the page on a UTC server and the browser then re-renders in PKT, so
+  // using local getters showed every timestamp twice over: first 3:25 PM (server HTML), then 8:25 PM
+  // (after hydration) -- reps read the flash as "the newest lead is from 3:25" (found live 2026-09-25).
+  // A fixed zone makes the server and the browser agree.
+  const k = new Date(d.getTime() + 5 * 3600_000);
+  const date = `${k.getUTCFullYear()}-${String(k.getUTCMonth() + 1).padStart(2, "0")}-${String(k.getUTCDate()).padStart(2, "0")}`;
+  return { date, hour: k.getUTCHours(), minute: k.getUTCMinutes() };
 }
 
 /** Comment timestamps: app.py rendered created_at[:16] with T -> space. */
 export function commentTime(iso: string): string {
   const parts = localDateTimeParts(iso);
   if (!parts) return "";
-  const { date, d } = parts;
-  const time = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  const { date, hour, minute } = parts;
+  const time = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
   return `${date} ${time}`;
 }
 
@@ -63,7 +70,8 @@ export function commentTime(iso: string): string {
 export function addedAt(iso: string): string {
   const parts = localDateTimeParts(iso);
   if (!parts) return "";
-  const time = parts.d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  const h12 = parts.hour % 12 === 0 ? 12 : parts.hour % 12;
+  const time = `${h12}:${String(parts.minute).padStart(2, "0")} ${parts.hour < 12 ? "AM" : "PM"}`;
   return `${parts.date} · ${time}`;
 }
 

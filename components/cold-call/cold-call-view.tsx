@@ -203,8 +203,9 @@ export function ColdCallView({ initialLeads, q }: { initialLeads: Lead[]; q: str
         .filter((l) => l.last_call_outcome !== "no_answer" && !TRIED_OUTCOMES.has(l.last_call_outcome))
         .sort((a, b) =>
           byLocalTime
-            ? rank(a) - rank(b) || b.created_at.localeCompare(a.created_at)
-            : b.created_at.localeCompare(a.created_at),
+            ? rank(a) - rank(b) || b.id - a.id
+            : // Newest = highest id (ids are handed out in creation order), not a string compare of created_at.
+              b.id - a.id,
         ),
     [filtered, rank, byLocalTime],
   );
