@@ -10,11 +10,20 @@ import type { ApiError } from "@/types";
  */
 const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "";
 
+// Dev gets the actionable, specific message (the backend URL, the exact fix); production gets a generic
+// one -- 2026-09-28, a teammate's screenshot of the dev-only message (their own .env.local pointed at the
+// LIVE backend URL by mistake) showed that URL and an internal run command on screen: "security kahan gayi,
+// user friendly error hona chahiye". Next.js replaces NODE_ENV at build time, so this costs nothing at
+// runtime and the detailed branch is simply not present in a `next build` bundle at all.
+const isDev = process.env.NODE_ENV !== "production";
+
 function baseUrl(): string {
   if (!API_URL) {
     throw new Error(
-      "NEXT_PUBLIC_API_URL is not set. Point it at outreach-backend, e.g. " +
-        "NEXT_PUBLIC_API_URL=http://127.0.0.1:8000 in .env.local, then restart the dev server.",
+      isDev
+        ? "NEXT_PUBLIC_API_URL is not set. Point it at outreach-backend, e.g. " +
+          "NEXT_PUBLIC_API_URL=http://127.0.0.1:8000 in .env.local, then restart the dev server."
+        : "This app is not configured correctly. Please contact your admin.",
     );
   }
   return API_URL;
@@ -103,11 +112,15 @@ async function request<T>(
     // dead backend, a wrong port, or (Windows) "localhost" resolving to the
     // IPv6 loopback when uvicorn only binds IPv4, none of which a sales rep
     // reading error.tsx's error.message can act on. Name what's actually
-    // wrong and how to fix it instead.
+    // wrong and how to fix it instead -- in dev only, see isDev above; a
+    // deployed build never puts the backend's own URL or an internal run
+    // command on someone's screen.
     throw new ApiRequestError(
-      `Can't reach the backend at ${base}. Make sure outreach-backend is running ` +
-        `(uv run uvicorn app.main:app --reload --port 8000) and that ` +
-        "NEXT_PUBLIC_API_URL in .env.local uses 127.0.0.1, not localhost.",
+      isDev
+        ? `Can't reach the backend at ${base}. Make sure outreach-backend is running ` +
+          `(uv run uvicorn app.main:app --reload --port 8000) and that ` +
+          "NEXT_PUBLIC_API_URL in .env.local uses 127.0.0.1, not localhost."
+        : "Can't reach the server right now. Check your connection and try again in a moment.",
       0,
     );
   }
