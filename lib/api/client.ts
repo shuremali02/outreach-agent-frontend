@@ -76,6 +76,37 @@ function describeError(body: unknown): string | undefined {
   return typeof error === "string" ? error : undefined;
 }
 
+// A 502/503/504 here means Hugging Face's OWN gateway rejected the request -- confirmed live 2026-09-28
+// by comparing the browser's failing requests against the backend's own access log, which never showed
+// them at all. The app never even saw the request, so retrying (any method, not just GET) cannot double
+// up a write. These are also usually gone within a second (a transient gateway hiccup on the Space's free
+// tier, or the few seconds a redeploy/restart takes), and this app's ONE server-side data fetch per page
+// (a Server Component's initial render) had no retry at all before this -- one bad gateway response there
+// crashed the whole page (the live "This view failed to load" / minified React error incident).
+const _RETRYABLE_STATUS = new Set([502, 503, 504]);
+const _RETRY_DELAYS_MS = [300, 900]; // 2 retries -- 3 attempts total, under ~1.5s worst case
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function fetchWithRetry(url: string, init: RequestInit): Promise<Response> {
+  let lastNetworkError: unknown;
+  for (let attempt = 0; attempt <= _RETRY_DELAYS_MS.length; attempt++) {
+    try {
+      const res = await fetch(url, init);
+      if (!_RETRYABLE_STATUS.has(res.status) || attempt === _RETRY_DELAYS_MS.length) return res;
+      lastNetworkError = undefined;
+    } catch (exc) {
+      lastNetworkError = exc;
+      if (attempt === _RETRY_DELAYS_MS.length) throw exc;
+    }
+    await sleep(_RETRY_DELAYS_MS[attempt]);
+  }
+  // Unreachable (the loop above always returns or throws), but keeps TypeScript happy about the return type.
+  throw lastNetworkError ?? new Error("fetchWithRetry: exhausted retries");
+}
+
 async function request<T>(
   path: string,
   init: RequestInit & { query?: Query } = {},
@@ -97,7 +128,7 @@ async function request<T>(
 
   let res: Response;
   try {
-    res = await fetch(url, {
+    res = await fetchWithRetry(url, {
       ...rest,
       headers: {
         "Content-Type": "application/json",
