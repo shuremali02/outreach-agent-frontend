@@ -6,7 +6,7 @@ import { withIcons } from "@/components/ui/emoji-icon";
 
 const COLS: (keyof typeof TEAM_ACTIVITY.columns)[] = [
   "calls", "connected", "voicemail", "receptionist", "decision_maker",
-  "meetings", "followups", "emails", "leads_added", "disconnected",
+  "meetings", "no_shows", "followups", "emails", "leads_added", "disconnected",
 ];
 
 function Avatar({ row }: { row: TeamRow }) {

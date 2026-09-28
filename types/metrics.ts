@@ -74,6 +74,8 @@ export interface ActivityWindow {
   voicemail: number;
   receptionist: number;
   decision_maker: number;
+  /** Meeting outcome "No Show" (2026-09-28) -- see app/crud/leads.py set_meeting_outcome(no_show=True). */
+  no_shows: number;
 }
 
 export interface ActivityMetrics {

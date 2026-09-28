@@ -90,7 +90,7 @@ function MeetingEntry({ lead }: { lead: Lead }) {
  * only by meeting_at being set.
  */
 export function MeetingsCalendar({ initialLeads }: { initialLeads: Lead[] }) {
-  const { data: allLeads = [] } = useLeads({}, initialLeads);
+  const { data: allLeads = [] } = useLeads({ includeMeetingHidden: true }, initialLeads);
   // A lead can reach meeting_booked without a time (e.g. dragged there
   // directly via the Pipeline stage dropdown) -- those simply don't render
   // on the grid, which is correct: there is nowhere to put them.

@@ -13,6 +13,7 @@ export const leadsApi = {
       slim: filters.slim === false ? undefined : 1,
       on_desk: filters.onDesk ? 1 : undefined,
       tried: filters.tried,
+      include_meeting_hidden: filters.includeMeetingHidden ? 1 : undefined,
     }),
   /** Size of the Cold Call Desk's Voicemail / Hang Up group, so the collapsed section can show it unloaded. */
   deskTriedCount: (q?: string) => api.get<{ count: number }>("/leads/desk-tried-count", { q }),
@@ -43,9 +44,12 @@ export const leadsApi = {
   markNeedsEmail: (id: number) => api.post<Lead>(`/leads/${id}/needs-email`),
   /** "Star" priority mark -- toggle, tag only, see app/api/leads.py star(). User request, 2026-09-23. */
   toggleStar: (id: number) => api.post<Lead>(`/leads/${id}/star`, {}),
-  /** Meetings detail popup's 4-way picker -- see app/api/leads.py meeting_outcome(). structure-plan.md Phase 5. */
-  meetingOutcome: (id: number, stage: "won" | "proposal_sent" | "followup_due" | "lost") =>
-    api.post<Lead>(`/leads/${id}/meeting-outcome`, { stage }),
+  /** Meetings detail popup's picker -- see app/api/leads.py meeting_outcome(). structure-plan.md Phase 5. */
+  meetingOutcome: (
+    id: number,
+    stage: "won" | "proposal_sent" | "followup_due" | "lost",
+    noShow = false,
+  ) => api.post<Lead>(`/leads/${id}/meeting-outcome`, { stage, no_show: noShow }),
   /**
    * "Send to Cold Call Desk" on Contacts -- structure-plan.md Phase 2. Always allowed; the desk's own
    * list is everything with sent_to_desk_at set (see crud.send_to_desk()). Idempotent to re-send.

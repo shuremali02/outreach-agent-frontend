@@ -38,6 +38,8 @@ export interface TeamRow {
   voicemail: number;
   receptionist: number;
   decision_maker: number;
+  /** Meeting outcome "No Show" (2026-09-28) -- see app/crud/leads.py set_meeting_outcome(no_show=True). */
+  no_shows: number;
 }
 
 export interface TeamToday {
@@ -84,6 +86,12 @@ export interface AppNotification {
   actor_name: string;
   lead_id: number | null;
   company_name: string;
+  /** The lead's own category, and who added / last touched it (2026-09-28) -- "" when there's no lead. */
+  category: string;
+  added_by_name: string;
+  last_activity_by_name: string;
+  /** "24h" | "6h" | "2h" | "30m" for a meeting reminder (2026-09-28), "" for every other kind. */
+  stage: string;
   problem_id: number | null;
   problem_title: string;
   excerpt: string;

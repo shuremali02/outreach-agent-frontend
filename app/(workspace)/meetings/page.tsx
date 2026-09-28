@@ -7,9 +7,14 @@ import { leadsApi, metricsApi } from "@/lib/api";
 export const dynamic = "force-dynamic";
 
 export default async function MeetingsPage() {
-  // No stage filter -- the calendar shows every meeting ever booked, not
-  // just ones still sitting in meeting_booked (see meetings-calendar.tsx).
-  const [leads, status] = await Promise.all([leadsApi.list({}), metricsApi.status()]);
+  // No stage filter -- the calendar shows every meeting ever booked, not just ones still sitting in
+  // meeting_booked (see meetings-calendar.tsx). includeMeetingHidden (2026-09-28): also pulls in a lead
+  // the meeting popup's "Not Interested" hid, since After Meetings wants to keep showing it as a record
+  // of what happened -- must match both components' own useLeads() filters, or their initialData is thrown away.
+  const [leads, status] = await Promise.all([
+    leadsApi.list({ includeMeetingHidden: true }),
+    metricsApi.status(),
+  ]);
 
   return (
     <div>

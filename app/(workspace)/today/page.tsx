@@ -1,4 +1,5 @@
 import { QuoteStrip } from "@/components/today/quote-strip";
+import { MeetingReminderBanner } from "@/components/today/meeting-reminder-banner";
 import { ActivityScroller } from "@/components/today/activity-scroller";
 import { TeamTodayTable } from "@/components/today/team-today";
 import { PriorityOutreachList } from "@/components/today/priority-outreach";
@@ -30,6 +31,8 @@ export default async function TodayPage() {
     <div>
       <p className="date-eyebrow">{todayEyebrow()}</p>
       <QuoteStrip />
+
+      <MeetingReminderBanner leads={leads} />
 
       <ActivityScroller data={activity} />
 

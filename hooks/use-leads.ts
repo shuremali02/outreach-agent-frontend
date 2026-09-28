@@ -21,6 +21,7 @@ export function leadsKey(filters: LeadFilters = {}) {
     filters.slim === false ? "full" : "slim",
     filters.onDesk ? "desk" : null,
     filters.tried ?? null,
+    filters.includeMeetingHidden ? "meeting-hidden" : null,
   ] as const;
 }
 
@@ -175,12 +176,19 @@ export function useNeedsEmail() {
   });
 }
 
-/** Meetings detail popup's 4-way picker -- structure-plan.md Phase 5. See lib/api/leads.ts meetingOutcome(). */
+/** Meetings detail popup's picker -- structure-plan.md Phase 5. See lib/api/leads.ts meetingOutcome(). */
 export function useMeetingOutcome() {
   const invalidate = useInvalidate();
   return useMutation({
-    mutationFn: ({ id, stage }: { id: number; stage: "won" | "proposal_sent" | "followup_due" | "lost" }) =>
-      leadsApi.meetingOutcome(id, stage),
+    mutationFn: ({
+      id,
+      stage,
+      noShow,
+    }: {
+      id: number;
+      stage: "won" | "proposal_sent" | "followup_due" | "lost";
+      noShow?: boolean;
+    }) => leadsApi.meetingOutcome(id, stage, noShow),
     onSuccess: invalidate,
   });
 }

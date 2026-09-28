@@ -95,6 +95,9 @@ export interface Lead {
   /** ISO datetime, "" = not starred. "Star" priority mark -- tag only, never changes pipeline_stage.
    * User request, 2026-09-23. */
   starred_at: string;
+  /** ISO datetime, "" = never marked. "No Show" meeting outcome -- see PIPELINE_CARD.noShowTag.
+   * User request, 2026-09-28. */
+  no_show_at: string;
   /**
    * true on a row from the slim list (GET /leads?slim=1, what every page but Cold Call Desk loads):
    * body, phone_script, objection_notes, product_description, qualification_notes and discovery_citations
@@ -206,6 +209,9 @@ export interface LeadFilters {
   onDesk?: boolean;
   /** With onDesk: false = leave out the Voicemail / Hang Up group, true = only that group. */
   tried?: boolean;
+  /** Meetings page only: also return a lead the meeting popup's "Not Interested" hid, if it has a
+   * meeting_at -- see components/meetings/needs-followup-list.tsx. Every other page leaves this off. */
+  includeMeetingHidden?: boolean;
 }
 
 /** Payload for POST /leads — the Add a Lead form. */

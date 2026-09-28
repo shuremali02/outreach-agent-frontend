@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import { useLeads, useUpdateLead } from "@/hooks/use-leads";
-import { useNow } from "@/hooks/use-now";
 import { EditLeadDialog } from "@/components/leads/edit-lead-dialog";
 import { LeadCard } from "@/components/leads/lead-card";
 import { Button } from "@/components/ui/button";
@@ -48,6 +47,20 @@ function NeedsFollowUpCard({ lead, calendarLink }: { lead: Lead; calendarLink: s
             {lead.meeting_at && ` · met ${addedAt(lead.meeting_at)}`}
           </span>
           <span className="stage-tag ml-2">{STAGE_LABELS[lead.pipeline_stage]}</span>
+          {/* User, 2026-09-28: "kese pata hoga ke yeh banda already meeting booked tha pehle" -- this list
+              is exactly where a No Show ends up (still at followup_due), so it needs the tag most. */}
+          {lead.no_show_at && (
+            <span
+              className="ml-2 rounded-[6px] px-1.5 py-0.5 text-[0.75rem] font-semibold"
+              style={{ background: "var(--danger-tint)", color: "var(--danger)" }}
+            >
+              {withIcons(
+                PIPELINE_CARD.noShowTag(
+                  new Date(lead.no_show_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+                ),
+              )}
+            </span>
+          )}
         </span>
       }
     >
@@ -118,35 +131,35 @@ function NeedsFollowUpCard({ lead, calendarLink }: { lead: Lead; calendarLink: s
 }
 
 /**
- * "After Meetings": every lead whose meeting time has already passed, at ANY stage (user, 2026-09-25: "har
- * lead jiski meeting ho chuki" -- it used to be only the ones a meeting outcome marked Needs Follow-up, so
- * a lead still sitting at Meeting Booked after its date, or moved on to Proposal Sent / Client Closed,
- * never showed). Not Interested / Closed Lost leads are left out (hidden ones never reach the list at all --
- * crud.list_leads() drops them -- and a lead merely staged "lost" is filtered below).
+ * "After Meetings": every lead that WAS booked for a meeting and has since been given an outcome -- i.e.
+ * its stage is no longer "meeting_booked" (Needs Follow-up, No Show, Proposal Sent, Client Closed, AND Not
+ * Interested all count -- user, 2026-09-28, confirmed against concrete examples: "c d e f", then "not
+ * intrested wala bhi... taky pata ho meeting k bad ka"). NOT a meeting still sitting unactioned at Meeting
+ * Booked, whether its time is in the past or the future -- that's not "after", it hasn't been dealt with
+ * yet. This replaced an earlier time-based version (meeting_at <= now, any stage) that the No Show button
+ * exposed as wrong: "meeting hui hi nahi toh after meeting mein kaise ja raha hai" -- a No Show lead's
+ * meeting time had passed, so it kept showing here even though no meeting actually took place; what
+ * actually matters is whether an outcome was recorded, not the clock.
  *
- * One exception kept from before: a lead at "followup_due" that is back on the Cold Call Desk
- * (sent_to_desk_at set) belongs there -- a Cold Call voicemail/no-answer/hang-up ALSO lands on
- * "followup_due" and still carries any old meeting_at.
+ * Not Interested normally hides a lead everywhere (crud.list_leads() drops it) -- this list is the one
+ * exception (useLeads' includeMeetingHidden: true, since it only narrowly re-admits a hidden lead that has
+ * a meeting_at, never a Cold Call Dead Line/Not Interested with no meeting). A lead at "followup_due" that
+ * is back on the Cold Call Desk (sent_to_desk_at set) belongs there instead -- a Cold Call voicemail/no-
+ * answer/hang-up ALSO lands on "followup_due" and may still carry an old meeting_at from a previous meeting.
  */
 export function NeedsFollowUpList({ initialLeads, calendarLink }: { initialLeads: Lead[]; calendarLink: string }) {
-  const { data: allLeads = [] } = useLeads({}, initialLeads);
-  // null on the server and during hydration (see hooks/use-now.ts) -- nothing is painted until the clock is known.
-  const now = useNow();
+  const { data: allLeads = [] } = useLeads({ includeMeetingHidden: true }, initialLeads);
   const scoped = useMemo(
     () =>
-      now === null
-        ? []
-        : allLeads.filter(
-            (l) =>
-              Boolean(l.meeting_at) &&
-              // Not Interested / Closed Lost never shows here (user, 2026-09-25) -- also covers a lost lead that
-              // was set through the Edit form, which does not hide it the way the meeting popup's button does.
-              l.pipeline_stage !== "lost" &&
-              // meeting_at is a naive wall-clock ISO string; new Date() reads it as local time, same as it was typed.
-              new Date(l.meeting_at as string).getTime() <= now &&
-              !(l.pipeline_stage === "followup_due" && l.sent_to_desk_at),
-          ),
-    [allLeads, now],
+      allLeads.filter(
+        (l) =>
+          Boolean(l.meeting_at) &&
+          // The one thing that puts a lead here: an outcome was given (stage moved off "meeting_booked").
+          // NOT time-based any more -- see the doc comment above for why.
+          l.pipeline_stage !== "meeting_booked" &&
+          !(l.pipeline_stage === "followup_due" && l.sent_to_desk_at),
+      ),
+    [allLeads],
   );
 
   const [search, setSearch] = useState("");

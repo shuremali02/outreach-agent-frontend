@@ -80,7 +80,9 @@ export function Sidebar({
   return (
     <aside
       className={cn(
-        "flex shrink-0 flex-col overflow-y-auto overflow-x-hidden border-r border-border bg-sidebar py-4 transition-[width] duration-200",
+        // No transition (2026-09-28, user: "direct ka scene chahiye, jaise hi click karo turant ho jaye" --
+        // tried animating this first, which read as slow/"loading"; instant is what was actually wanted).
+        "flex shrink-0 flex-col overflow-y-auto overflow-x-hidden border-r border-border bg-sidebar py-4",
         collapsed ? "w-[76px] px-2" : "w-[280px] px-4",
       )}
     >
@@ -113,18 +115,24 @@ export function Sidebar({
               aria-current={active ? "page" : undefined}
               title={collapsed ? `${item.name}${count !== null ? ` (${count})` : ""}` : undefined}
               className={cn(
-                "relative rounded-[8px] border py-2 text-[0.88rem] font-semibold transition-colors",
-                collapsed ? "px-0 text-center" : "px-3",
+                // Colors still transition (hover/active feedback); padding does NOT -- instant, matching
+                // the <aside> above (2026-09-28: an animated collapse read as slow, user wants it immediate).
+                "relative flex items-center rounded-[8px] border py-2 text-[0.88rem] font-semibold transition-colors",
+                collapsed ? "justify-center px-0" : "px-3",
                 active
                   ? "border-transparent bg-accent text-white"
                   : "border-border bg-card text-text hover:border-accent hover:text-accent",
               )}
             >
-              <span aria-hidden className={collapsed ? "text-[1.15rem]" : "mr-2"}>
+              <span aria-hidden className={cn("shrink-0", collapsed ? "text-[1.15rem]" : "mr-2")}>
                 <Ico e={item.icon} />
               </span>
-              {!collapsed && item.name}
-              {!collapsed && count !== null && ` (${count})`}
+              {!collapsed && (
+                <span className="overflow-hidden whitespace-nowrap">
+                  {item.name}
+                  {count !== null && ` (${count})`}
+                </span>
+              )}
               {collapsed && count !== null && (
                 <span className="absolute -right-1 -top-1 min-w-[18px] rounded-full bg-badge px-1 text-center text-[0.68rem] font-bold leading-[18px] text-white">
                   {count}

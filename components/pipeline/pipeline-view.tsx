@@ -431,6 +431,18 @@ export function PipelineView({
                   {withIcons(PIPELINE_CARD.proposalTag)}
                 </span>
               )}
+              {lead.pipeline_stage === "followup_due" && lead.no_show_at && (
+                <span
+                  className="ml-2 rounded-[6px] px-1.5 py-0.5 text-[0.75rem] font-semibold"
+                  style={{ background: "var(--danger-tint)", color: "var(--danger)" }}
+                >
+                  {withIcons(
+                    PIPELINE_CARD.noShowTag(
+                      new Date(lead.no_show_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+                    ),
+                  )}
+                </span>
+              )}
               {/* Ali (Sales Rep, 2026-09-15): leads couldn't be verified
                   without knowing when/how they were added. */}
               <span className="ml-2 text-[0.75rem] text-muted">

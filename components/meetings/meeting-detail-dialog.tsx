@@ -56,7 +56,7 @@ export function MeetingDetailDialog({
     });
     if (!ok) return;
     update.mutate(
-      { id: lead.id, stage: outcome.stage },
+      { id: lead.id, stage: outcome.stage, noShow: outcome.noShow },
       {
         onSuccess: () => {
           toast.success(outcome.done(lead.company_name));
@@ -134,17 +134,27 @@ export function MeetingDetailDialog({
               <p className="mb-2 text-[0.78rem] font-medium text-muted">
                 Current stage: {STAGE_LABELS[lead.pipeline_stage]}
               </p>
-              {/* One shared `update` mutation for all 4 buttons -- spinner only on the one actually
-                  clicked (update.variables), `disabled` still blocks the rest while it's in flight (a rep
-                  noticed, 2026-09-23: "loader spinner har button par chal rha hai"). */}
+              {/* One shared `update` mutation for all 5 buttons -- spinner only on the one actually clicked
+                  (update.variables), `disabled` still blocks the rest while it's in flight (a rep noticed,
+                  2026-09-23: "loader spinner har button par chal rha hai"). Keyed on stage+noShow, not just
+                  stage -- "Needs Follow-up" and "No Show" share the same stage id (followup_due) but are
+                  two distinct buttons. Same reason "No Show" is never disabled just because the lead is
+                  ALREADY at followup_due (a plain reschedule) -- clicking it is still a meaningful, distinct
+                  action (tags + counts a no-show) even from that stage. */}
               <div className="grid grid-cols-2 gap-2">
                 {MEETING_OUTCOMES.map((outcome) => (
                   <Button
-                    key={outcome.stage}
+                    key={outcome.noShow ? "no_show" : outcome.stage}
                     variant="secondary"
                     size="sm"
-                    loading={update.isPending && update.variables?.stage === outcome.stage}
-                    disabled={lead.pipeline_stage === outcome.stage || update.isPending}
+                    loading={
+                      update.isPending &&
+                      update.variables?.stage === outcome.stage &&
+                      !!update.variables?.noShow === !!outcome.noShow
+                    }
+                    disabled={
+                      (!outcome.noShow && lead.pipeline_stage === outcome.stage) || update.isPending
+                    }
                     onClick={() => setOutcome(outcome)}
                   >
                     {outcome.label}

@@ -138,6 +138,7 @@ export const TEAM_ACTIVITY = {
     emails: "Emails",
     leads_added: "Leads Added",
     disconnected: "Dead Lines",
+    no_shows: "No Shows",
   },
   unassignedNote:
     "\"Unassigned\" is activity recorded before sign-in existed. It is counted in the team total.",
@@ -765,6 +766,9 @@ export const MEETING_OUTCOMES: {
   confirmLabel: string;
   /** Snackbar shown once the change is saved. */
   done: (company: string) => string;
+  /** "No Show" (2026-09-28): stage is still "followup_due" (re-bookable), just tagged/counted separately
+   * from a plain reschedule -- see app/crud/leads.py set_meeting_outcome(). Undefined = a normal outcome. */
+  noShow?: boolean;
 }[] = [
   {
     stage: "won",
@@ -795,6 +799,19 @@ export const MEETING_OUTCOMES: {
     confirmBody: "The lead is NOT deleted. It moves to the Needs Follow-up list on this page, above the calendar.",
     confirmLabel: "Yes, needs follow-up",
     done: (company) => `${company} moved to Needs Follow-up, above the calendar.`,
+  },
+  {
+    stage: "followup_due",
+    noShow: true,
+    // User, 2026-09-28: "client meeting attend nahi karta toh usay kaise mark karein" -- same destination
+    // as a plain reschedule (Needs Follow-up, so it can be re-booked) but tagged and counted separately
+    // (ACTIVITY_SCROLLER/TEAM_ACTIVITY "No Shows" column) so it doesn't hide inside an ordinary Pipeline count.
+    label: "🚫 No Show",
+    confirmTitle: (company) => `Mark ${company} as No Show?`,
+    confirmBody:
+      "The lead is NOT deleted. It moves to Needs Follow-up so you can try booking again -- a \"No Show\" note is added and counted separately from a normal reschedule.",
+    confirmLabel: "Yes, No Show",
+    done: (company) => `${company} marked No Show -- moved to Needs Follow-up.`,
   },
   {
     stage: "lost",
@@ -841,6 +858,10 @@ export const PIPELINE_CARD = {
   // a date/time -- user, 2026-09-23. Prompts a rep to set one via Edit rather than leaving the lead with
   // no visible sign it needs one.
   callbackNoTimeTag: "📞 Callback (no time set)",
+  // User, 2026-09-28: "kese pata hoga ke yeh banda already meeting booked tha pehle" -- shown on a Pipeline/
+  // Needs-Follow-up card while it's still at followup_due, so a No Show doesn't read the same as any other
+  // reschedule. `when` is the missed meeting's date (lead.no_show_at, when the outcome was recorded).
+  noShowTag: (when: string) => `🚫 No Show (${when})`,
 } as const;
 
 /**
@@ -1000,6 +1021,8 @@ export const ACTIVITY_SCROLLER = {
     { key: "voicemail", label: "Voicemail", color: "#ec4899" },
     { key: "receptionist", label: "Receptionist", color: "#06b6d4" },
     { key: "decision_maker", label: "Decision Maker", color: "#6366f1" },
+    // "No Show" meeting outcome (2026-09-28) -- see MEETING_OUTCOMES below.
+    { key: "no_shows", label: "No Shows", color: "#78716c" },
   ],
 } as const;
 
