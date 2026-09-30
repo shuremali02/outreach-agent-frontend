@@ -99,6 +99,20 @@ export interface Lead {
    * User request, 2026-09-28. */
   no_show_at: string;
   /**
+   * 3-checkbox re-contact tracker (user request, 2026-09-29) -- one independent history + next-due-date
+   * pair per Pipeline context: callback = Callback Scheduled, no_show = Meeting No Show,
+   * proposal = Proposal Sent. Each *_attempts is the raw list of when a box was checked (oldest first,
+   * max 3 entries); each *_next_attempt_due is "" once 0 or 3 attempts are recorded, otherwise the
+   * escalating-gap due date (48h after the 1st, 72h after the 2nd, business days only) computed
+   * server-side -- see components/pipeline/attempt-tracker.tsx.
+   */
+  callback_attempts: string[];
+  callback_next_attempt_due: string;
+  no_show_attempts: string[];
+  no_show_next_attempt_due: string;
+  proposal_attempts: string[];
+  proposal_next_attempt_due: string;
+  /**
    * true on a row from the slim list (GET /leads?slim=1, what every page but Cold Call Desk loads):
    * body, phone_script, objection_notes, product_description, qualification_notes and discovery_citations
    * are then empty, not missing. Anything that shows or edits those must go through useFullLead()

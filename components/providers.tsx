@@ -13,7 +13,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
           queries: {
             // Streamlit refetched everything on every rerun; this is the
             // measured version of that — fresh enough for a sales desk.
-            staleTime: 30_000,
+            // Bumped 30s -> 60s (2026-09-29, Neon free-tier network-transfer quota audit): halves refetches
+            // on remount/navigation for every query that doesn't set its own staleTime (leads, pipeline,
+            // contacts, etc. all inherit this).
+            staleTime: 60_000,
             refetchOnWindowFocus: false,
             retry: 1,
           },

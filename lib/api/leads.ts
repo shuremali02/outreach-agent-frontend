@@ -56,6 +56,14 @@ export const leadsApi = {
    */
   sendToDesk: (id: number) => api.post<Lead>(`/leads/${id}/send-to-desk`),
   /**
+   * Pipeline's 3-checkbox re-contact tracker (user request, 2026-09-29) -- see
+   * app/crud/callback_attempts.py and components/pipeline/attempt-tracker.tsx.
+   */
+  checkAttempt: (id: number, context: "callback" | "no_show" | "proposal") =>
+    api.post<Lead>(`/leads/${id}/attempts/${context}`),
+  uncheckAttempt: (id: number, context: "callback" | "no_show" | "proposal") =>
+    api.delete<Lead>(`/leads/${id}/attempts/${context}`),
+  /**
    * "➕ Add Note" -- always APPENDS server-side (see app/crud/leads.py
    * add_note()), never overwrites lead.notes wholesale. Replaces the old
    * "Save Notes" full-field PATCH, which silently lost a call-disposition
@@ -69,7 +77,7 @@ export const leadsApi = {
     api.patch<Lead>(`/leads/${id}/notes`, { text, expected }),
 };
 
-import type { DecisionMaker, LeadContact, LinkedInResearch, Job } from "@/types";
+import type { DecisionMaker, ExtraContactInput, LeadContact, LinkedInResearch, Job } from "@/types";
 
 export const enrichmentApi = {
   researchLinkedIn: (leadId: number) =>
@@ -97,6 +105,15 @@ export const enrichmentApi = {
    * not Hunter-specific and each row says where it came from.
    */
   contacts: (leadId: number) => api.get<LeadContact[]>(`/leads/${leadId}/contacts`),
+
+  /**
+   * Manually add one decision-maker to an EXISTING lead (user request, 2026-09-30) -- same
+   * name/role/email/phone/linkedin shape as "Add a Lead"'s extra_contacts. Returns the full refreshed
+   * contact list, same shape as contacts() above, so a caller can just qc.setQueryData(["lead-contacts",
+   * leadId], rows) with the response.
+   */
+  addContact: (leadId: number, input: ExtraContactInput) =>
+    api.post<LeadContact[]>(`/leads/${leadId}/contacts`, input),
 
   /**
    * Free SignalHire search for the founder / sales / HR contacts at a company.

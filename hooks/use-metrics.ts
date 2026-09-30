@@ -9,6 +9,10 @@ export function useMetrics(initialData?: CrmMetrics) {
     queryKey: ["metrics"],
     queryFn: metricsApi.crm,
     initialData,
+    // Rendered by the Sidebar (every page, every navigation) -- the app's single highest-frequency query
+    // under the global 30s default. Badge counts don't need to be that fresh; matches useSystemStatus below.
+    // Neon free-tier network-transfer quota audit, 2026-09-29.
+    staleTime: 5 * 60_000,
   });
 }
 

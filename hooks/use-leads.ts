@@ -193,6 +193,28 @@ export function useMeetingOutcome() {
   });
 }
 
+/**
+ * Pipeline's 3-checkbox re-contact tracker (user request, 2026-09-29) -- see lib/api/leads.ts
+ * checkAttempt()/uncheckAttempt() and components/pipeline/attempt-tracker.tsx.
+ */
+export function useCheckAttempt() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: ({ id, context }: { id: number; context: "callback" | "no_show" | "proposal" }) =>
+      leadsApi.checkAttempt(id, context),
+    onSuccess: invalidate,
+  });
+}
+
+export function useUncheckAttempt() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: ({ id, context }: { id: number; context: "callback" | "no_show" | "proposal" }) =>
+      leadsApi.uncheckAttempt(id, context),
+    onSuccess: invalidate,
+  });
+}
+
 /** "Star" priority mark -- toggle, tag only, see lib/api/leads.ts toggleStar(). User request, 2026-09-23. */
 export function useToggleStar() {
   const invalidate = useInvalidate();

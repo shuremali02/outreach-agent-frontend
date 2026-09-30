@@ -263,7 +263,8 @@ export const NAV_ITEMS = [
   // meeting-outcome confirm copy's temporary "find it in Contacts" note (Phase 5). Narrowed 2026-09-22
   // to Won only -- Proposal Sent moved back into Pipeline (see MEETING_OUTCOMES.proposal_sent).
   { name: "Projects", icon: "📁", href: "/projects", badge: null },
-  { name: "Problem Desk", icon: "🎯", href: "/problems", badge: "open_problems_count" },
+  // Badge removed (user, 2026-09-29, Neon quota-reduction pass) -- Meetings is the only nav badge left.
+  { name: "Problem Desk", icon: "🎯", href: "/problems", badge: null },
   { name: "AI Lead Finder", icon: "🔍", href: "/lead-finder", badge: null },
 ] as const;
 
@@ -849,6 +850,27 @@ export const PIPELINE_VIEW_FILTER = {
   starred: "⭐ Starred",
 } as const;
 
+/**
+ * Pipeline's 3-checkbox re-contact tracker (components/pipeline/attempt-tracker.tsx, user request
+ * 2026-09-29). thirdConfirm* reuses the exact same "Not Interested" wording MEETING_OUTCOMES' "lost"
+ * entry already uses elsewhere on this page, so a rep sees identical copy for the same real action.
+ */
+export const ATTEMPT_TRACKER = {
+  label: {
+    callback: "📞 Callback Attempts",
+    no_show: "🚫 No Show Attempts",
+    proposal: "📄 Follow-up Attempts",
+  } as Record<"callback" | "no_show" | "proposal", string>,
+  attemptLabel: (n: number) => `Attempt ${n}`,
+  dueLabel: (when: string) => `Next try: ${when}`,
+  historyTitle: "Attempt history",
+  historyEmpty: "No attempts recorded yet.",
+  thirdConfirmTitle: (company: string) => `Mark ${company} as Not Interested?`,
+  thirdConfirmBody: "Three attempts with no response. The lead is NOT deleted -- it moves off Pipeline (Not Interested).",
+  thirdConfirmLabel: "Yes, not interested",
+  markedNotInterested: (company: string) => `${company} marked Not Interested`,
+} as const;
+
 export const PIPELINE_CARD = {
   callbackTag: (when: string) => `📞 Callback ${when}`,
   meetingTag: (when: string) => `🎯 Meeting ${when}`,
@@ -983,6 +1005,7 @@ export const TOASTS = {
   linkedInNotFound: (name: string) => `No LinkedIn profile found for ${name}`,
   peopleFound: (n: number) => `${n} decision maker${n === 1 ? "" : "s"} found`,
   noPeopleFound: "No decision makers found for this company",
+  contactAdded: (name: string) => `${name} added as a contact`,
   revealRequested: "Reveal requested. The details arrive in a few seconds.",
   linkedInResearched: (name: string) => `LinkedIn research found ${name}`,
   linkedInResearchNone: "LinkedIn research found no matching person",

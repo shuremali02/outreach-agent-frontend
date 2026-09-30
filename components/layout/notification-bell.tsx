@@ -13,7 +13,9 @@ import { useToast } from "@/components/ui/toast";
 import { Loader } from "@/components/ui/loader";
 import type { AppNotification } from "@/types";
 
-const POLL_MS = 60_000;
+// Bumped 60s -> 150s (2026-09-29, Neon free-tier network-transfer quota audit): the single highest-frequency
+// request in the app before this -- every signed-in user, all day, whether or not anything changed.
+const POLL_MS = 150_000;
 
 function whereText(n: AppNotification): string {
   if (n.company_name) return NOTIFICATIONS.onLead(n.company_name);

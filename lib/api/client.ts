@@ -84,7 +84,11 @@ function describeError(body: unknown): string | undefined {
 // (a Server Component's initial render) had no retry at all before this -- one bad gateway response there
 // crashed the whole page (the live "This view failed to load" / minified React error incident).
 const _RETRYABLE_STATUS = new Set([502, 503, 504]);
-const _RETRY_DELAYS_MS = [300, 900]; // 2 retries -- 3 attempts total, under ~1.5s worst case
+// Widened 2026-09-28: 2 retries (under ~1.5s) turned out not to be enough -- a live gateway hiccup outlasted
+// it. 4 retries, longer backoff, ~7s worst case -- still fast next to a rep just clicking again, but covers
+// a longer blip. If it STILL fails after this many, the outage is sustained, not transient -- no amount of
+// client-side retrying fixes that; see the "live incident" docs.md entry for the escalation path.
+const _RETRY_DELAYS_MS = [300, 700, 1500, 3000];
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));

@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useFullLead, useUpdateLead, useDeleteLead } from "@/hooks/use-leads";
+import { enrichmentApi } from "@/lib/api";
 import { Loader } from "@/components/ui/loader";
 import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/components/ui/confirm-dialog";
@@ -17,8 +19,121 @@ import {
   LOST_STAGE_CONFIRM,
   TOASTS,
 } from "@/lib/constants";
-import type { Lead, PipelineStage } from "@/types";
+import type { ExtraContactInput, Lead, PipelineStage } from "@/types";
 import { Ico, stripEmoji, withIcons } from "@/components/ui/emoji-icon";
+
+const EMPTY_ADD_CONTACT: ExtraContactInput = { name: "", role: "", email: "", phone: "", linkedin: "" };
+
+/**
+ * "Decision Makers" section of the Edit Lead form (user request, 2026-09-30: "Add a Lead" already lets
+ * you type in extra contacts when CREATING a lead, but there was no way to add one to a lead that already
+ * exists -- this belongs in the edit form, not a separate panel). Shares the ["lead-contacts", lead.id]
+ * query key with components/enrichment/contacts-panel.tsx, so adding one here also updates that panel
+ * wherever else it's shown for the same lead, and vice versa.
+ */
+function DecisionMakersSection({ leadId }: { leadId: number }) {
+  const qc = useQueryClient();
+  const toast = useToast();
+  const { data: contacts = [] } = useQuery({
+    queryKey: ["lead-contacts", leadId],
+    queryFn: () => enrichmentApi.contacts(leadId),
+  });
+  const [adding, setAdding] = useState(false);
+  const [newContact, setNewContact] = useState<ExtraContactInput>(EMPTY_ADD_CONTACT);
+  const addContact = useMutation({
+    mutationFn: (input: ExtraContactInput) => enrichmentApi.addContact(leadId, input),
+    onSuccess: (rows) => {
+      qc.setQueryData(["lead-contacts", leadId], rows);
+      toast.success(TOASTS.contactAdded(newContact.name));
+      setNewContact(EMPTY_ADD_CONTACT);
+      setAdding(false);
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : TOASTS.actionFailed),
+  });
+  function setField(field: keyof ExtraContactInput, value: string) {
+    setNewContact((c) => ({ ...c, [field]: value }));
+  }
+
+  return (
+    <>
+      <h4 className="mt-2 text-[1rem] font-semibold"><Ico e="👥" /> Decision Makers</h4>
+      {contacts.length > 0 && (
+        <div className="rounded-[8px] border border-border bg-card p-3">
+          {contacts.map((c) => (
+            <div key={c.id} className="border-b border-border py-1.5 text-[0.82rem] last:border-0">
+              <strong>{c.name}</strong>
+              {c.role && <span className="text-muted"> — {c.role}</span>}
+              {c.email && <span className="text-muted"> · {c.email}</span>}
+              {c.phone && <span className="text-muted"> · {c.phone}</span>}
+            </div>
+          ))}
+        </div>
+      )}
+      {adding ? (
+        <div className="rounded-[8px] border border-border p-3">
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-[0.78rem] font-semibold text-muted">New Contact</p>
+            <button
+              type="button"
+              onClick={() => {
+                setAdding(false);
+                setNewContact(EMPTY_ADD_CONTACT);
+              }}
+              className="cursor-pointer text-[0.78rem] text-danger"
+            >
+              <Ico e="✕" /> Cancel
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Name">
+              <Input value={newContact.name} onChange={(e) => setField("name", e.target.value)} />
+            </Field>
+            <Field label="Role / Title">
+              <Input value={newContact.role} onChange={(e) => setField("role", e.target.value)} />
+            </Field>
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <Field label="Email">
+              <Input type="email" value={newContact.email} onChange={(e) => setField("email", e.target.value)} />
+            </Field>
+            <Field label="Phone">
+              <Input type="tel" value={newContact.phone} onChange={(e) => setField("phone", e.target.value)} />
+            </Field>
+          </div>
+          <div className="mt-3">
+            <Field label="LinkedIn URL">
+              <Input value={newContact.linkedin} onChange={(e) => setField("linkedin", e.target.value)} />
+            </Field>
+          </div>
+          {addContact.isError && (
+            <p className="mt-2 text-[0.78rem] text-danger">
+              {addContact.error instanceof Error ? addContact.error.message : TOASTS.actionFailed}
+            </p>
+          )}
+          <Button
+            variant="primary"
+            size="sm"
+            block
+            className="mt-3"
+            disabled={!newContact.name.trim()}
+            loading={addContact.isPending}
+            onClick={() => addContact.mutate(newContact)}
+          >
+            Save Contact
+          </Button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setAdding(true)}
+          className="cursor-pointer text-left text-[0.8rem] font-semibold text-accent"
+        >
+          + Add a Decision Maker
+        </button>
+      )}
+    </>
+  );
+}
 
 /**
  * The one lead-edit form (structure-plan.md Phase 2: everything but notes is edited from Leads/Contacts,
@@ -140,6 +255,9 @@ function LeadEditFormFields({ lead, onDone }: { lead: Lead; onDone?: () => void 
       <Field label="LinkedIn URL">
         <Input value={linkedin} onChange={(e) => setLinkedin(e.target.value)} />
       </Field>
+
+      <DecisionMakersSection leadId={lead.id} />
+
       <Field label="Deal Value ($)">
         <Input
           type="number"

@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useMemo, useState } from "react";
-import { useLeads, useMeetingOutcome, useUpdateLead } from "@/hooks/use-leads";
+import { useLeads, useMeetingOutcome, useNeedsEmail, useUpdateLead } from "@/hooks/use-leads";
 import { EditLeadDialog } from "@/components/leads/edit-lead-dialog";
 import { LeadCard } from "@/components/leads/lead-card";
 import { LeadWho } from "@/components/leads/lead-who";
@@ -27,6 +27,7 @@ import {
   PIPELINE_CARD,
   MEETING_OUTCOMES,
   MEETING_BOOKING,
+  EMAIL_SEND,
   TOASTS,
   countryLabel,
 } from "@/lib/constants";
@@ -34,6 +35,7 @@ import { addedAt, currency, externalUrl, displayDomain, hasUsableEmail, leadSour
 import type { Lead } from "@/types";
 import { EMPTY_STATES } from "@/lib/constants";
 import { CategoryLabel, Ico, stripEmoji, withIcons } from "@/components/ui/emoji-icon";
+import { AttemptTracker } from "@/components/pipeline/attempt-tracker";
 
 /** Has a callback (a set time, or a Callback Scheduled disposition) AND is not already Won / Lost. */
 function hasOpenCallback(l: Lead): boolean {
@@ -57,6 +59,7 @@ function hasOpenCallback(l: Lead): boolean {
 function PipelineActions({ lead }: { lead: Lead }) {
   const outcome = useMeetingOutcome();
   const update = useUpdateLead();
+  const needsEmail = useNeedsEmail();
   const confirm = useConfirm();
   const toast = useToast();
   const [bookingPrompt, setBookingPrompt] = useState(false);
@@ -165,6 +168,24 @@ function PipelineActions({ lead }: { lead: Lead }) {
       >
         <Ico e="🎯" /> Meeting Booked
       </Button>
+      {/* "Email Send" here too (user, 2026-09-29: "callback wali leads ka status email send bhi ho skta
+          hai, yeh button bhi rakh do") -- same flag/endpoint Cold Call Desk and the Meetings popup already
+          use (useNeedsEmail() -> pipeline_stage=contacted), no confirm dialog, matching those two. */}
+      <Button
+        variant="secondary"
+        size="sm"
+        title={EMAIL_SEND.help}
+        loading={needsEmail.isPending}
+        disabled={lead.pipeline_stage === "contacted" || needsEmail.isPending}
+        onClick={() =>
+          needsEmail.mutate(lead.id, {
+            onSuccess: () => toast.success(EMAIL_SEND.sent(lead.company_name)),
+            onError: (e) => toast.error(e instanceof Error ? e.message : EMAIL_SEND.failed),
+          })
+        }
+      >
+        {withIcons(EMAIL_SEND.button)}
+      </Button>
       {outcome.isError && (
         <p className="col-span-2 text-[0.78rem] text-danger">
           {outcome.error instanceof Error ? outcome.error.message : TOASTS.actionFailed}
@@ -204,6 +225,14 @@ function PipelineSummary({ lead }: { lead: Lead }) {
           <strong>Subject:</strong> {lead.subject}
         </p>
       )}
+      {/* 3-checkbox re-contact tracker (user request, 2026-09-29) -- exactly one of these three ever
+          matches a given card, same conditions the card's own header tag above already uses. */}
+      {lead.pipeline_stage === "followup_due" && lead.no_show_at ? (
+        <AttemptTracker lead={lead} context="no_show" />
+      ) : (
+        hasOpenCallback(lead) && <AttemptTracker lead={lead} context="callback" />
+      )}
+      {lead.pipeline_stage === "proposal_sent" && <AttemptTracker lead={lead} context="proposal" />}
       <PipelineActions lead={lead} />
       <EditLeadDialog
         lead={lead}

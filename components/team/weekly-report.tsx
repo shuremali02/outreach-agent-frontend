@@ -42,7 +42,8 @@ function ActivityFeed() {
   const { data: feed = [] } = useQuery({
     queryKey: ["team-feed", userId],
     queryFn: () => metricsApi.teamFeed(userId, 100),
-    refetchInterval: 60_000,
+    // A report page, not a live feed -- 60s was excess load per the Neon free-tier quota audit (2026-09-29).
+    refetchInterval: 180_000,
   });
 
   return (
