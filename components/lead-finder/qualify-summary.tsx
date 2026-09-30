@@ -18,8 +18,14 @@ export function QualifySummary({ result }: { result: QualifyJobResult }) {
     );
   }
 
+  // Defensive, not just the discovery-form.tsx tab-switch fix (2026-09-30, "result.rejected is not
+  // iterable" crashed the whole page): a result missing these arrays should degrade to "nothing rejected"
+  // here, never crash the page.
+  const rejected = result.rejected ?? [];
+  const skippedDuplicates = result.skipped_duplicates ?? [];
+
   const byStage = new Map<string, string[]>();
-  for (const r of result.rejected) {
+  for (const r of rejected) {
     const list = byStage.get(r.stage) ?? [];
     list.push(r.company);
     byStage.set(r.stage, list);
@@ -33,21 +39,21 @@ export function QualifySummary({ result }: { result: QualifyJobResult }) {
 
       <p className="text-success">{QUALIFY.qualified(result.qualified)}</p>
 
-      {result.skipped_duplicates.length > 0 && (
-        <p className="text-muted">{QUALIFY.skipped(result.skipped_duplicates.length)}</p>
+      {skippedDuplicates.length > 0 && (
+        <p className="text-muted">{QUALIFY.skipped(skippedDuplicates.length)}</p>
       )}
 
       {Boolean(result.no_website_count) && (
         <p className="text-muted">{MAPS_FINDER.droppedNoWebsite(result.no_website_count!)}</p>
       )}
 
-      {result.qualified === 0 && result.rejected.length === 0 && (
+      {result.qualified === 0 && rejected.length === 0 && (
         <p className="text-muted">{QUALIFY.noResults}</p>
       )}
 
-      {result.rejected.length > 0 && (
+      {rejected.length > 0 && (
         <div className="flex flex-col gap-1.5">
-          <p className="text-muted">{QUALIFY.rejectedHeading(result.rejected.length)}</p>
+          <p className="text-muted">{QUALIFY.rejectedHeading(rejected.length)}</p>
           <ul className="flex flex-col gap-1">
             {[...byStage.entries()].map(([stage, companies]) => (
               <li key={stage} className="text-[0.82rem]">

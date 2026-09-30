@@ -8,6 +8,7 @@ import {
   Building2,
   Calendar,
   CalendarDays,
+  Caravan,
   Car,
   Cpu,
   ChartColumn,
@@ -264,6 +265,7 @@ const CATEGORY_ICONS: Array<[RegExp, LucideIcon, string]> = [
   [/real estate|megaproject/i, Building, "var(--info)"],
   [/yacht|marine|boat/i, Sailboat, "var(--accent)"],
   [/tech|commercial|product/i, Cpu, "var(--info)"],
+  [/trailer|camper/i, Caravan, "var(--success)"],
 ];
 
 export function CategoryLabel({ value }: { value: string }) {

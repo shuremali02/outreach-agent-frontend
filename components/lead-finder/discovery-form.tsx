@@ -108,7 +108,19 @@ export function DiscoveryForm() {
         }}
         className="flex flex-col gap-4"
       >
-        <Tabs.Root value={source} onValueChange={(v) => setSource(v as "ai" | "maps")}>
+        <Tabs.Root
+          value={source}
+          onValueChange={(v) => {
+            // Bug found live 2026-09-30 ("result.rejected is not iterable" crashed the whole page):
+            // jobId/job were never reset on tab switch, so a completed AI Discovery result (a
+            // DiscoverJobResult, no `rejected` field) stayed around and got rendered by QualifySummary
+            // (which expects a QualifyJobResult) the moment someone switched to the Google Maps tab
+            // without starting a new job there -- and vice versa. Clearing jobId here means a stale
+            // result from the OTHER source can never be handed to the wrong summary component again.
+            setSource(v as "ai" | "maps");
+            setJobId(null);
+          }}
+        >
           <Tabs.List className="mb-1 flex gap-2">
             <TabButton value="ai">{MAPS_FINDER.sourceAi}</TabButton>
             <TabButton value="maps">{MAPS_FINDER.sourceMaps}</TabButton>

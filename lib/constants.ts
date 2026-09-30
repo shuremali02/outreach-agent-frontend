@@ -29,6 +29,7 @@ export const STANDARD_CATEGORIES = [
   "🏗️ Real Estate & Megaprojects",
   "⛵ Superyachts & Marine",
   "⚡ Tech & Commercial Products",
+  "🚐 Trailers & Campers",
 ] as const;
 
 export const ALL_CATEGORIES = "All Categories";
@@ -548,6 +549,16 @@ export const BATTLECARD = {
   //    shown directly (no hidden gate), identical label to the button one
   //    level inside (contacts-panel.tsx) it stands in for.
   showContacts: "👥 Show decision-maker contacts",
+  // Read-only reveal for lead.notes (user request, 2026-09-30: "cold call desk pr already likhy hue notes
+  // dekh nhi sakty") -- Cold Call Desk's own note box is for typing a NEW note on this call's disposition,
+  // not for reading past ones; nothing on this page showed lead.notes at all before this. Same
+  // click-to-reveal pattern as showContacts above, and same reason: a desk full of leads must not render
+  // every card's full notes history unconditionally. Adding a note stays possible only through the
+  // existing disposition flow -- reading past ones does NOT need its own edit/add UI (that's NotesPanel's
+  // job on Pipeline/Projects/the Meeting popup), so this is read-only on purpose.
+  showNotes: "📝 See Notes",
+  hideNotes: "📝 Hide Notes",
+  noNotesYet: "No notes yet.",
   // Same literal text as contacts-panel.tsx's own internal button -- reusing
   // it here means clicking this looks and reads exactly like that button,
   // even though what it actually does is mount the panel with

@@ -149,6 +149,7 @@ export function Battlecard({
     onError: (e) => toast.error(e instanceof Error ? e.message : TOASTS.actionFailed),
   });
   const [note, setNote] = useState("");
+  const [notesOpen, setNotesOpen] = useState(false);
   const { data: users = [] } = useUsers();
   // The note field only ever got saved bundled with a disposition (Voicemail/
   // Dead Line/etc.) -- there was no way to log what was actually said mid-
@@ -504,6 +505,23 @@ export function Battlecard({
               </p>
             )}
           </div>
+
+          {lead.notes && (
+            <div>
+              <button
+                type="button"
+                onClick={() => setNotesOpen((v) => !v)}
+                className="cursor-pointer text-left text-[0.85rem] font-semibold text-muted hover:text-accent"
+              >
+                {withIcons(notesOpen ? BATTLECARD.hideNotes : BATTLECARD.showNotes)}
+              </button>
+              {notesOpen && (
+                <p className="mt-1.5 whitespace-pre-line rounded-[8px] bg-input px-3 py-2 text-[0.85rem]">
+                  {lead.notes}
+                </p>
+              )}
+            </div>
+          )}
 
           <Field
             label={
