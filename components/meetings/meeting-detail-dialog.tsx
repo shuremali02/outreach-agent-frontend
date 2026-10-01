@@ -7,8 +7,9 @@ import { NotesPanel } from "@/components/leads/notes-panel";
 import { PhoneNumberList } from "@/components/leads/phone-number-list";
 import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/components/ui/confirm-dialog";
+import { Field, Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
-import { EMAIL_SEND, MEETING_OUTCOMES, STAGE_LABELS, TOASTS, countryLabel } from "@/lib/constants";
+import { CALLBACK_BOOKING, EMAIL_SEND, MEETING_OUTCOMES, STAGE_LABELS, TOASTS, countryLabel } from "@/lib/constants";
 import { currency, displayDomain, externalUrl, hasUsableEmail } from "@/lib/format";
 import type { Lead } from "@/types";
 import { CategoryLabel, Ico, withIcons } from "@/components/ui/emoji-icon";
@@ -46,6 +47,34 @@ export function MeetingDetailDialog({
   const needsEmail = useNeedsEmail();
   const confirm = useConfirm();
   const toast = useToast();
+
+  // "Callback" (renamed from "Needs Follow-up", user 2026-10-01) -- same date/time prompt pattern as Cold
+  // Call Desk's Callback Scheduled (components/cold-call/battlecard.tsx), instead of the generic confirm()
+  // dialog every other outcome uses. The prompt's own "Confirm" doubles as the confirmation; Cancel closes
+  // it with zero network calls, same as battlecard's.
+  const [callbackPrompt, setCallbackPrompt] = useState(false);
+  const [callbackDate, setCallbackDate] = useState("");
+  const [callbackTime, setCallbackTime] = useState("");
+  const callbackOutcome = MEETING_OUTCOMES.find((o) => o.stage === "followup_due" && !o.noShow)!;
+
+  function confirmCallback() {
+    if (!callbackDate || !callbackTime) return;
+    update.mutate(
+      { id: lead.id, stage: "followup_due", callbackAt: `${callbackDate}T${callbackTime}:00` },
+      {
+        onSuccess: () => {
+          toast.success(callbackOutcome.done(lead.company_name));
+          setCallbackPrompt(false);
+          setOpen(false);
+        },
+        onError: (e) => toast.error(e instanceof Error ? e.message : TOASTS.actionFailed),
+      },
+    );
+  }
+
+  function cancelCallback() {
+    setCallbackPrompt(false);
+  }
 
   async function setOutcome(outcome: (typeof MEETING_OUTCOMES)[number]) {
     const ok = await confirm({
@@ -141,26 +170,60 @@ export function MeetingDetailDialog({
                   two distinct buttons. Same reason "No Show" is never disabled just because the lead is
                   ALREADY at followup_due (a plain reschedule) -- clicking it is still a meaningful, distinct
                   action (tags + counts a no-show) even from that stage. */}
-              <div className="grid grid-cols-2 gap-2">
-                {MEETING_OUTCOMES.map((outcome) => (
-                  <Button
-                    key={outcome.noShow ? "no_show" : outcome.stage}
-                    variant="secondary"
-                    size="sm"
-                    loading={
-                      update.isPending &&
-                      update.variables?.stage === outcome.stage &&
-                      !!update.variables?.noShow === !!outcome.noShow
-                    }
-                    disabled={
-                      (!outcome.noShow && lead.pipeline_stage === outcome.stage) || update.isPending
-                    }
-                    onClick={() => setOutcome(outcome)}
-                  >
-                    {outcome.label}
-                  </Button>
-                ))}
-              </div>
+              {callbackPrompt ? (
+                <div className="flex flex-col gap-2 rounded-[8px] border border-accent bg-input px-3 py-3">
+                  <p className="text-[0.85rem] font-semibold">{withIcons(CALLBACK_BOOKING.prompt)}</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Field label={CALLBACK_BOOKING.dateLabel}>
+                      <Input type="date" value={callbackDate} onChange={(e) => setCallbackDate(e.target.value)} />
+                    </Field>
+                    <Field label={CALLBACK_BOOKING.timeLabel}>
+                      <Input type="time" value={callbackTime} onChange={(e) => setCallbackTime(e.target.value)} />
+                    </Field>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button variant="secondary" size="sm" onClick={cancelCallback}>
+                      {withIcons(CALLBACK_BOOKING.cancel)}
+                    </Button>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      loading={update.isPending}
+                      disabled={!callbackDate || !callbackTime}
+                      onClick={confirmCallback}
+                    >
+                      {withIcons(CALLBACK_BOOKING.confirm)}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  {MEETING_OUTCOMES.map((outcome) => (
+                    <Button
+                      key={outcome.noShow ? "no_show" : outcome.stage}
+                      variant="secondary"
+                      size="sm"
+                      loading={
+                        update.isPending &&
+                        update.variables?.stage === outcome.stage &&
+                        !!update.variables?.noShow === !!outcome.noShow
+                      }
+                      disabled={
+                        (!outcome.noShow && lead.pipeline_stage === outcome.stage) || update.isPending
+                      }
+                      onClick={() => {
+                        if (outcome.stage === "followup_due" && !outcome.noShow) {
+                          setCallbackPrompt(true);
+                          return;
+                        }
+                        setOutcome(outcome);
+                      }}
+                    >
+                      {outcome.label}
+                    </Button>
+                  ))}
+                </div>
+              )}
               {update.isError && (
                 <p className="mt-2 text-[0.78rem] text-danger">
                   {update.error instanceof Error ? update.error.message : "Failed to save this outcome. Try again."}

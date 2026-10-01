@@ -310,6 +310,40 @@
   }
 }
 
+/* components/ui/loader.tsx BarLoader -- indeterminate "moving line" loader for block/section-level loading
+   (page transitions, Cold Call Desk's Already Tried dropdown, Edit Lead form, Problem Desk), 2026-10-01.
+   CORRECTION (same day): a sweeping segment first, replaced with this -- user: "ai lead finder pr jis trhn
+   chalti hai [job-progress.tsx's real % bar] ... woh bar sequence k sath he chaly", i.e. a bar that visibly
+   GROWS left-to-right like a real progress bar, not one that slides back and forth. No number shown (a
+   plain fetch has no real percentage to report), just the same growing motion, looping since there's no
+   real completion signal to snap to 100% on. Reduced motion just holds the bar full-width and still, same
+   "something is loading" signal without the animation. */
+@keyframes bar-loader-grow {
+  0% {
+    width: 0%;
+  }
+  60% {
+    width: 75%;
+  }
+  85% {
+    width: 90%;
+  }
+  100% {
+    width: 100%;
+  }
+}
+
+.bar-loader-grow {
+  animation: bar-loader-grow 1.8s ease-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bar-loader-grow {
+    animation: none;
+    width: 100%;
+  }
+}
+
 /* Coloured icons (components/ui/emoji-icon.tsx) go back to the text colour where a tone would be unreadable or
    clash: on a filled accent / white-text control, in the active tab, and inside coloured pills and tags. */
 .bg-accent .ico,

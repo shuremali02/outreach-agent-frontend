@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLeads } from "@/hooks/use-leads";
 import { leadsApi } from "@/lib/api";
-import { Loader } from "@/components/ui/loader";
+import { BarLoader } from "@/components/ui/loader";
 import { Battlecard } from "./battlecard";
 // Re-enabled: the CSV Import tab is how a spreadsheet gets uploaded +
 // enriched (File > Download > CSV from Google Sheets/Excel, then drop the
@@ -26,7 +26,7 @@ import {
   COUNTRIES,
   LEAD_SOURCE_LABELS,
   COLD_CALL_QUEUE,
-  LAST_TOUCH,
+  ALREADY_TRIED_FILTER,
 } from "@/lib/constants";
 import { currency, leadSource, localClock, num } from "@/lib/format";
 import type { Lead } from "@/types";
@@ -54,27 +54,45 @@ function lineOf(l: Lead): string {
 export function ColdCallView({ initialLeads, q }: { initialLeads: Lead[]; q: string }) {
   // Full rows, not slim: every card here shows the phone script and objections (and the mailto body), and
   // 139 cards each fetching their own full lead would be far worse than one bigger list.
-  // Only the desk's own leads (filtered in SQL, not in the browser), and NOT the Voicemail / Hang Up group:
-  // that one is fetched only once the rep opens its section below ("Already Tried"), so it is not
-  // downloaded on every visit. These filters must match app/(workspace)/cold-call/page.tsx exactly.
+  // Only the desk's own leads (filtered in SQL, not in the browser), and NOT Voicemail/Hang Up or No
+  // Answer: those (plus Not Interested) only load once the rep picks one from the "Already Tried" dropdown
+  // below, so none of the three is downloaded on every visit. These filters must match
+  // app/(workspace)/cold-call/page.tsx exactly.
   const { data: mainLeads = [] } = useLeads({ q, slim: false, onDesk: true, tried: false }, initialLeads);
   const qc = useQueryClient();
-  const [showTried, setShowTried] = useState(false);
-  const triedRef = useRef<HTMLDivElement>(null);
-  const tried = useLeads({ q, slim: false, onDesk: true, tried: true }, undefined, showTried);
-  // The collapsed section still says how many are waiting -- one COUNT query, not the rows.
+  // "Already Tried" dropdown (user, 2026-10-01): "" = nothing picked, nothing fetched. "tried" reuses the
+  // existing onDesk+tried=true query; "no_answer"/"not_interested" are the new `bucket` filter -- see
+  // lib/constants.ts ALREADY_TRIED_FILTER and types/lead.ts LeadFilters.bucket.
+  const [bucket, setBucket] = useState<"" | "tried" | "no_answer" | "not_interested">("");
+  const bucketResult = useLeads(
+    {
+      q,
+      slim: false,
+      onDesk: bucket !== "not_interested",
+      tried: bucket === "tried" ? true : undefined,
+      bucket: bucket === "no_answer" || bucket === "not_interested" ? bucket : undefined,
+    },
+    undefined,
+    bucket !== "",
+  );
+  // The ticker total still needs an accurate count even before anything is picked -- one lightweight COUNT
+  // query (never the rows themselves), same pattern as before.
   const triedCount = useQuery({
     queryKey: ["desk-tried-count", q],
     queryFn: () => leadsApi.deskTriedCount(q),
     staleTime: 60_000,
   });
   const triedTotal = triedCount.data?.count ?? 0;
+  // Not Interested is no longer on the desk (sent_to_desk_at is cleared the moment it's marked that way),
+  // so it must NEVER feed the queue/ticker math below -- only Voicemail/Hang Up/No Answer, which are.
   const allLeads = useMemo(() => {
     const byId = new Map<number, Lead>();
     for (const l of mainLeads) byId.set(l.id, l);
-    for (const l of tried.data ?? []) byId.set(l.id, l);
+    if (bucket !== "not_interested") {
+      for (const l of bucketResult.data ?? []) byId.set(l.id, l);
+    }
     return [...byId.values()];
-  }, [mainLeads, tried.data]);
+  }, [mainLeads, bucketResult.data, bucket]);
 
   // Search moved here from the shared TopBar (user, 2026-09-23: "jo yeh search bar hai isko iski jaga
   // yahan neechy ly ao") -- same debounced ?q= URL-sync logic top-bar.tsx used for this route, just
@@ -178,25 +196,36 @@ export function ColdCallView({ initialLeads, q }: { initialLeads: Lead[]; q: str
     };
   }, [sortAt]);
 
-  // Three groups, not one flat list -- structure-plan.md Phase 3. No Answer stays in its normal
-  // (middle) position; Voicemail/Hang Up sink to the bottom, oldest-touched first within that group (the
-  // one waiting longest surfaces first, ready to try again); everything else on the desk (never called,
-  // or re-sent from Contacts after some other outcome) is "New". New leads sort newest-first so the
-  // latest batch is always at the top.
-  const noAnswerLeads = useMemo(
-    () =>
-      filtered
-        .filter((l) => l.last_call_outcome === "no_answer")
-        .sort((a, b) => rank(a) - rank(b) || a.updated_at.localeCompare(b.updated_at)),
-    [filtered, rank],
-  );
-  const triedLeads = useMemo(
-    () =>
-      filtered
+  // "New" is everything on the desk never yet in one of the three Already Tried buckets -- newest-first so
+  // the latest batch is always at the top. The buckets themselves are a single group matching whichever
+  // dropdown option is currently picked (structure-plan.md Phase 3, reworked into a dropdown 2026-10-01):
+  // Voicemail/Hang Up and No Answer come from `filtered` (merged into allLeads/queue above, so they share
+  // the desk's own category/country/source/line filters); Not Interested is no longer on the desk at all
+  // (sent_to_desk_at cleared the moment it's marked), so it's filtered straight off bucketResult.data with
+  // the same client-side filters applied by hand instead.
+  const bucketLeads = useMemo(() => {
+    if (bucket === "tried") {
+      return filtered
         .filter((l) => TRIED_OUTCOMES.has(l.last_call_outcome))
-        .sort((a, b) => a.updated_at.localeCompare(b.updated_at)),
-    [filtered],
-  );
+        .sort((a, b) => a.updated_at.localeCompare(b.updated_at));
+    }
+    if (bucket === "no_answer") {
+      return filtered
+        .filter((l) => l.last_call_outcome === "no_answer")
+        .sort((a, b) => rank(a) - rank(b) || a.updated_at.localeCompare(b.updated_at));
+    }
+    if (bucket === "not_interested") {
+      return (bucketResult.data ?? []).filter(
+        (l) =>
+          !dismissed.has(l.id) &&
+          (category === ALL_CATEGORIES || l.industry_tag === category) &&
+          (country === ALL_COUNTRIES || (country === UNKNOWN_COUNTRY ? !l.country : l.country === country)) &&
+          (source === ALL_SOURCES || leadSource(l.source_prompt) === source) &&
+          (line === "all" || lineOf(l) === line),
+      );
+    }
+    return [];
+  }, [bucket, filtered, rank, bucketResult.data, dismissed, category, country, source, line]);
   const newLeads = useMemo(
     () =>
       filtered
@@ -256,7 +285,7 @@ export function ColdCallView({ initialLeads, q }: { initialLeads: Lead[]; q: str
         <TickerCard label="Dialing Efficiency" value="0s" size="md" valueColor="info" />
       </div>
 
-      <div className="mb-4 grid grid-cols-4 gap-4">
+      <div className="mb-4 grid grid-cols-5 gap-4">
         <Field label="Category Filter">
           <Select value={category} onChange={(e) => setCategory(e.target.value)}>
             <option value={ALL_CATEGORIES}>{stripEmoji(ALL_CATEGORIES)}</option>
@@ -303,6 +332,17 @@ export function ColdCallView({ initialLeads, q }: { initialLeads: Lead[]; q: str
             ))}
           </Select>
         </Field>
+        {/* Nothing in any of these 3 groups fetches until one is picked here -- user, 2026-10-01. */}
+        <Field label={ALREADY_TRIED_FILTER.label}>
+          <Select value={bucket} onChange={(e) => setBucket(e.target.value as typeof bucket)}>
+            <option value="">{ALREADY_TRIED_FILTER.placeholder}</option>
+            {ALREADY_TRIED_FILTER.options.map((o) => (
+              <option key={o.id} value={o.id}>
+                {stripEmoji(o.label)}
+              </option>
+            ))}
+          </Select>
+        </Field>
       </div>
       <div className="mb-4 flex items-center justify-between gap-3">
         <Input
@@ -314,17 +354,6 @@ export function ColdCallView({ initialLeads, q }: { initialLeads: Lead[]; q: str
           className="w-[28rem]"
         />
         <div className="flex items-center gap-2">
-          {/* The section itself sits at the bottom (after every New / Follow-up card) -- this jumps to it. */}
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => {
-              setShowTried(true);
-              triedRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-            }}
-          >
-            {withIcons(LAST_TOUCH.lowPriorityHeading(triedTotal))}
-          </Button>
           <Button
             variant="secondary"
             size="sm"
@@ -354,7 +383,11 @@ export function ColdCallView({ initialLeads, q }: { initialLeads: Lead[]; q: str
         </p>
       )}
 
-      {newLeads.length > 0 && (
+      {/* New Leads hides itself while a dropdown bucket is picked (user, 2026-10-01: "jab hum filters k
+          throw he dekh rhy hein toh humyn new leads phr us time pr nhi dekhani chahiye sirf wohin leads
+          show ho jis ka filter hai") -- only the picked group shows, below. Clearing the dropdown (back to
+          "") brings New Leads back on top and the picked group's cards disappear, in one move. */}
+      {bucket === "" && newLeads.length > 0 && (
         <div className="mb-4">
           <h3 className="mb-2 text-[1.05rem] font-semibold">
             {withIcons(COLD_CALL_QUEUE.newHeading(newLeads.length))}
@@ -365,36 +398,41 @@ export function ColdCallView({ initialLeads, q }: { initialLeads: Lead[]; q: str
         </div>
       )}
 
-      {noAnswerLeads.length > 0 && (
+      {/* Already Tried dropdown's result -- nothing renders here at all until one is picked above, and
+          while it's in flight this shows ONLY the loader, not a "(0)" heading that reads as empty before
+          the real count has even arrived (user, 2026-10-01). REPLACES New Leads while picked (see the
+          bucket === "" check above) -- clearing it swaps straight back. */}
+      {bucket !== "" && (
         <div className="mb-4">
-          <h3 className="mb-2 text-[1.05rem] font-semibold">
-            {withIcons(COLD_CALL_QUEUE.followUpHeading(noAnswerLeads.length))}
-          </h3>
-          {noAnswerLeads.map((lead) => (
-            <Battlecard key={lead.id} lead={lead} onActionTaken={dismiss} />
-          ))}
-        </div>
-      )}
-
-      {/* Always rendered, even at 0 or if the count request failed -- hiding it made it look missing. */}
-      {(
-        <div ref={triedRef} className="scroll-mt-4">
-          <button
-            type="button"
-            onClick={() => setShowTried((v) => !v)}
-            aria-expanded={showTried}
-            className="mb-2 flex cursor-pointer items-center gap-2 text-left text-[1.05rem] font-semibold hover:text-accent"
-          >
-            <span className="text-[0.8rem] text-muted" aria-hidden>
-              {showTried ? "▾" : "▸"}
-            </span>
-            {withIcons(LAST_TOUCH.lowPriorityHeading(showTried && tried.data ? triedLeads.length : triedTotal))}
-            {showTried && tried.isFetching && <Loader className="h-4 w-4" />}
-            {!showTried && <span className="text-[0.8rem] font-normal text-muted">{withIcons(LAST_TOUCH.clickToLoad)}</span>}
-          </button>
-          {showTried && triedLeads.map((lead) => (
-            <Battlecard key={lead.id} lead={lead} onActionTaken={dismiss} />
-          ))}
+          {bucketResult.isFetching ? (
+            <BarLoader label={ALREADY_TRIED_FILTER.loading} />
+          ) : bucketResult.isError ? (
+            <p className="rounded-[8px] px-3 py-2 text-[0.9rem] text-danger" style={{ background: "var(--danger-tint)" }}>
+              {bucketResult.error instanceof Error ? bucketResult.error.message : "Could not load this group. Try again."}
+            </p>
+          ) : (
+            <>
+              <h3 className="mb-2 text-[1.05rem] font-semibold">
+                {withIcons(
+                  ALREADY_TRIED_FILTER.heading(
+                    ALREADY_TRIED_FILTER.options.find((o) => o.id === bucket)?.label ?? "",
+                    bucketLeads.length,
+                  ),
+                )}
+              </h3>
+              {bucketLeads.length === 0 && (
+                <p
+                  className="rounded-[8px] px-3 py-2 text-[0.9rem]"
+                  style={{ background: "var(--info-tint)", color: "var(--info)" }}
+                >
+                  {ALREADY_TRIED_FILTER.empty}
+                </p>
+              )}
+              {bucketLeads.map((lead) => (
+                <Battlecard key={lead.id} lead={lead} onActionTaken={dismiss} />
+              ))}
+            </>
+          )}
         </div>
       )}
     </>

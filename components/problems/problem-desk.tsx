@@ -9,6 +9,7 @@ import {
 } from "@/hooks/use-problems";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { BarLoader } from "@/components/ui/loader";
 import { Input, Field } from "@/components/ui/input";
 import { MentionField } from "@/components/common/mention-field";
 import { useUsers } from "@/hooks/use-users";
@@ -156,7 +157,7 @@ export function ProblemDesk({ defaultExpanded = false }: { defaultExpanded?: boo
         ))}
       </div>
 
-      {isLoading && <p className="text-[0.9rem] text-muted">Loading problems…</p>}
+      {isLoading && <BarLoader label="Loading problems…" />}
       {!isLoading && problems.length === 0 && (
         <p className="text-[0.9rem] text-muted">{withIcons(EMPTY_STATES.problems)}</p>
       )}

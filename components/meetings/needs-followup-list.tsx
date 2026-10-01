@@ -132,20 +132,23 @@ function NeedsFollowUpCard({ lead, calendarLink }: { lead: Lead; calendarLink: s
 
 /**
  * "After Meetings": every lead that WAS booked for a meeting and has since been given an outcome -- i.e.
- * its stage is no longer "meeting_booked" (Needs Follow-up, No Show, Proposal Sent, Client Closed, AND Not
- * Interested all count -- user, 2026-09-28, confirmed against concrete examples: "c d e f", then "not
- * intrested wala bhi... taky pata ho meeting k bad ka"). NOT a meeting still sitting unactioned at Meeting
- * Booked, whether its time is in the past or the future -- that's not "after", it hasn't been dealt with
- * yet. This replaced an earlier time-based version (meeting_at <= now, any stage) that the No Show button
- * exposed as wrong: "meeting hui hi nahi toh after meeting mein kaise ja raha hai" -- a No Show lead's
- * meeting time had passed, so it kept showing here even though no meeting actually took place; what
- * actually matters is whether an outcome was recorded, not the clock.
+ * its stage is no longer "meeting_booked" (Needs Follow-up, No Show, Proposal Sent, Client Closed all
+ * count). NOT a meeting still sitting unactioned at Meeting Booked, whether its time is in the past or the
+ * future -- that's not "after", it hasn't been dealt with yet. This replaced an earlier time-based version
+ * (meeting_at <= now, any stage) that the No Show button exposed as wrong: "meeting hui hi nahi toh after
+ * meeting mein kaise ja raha hai" -- a No Show lead's meeting time had passed, so it kept showing here even
+ * though no meeting actually took place; what actually matters is whether an outcome was recorded, not the
+ * clock.
  *
- * Not Interested normally hides a lead everywhere (crud.list_leads() drops it) -- this list is the one
- * exception (useLeads' includeMeetingHidden: true, since it only narrowly re-admits a hidden lead that has
- * a meeting_at, never a Cold Call Dead Line/Not Interested with no meeting). A lead at "followup_due" that
- * is back on the Cold Call Desk (sent_to_desk_at set) belongs there instead -- a Cold Call voicemail/no-
- * answer/hang-up ALSO lands on "followup_due" and may still carry an old meeting_at from a previous meeting.
+ * Not Interested is explicitly EXCLUDED here (REVERSED 2026-09-30, user: "closed lost aftermeeting sy hatana
+ * hai" -- an earlier request, 2026-09-28, had asked for the opposite: "not intrested wala bhi... taky pata
+ * ho meeting k bad ka", so this is a deliberate reversal, not an oversight). `includeMeetingHidden: true`
+ * stays on the useLeads() call below anyway -- it's shared with page.tsx/meetings-calendar.tsx and changing
+ * it here would fetch with different params and lose their React Query cache/initialData sharing; the
+ * client-side `!== "lost"` check below is what actually keeps a Not Interested lead off this list now,
+ * regardless of what the fetch itself re-admits. A lead at "followup_due" that is back on the Cold Call
+ * Desk (sent_to_desk_at set) belongs there instead -- a Cold Call voicemail/no-answer/hang-up ALSO lands on
+ * "followup_due" and may still carry an old meeting_at from a previous meeting.
  */
 export function NeedsFollowUpList({ initialLeads, calendarLink }: { initialLeads: Lead[]; calendarLink: string }) {
   const { data: allLeads = [] } = useLeads({ includeMeetingHidden: true }, initialLeads);
@@ -157,6 +160,7 @@ export function NeedsFollowUpList({ initialLeads, calendarLink }: { initialLeads
           // The one thing that puts a lead here: an outcome was given (stage moved off "meeting_booked").
           // NOT time-based any more -- see the doc comment above for why.
           l.pipeline_stage !== "meeting_booked" &&
+          l.pipeline_stage !== "lost" &&
           !(l.pipeline_stage === "followup_due" && l.sent_to_desk_at),
       ),
     [allLeads],

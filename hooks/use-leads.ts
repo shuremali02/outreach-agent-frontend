@@ -22,6 +22,7 @@ export function leadsKey(filters: LeadFilters = {}) {
     filters.onDesk ? "desk" : null,
     filters.tried ?? null,
     filters.includeMeetingHidden ? "meeting-hidden" : null,
+    filters.bucket ?? null,
   ] as const;
 }
 
@@ -184,11 +185,13 @@ export function useMeetingOutcome() {
       id,
       stage,
       noShow,
+      callbackAt,
     }: {
       id: number;
       stage: "won" | "proposal_sent" | "followup_due" | "lost";
       noShow?: boolean;
-    }) => leadsApi.meetingOutcome(id, stage, noShow),
+      callbackAt?: string;
+    }) => leadsApi.meetingOutcome(id, stage, noShow, callbackAt),
     onSuccess: invalidate,
   });
 }

@@ -226,6 +226,11 @@ export interface LeadFilters {
   /** Meetings page only: also return a lead the meeting popup's "Not Interested" hid, if it has a
    * meeting_at -- see components/meetings/needs-followup-list.tsx. Every other page leaves this off. */
   includeMeetingHidden?: boolean;
+  /** Cold Call Desk's "Already Tried" dropdown (2026-10-01): "no_answer" is its own on-demand group
+   * (excluded from the default onDesk+tried:false fetch once anything asks for this bucket); "not_interested"
+   * bypasses the hidden_at filter server-side, restricted to exactly that outcome -- Dead Line is never
+   * returned this way. See components/cold-call/cold-call-view.tsx. */
+  bucket?: "no_answer" | "not_interested";
 }
 
 /** Payload for POST /leads — the Add a Lead form. */

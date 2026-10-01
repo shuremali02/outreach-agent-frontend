@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useFullLead, useUpdateLead, useDeleteLead } from "@/hooks/use-leads";
 import { enrichmentApi } from "@/lib/api";
-import { Loader } from "@/components/ui/loader";
+import { BarLoader } from "@/components/ui/loader";
 import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
@@ -149,9 +149,9 @@ export function LeadEditForm({ lead, onDone }: { lead: Lead; onDone?: () => void
   if (failed) return <p className="py-4 text-[0.85rem] text-danger">{EDIT_FORM.loadFailed}</p>;
   if (!ready) {
     return (
-      <p className="flex items-center gap-2 py-4 text-[0.85rem] text-muted" role="status">
-        <Loader className="h-4 w-4" /> {EDIT_FORM.loading}
-      </p>
+      <div className="py-4">
+        <BarLoader label={EDIT_FORM.loading} />
+      </div>
     );
   }
   return <LeadEditFormFields lead={full} onDone={onDone} />;

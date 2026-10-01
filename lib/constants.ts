@@ -687,7 +687,6 @@ export const DISPOSITIONS = [
  */
 export const COLD_CALL_QUEUE = {
   newHeading: (count: number) => `🆕 New Leads (${count})`,
-  followUpHeading: (count: number) => `📞 Follow-ups Due (${count})`,
   // Line filter + local-time ordering (2026-09-19). The queue puts leads
   // whose LOCAL time is inside CALL_WINDOW first, then direct lines before
   // switchboards. No Streamlit analogue -- app.py never knew a lead's timezone.
@@ -750,11 +749,12 @@ export const NEEDS_FOLLOWUP = {
 /**
  * Dead Line / Not Interested (structure-plan.md Phase 3), and Meeting's own Not Interested (Phase 5):
  * the lead is recorded, not deleted, but is now hidden from every list -- Cold Call Desk, Contacts and
- * Pipeline -- not just moved to Closed Lost. A later phase adds a way to find these again; there isn't
- * one yet.
+ * Pipeline -- not just moved to Closed Lost. Not Interested (not dead_number) can be found again via Cold
+ * Call Desk's "Already Tried" dropdown (user, 2026-10-01) -- the text stays generic/shared between both
+ * dispositions below rather than claiming that for Dead Line too, which is still unreachable everywhere.
  */
 export const HIDDEN_STAY_NOTE =
-  "The lead is NOT deleted. It is hidden everywhere in the app (Cold Call Desk, Leads, Pipeline) -- there is no way to find it again yet.";
+  "The lead is NOT deleted. It is hidden everywhere in the app (Cold Call Desk, Leads, Pipeline).";
 
 /**
  * components/meetings/meeting-detail-dialog.tsx -- what a rep picks once a
@@ -805,12 +805,18 @@ export const MEETING_OUTCOMES: {
     done: (company) => `${company} moved to Proposal Sent. Find it in Pipeline.`,
   },
   {
+    // Renamed from "Needs Follow-up" (user, 2026-10-01: "is button ka name change kr k callback kr dyn...
+    // jab koi is button ko click kry toh usko hum puch lyn k time date") -- picking it now asks for a
+    // date/time (same CALLBACK_BOOKING prompt Cold Call Desk's Callback Scheduled uses) and sends it as
+    // callback_at, which also surfaces the lead on Pipeline's Callback view (previously it only showed in
+    // Meetings' After Meetings list -- see crud.set_meeting_outcome()). Still the same stage id
+    // (followup_due) -- the lead still lands in the Needs Follow-up list here too.
     stage: "followup_due",
-    label: "🔁 Needs Follow-up",
-    confirmTitle: (company) => `Mark ${company} as Needs Follow-up?`,
-    confirmBody: "The lead is NOT deleted. It moves to the Needs Follow-up list on this page, above the calendar.",
-    confirmLabel: "Yes, needs follow-up",
-    done: (company) => `${company} moved to Needs Follow-up, above the calendar.`,
+    label: "📞 Callback",
+    confirmTitle: (company) => `Schedule a callback with ${company}?`,
+    confirmBody: "The lead is NOT deleted. It moves to the Needs Follow-up list here, and now also shows on Pipeline under Callback.",
+    confirmLabel: "Yes, schedule callback",
+    done: (company) => `${company} moved to Needs Follow-up -- also showing on Pipeline now.`,
   },
   {
     stage: "followup_due",
@@ -980,11 +986,35 @@ export const EMAIL_SEND = {
   failed: "Could not mark this lead for email. Try again.",
 } as const;
 
-/** The bottom "already tried" section and last-touch mark on Cold Call Desk cards (Phase 3). */
+/** Last-touch mark on Cold Call Desk cards (Phase 3). The old "already tried" collapsible section's two
+ * labels moved to ALREADY_TRIED_FILTER below -- replaced by a dropdown, 2026-10-01. */
 export const LAST_TOUCH = {
-  lowPriorityHeading: (count: number) => `⏳ Voicemail & Hang Ups (${count})`,
-  clickToLoad: "click to load",
   label: (when: string) => `Last activity ${when}`,
+} as const;
+
+/**
+ * Cold Call Desk's "Already Tried" dropdown (user, 2026-10-01: "humyn puri ek dropdown banana chahiye...
+ * jab hum dropdown ko select kryn tb he only woh leads load ho ke ayen wrna na ayen") -- sits right after
+ * the Line Filter. Nothing in any of these 3 groups is fetched until one is picked here -- see
+ * components/cold-call/cold-call-view.tsx. Replaces the old always-visible No Answer section and the old
+ * click-to-expand Voicemail/Hang Up button with one consistent picker; also the ONLY place in the whole
+ * app a Not Interested lead can be found again (Dead Line stays unreachable everywhere, by the user's own
+ * choice -- "deadline nhi dekhny").
+ */
+export const ALREADY_TRIED_FILTER = {
+  label: "Already Tried",
+  placeholder: "— Select to load —",
+  options: [
+    { id: "tried", label: "📵 Voicemail / Hang Up" },
+    { id: "no_answer", label: "📞 No Answer" },
+    { id: "not_interested", label: "❌ Not Interested" },
+  ],
+  heading: (label: string, count: number) => `${label} (${count})`,
+  // Shown instead of the heading/count while the picked group is still in flight (user, 2026-10-01: "jese
+  // he hum select kryn toh loader chaly jab tk woh show nhi hoti hain tb tk") -- not just a small spinner
+  // next to a "(0)" heading, which read as "nothing here" before the real count had even arrived.
+  loading: "Loading…",
+  empty: "No leads in this group right now.",
 } as const;
 
 export const LOST_STAGE_CONFIRM = {
