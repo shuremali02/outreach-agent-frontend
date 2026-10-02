@@ -1047,6 +1047,7 @@ export const TOASTS = {
   peopleFound: (n: number) => `${n} decision maker${n === 1 ? "" : "s"} found`,
   noPeopleFound: "No decision makers found for this company",
   contactAdded: (name: string) => `${name} added as a contact`,
+  contactUpdated: (name: string) => `${name} updated`,
   revealRequested: "Reveal requested. The details arrive in a few seconds.",
   linkedInResearched: (name: string) => `LinkedIn research found ${name}`,
   linkedInResearchNone: "LinkedIn research found no matching person",

@@ -349,7 +349,7 @@ export function ColdCallView({ initialLeads, q }: { initialLeads: Lead[]; q: str
           type="search"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search company, contact, email…"
+          placeholder="Search company, contact, email, phone…"
           aria-label="Search leads"
           className="w-[28rem]"
         />

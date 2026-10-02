@@ -122,6 +122,14 @@ export const enrichmentApi = {
     api.post<LeadContact[]>(`/leads/${leadId}/contacts`, input),
 
   /**
+   * Edit an existing decision maker on this lead (user request, 2026-10-02: "jo bhi members add kr rhy
+   * hein unhyn edit nhi kr sk rhy" -- addContact() above only ever let you create one, never correct it
+   * afterward). Same shape, same response shape as addContact().
+   */
+  editContact: (leadId: number, contactId: number, input: ExtraContactInput) =>
+    api.patch<LeadContact[]>(`/leads/${leadId}/contacts/${contactId}`, input),
+
+  /**
    * Free SignalHire search for the founder / sales / HR contacts at a company.
    * Spends no credits and returns names and titles only — searchByQuery never
    * carries an email or phone.

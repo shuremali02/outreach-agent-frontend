@@ -31,6 +31,42 @@ const EMPTY_ADD_CONTACT: ExtraContactInput = { name: "", role: "", email: "", ph
  * query key with components/enrichment/contacts-panel.tsx, so adding one here also updates that panel
  * wherever else it's shown for the same lead, and vice versa.
  */
+/** The Name/Role/Email/Phone/LinkedIn field grid shared by the "add" and "edit" forms below -- same
+ * 2-column layout "Add a Lead"'s extra-contact rows use. */
+function ContactFields({
+  value,
+  onChange,
+}: {
+  value: ExtraContactInput;
+  onChange: (field: keyof ExtraContactInput, v: string) => void;
+}) {
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Name">
+          <Input value={value.name} onChange={(e) => onChange("name", e.target.value)} />
+        </Field>
+        <Field label="Role / Title">
+          <Input value={value.role} onChange={(e) => onChange("role", e.target.value)} />
+        </Field>
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-3">
+        <Field label="Email">
+          <Input type="email" value={value.email} onChange={(e) => onChange("email", e.target.value)} />
+        </Field>
+        <Field label="Phone">
+          <Input type="tel" value={value.phone} onChange={(e) => onChange("phone", e.target.value)} />
+        </Field>
+      </div>
+      <div className="mt-3">
+        <Field label="LinkedIn URL">
+          <Input value={value.linkedin} onChange={(e) => onChange("linkedin", e.target.value)} />
+        </Field>
+      </div>
+    </>
+  );
+}
+
 function DecisionMakersSection({ leadId }: { leadId: number }) {
   const qc = useQueryClient();
   const toast = useToast();
@@ -54,19 +90,79 @@ function DecisionMakersSection({ leadId }: { leadId: number }) {
     setNewContact((c) => ({ ...c, [field]: value }));
   }
 
+  // Editing an existing contact (user, 2026-10-02: "jo bhi members add kr rhy hein unhyn edit nhi kr sk
+  // rhy" -- add-only until now, the list below rendered plain text with no way to correct a typo or fill in
+  // a number found later by hand). Same form as "add", pre-filled, PATCH instead of POST.
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editContact, setEditContact] = useState<ExtraContactInput>(EMPTY_ADD_CONTACT);
+  const editMutation = useMutation({
+    mutationFn: (input: ExtraContactInput) => enrichmentApi.editContact(leadId, editingId as number, input),
+    onSuccess: (rows) => {
+      qc.setQueryData(["lead-contacts", leadId], rows);
+      toast.success(TOASTS.contactUpdated(editContact.name));
+      setEditingId(null);
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : TOASTS.actionFailed),
+  });
+  function setEditField(field: keyof ExtraContactInput, value: string) {
+    setEditContact((c) => ({ ...c, [field]: value }));
+  }
+  function startEdit(c: (typeof contacts)[number]) {
+    setAdding(false);
+    setEditingId(c.id);
+    setEditContact({ name: c.name, role: c.role, email: c.email, phone: c.phone, linkedin: c.linkedin });
+  }
+
   return (
     <>
       <h4 className="mt-2 text-[1rem] font-semibold"><Ico e="👥" /> Decision Makers</h4>
       {contacts.length > 0 && (
         <div className="rounded-[8px] border border-border bg-card p-3">
-          {contacts.map((c) => (
-            <div key={c.id} className="border-b border-border py-1.5 text-[0.82rem] last:border-0">
-              <strong>{c.name}</strong>
-              {c.role && <span className="text-muted"> — {c.role}</span>}
-              {c.email && <span className="text-muted"> · {c.email}</span>}
-              {c.phone && <span className="text-muted"> · {c.phone}</span>}
-            </div>
-          ))}
+          {contacts.map((c) =>
+            editingId === c.id ? (
+              <div key={c.id} className="border-b border-border py-3 last:border-0">
+                <ContactFields value={editContact} onChange={setEditField} />
+                {editMutation.isError && (
+                  <p className="mt-2 text-[0.78rem] text-danger">
+                    {editMutation.error instanceof Error ? editMutation.error.message : TOASTS.actionFailed}
+                  </p>
+                )}
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <Button variant="secondary" size="sm" onClick={() => setEditingId(null)}>
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    disabled={!editContact.name.trim()}
+                    loading={editMutation.isPending}
+                    onClick={() => editMutation.mutate(editContact)}
+                  >
+                    Save
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div
+                key={c.id}
+                className="flex items-center justify-between gap-2 border-b border-border py-1.5 text-[0.82rem] last:border-0"
+              >
+                <span>
+                  <strong>{c.name}</strong>
+                  {c.role && <span className="text-muted"> — {c.role}</span>}
+                  {c.email && <span className="text-muted"> · {c.email}</span>}
+                  {c.phone && <span className="text-muted"> · {c.phone}</span>}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => startEdit(c)}
+                  className="shrink-0 cursor-pointer text-[0.78rem] font-semibold text-accent"
+                >
+                  Edit
+                </button>
+              </div>
+            ),
+          )}
         </div>
       )}
       {adding ? (
@@ -84,27 +180,7 @@ function DecisionMakersSection({ leadId }: { leadId: number }) {
               <Ico e="✕" /> Cancel
             </button>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Name">
-              <Input value={newContact.name} onChange={(e) => setField("name", e.target.value)} />
-            </Field>
-            <Field label="Role / Title">
-              <Input value={newContact.role} onChange={(e) => setField("role", e.target.value)} />
-            </Field>
-          </div>
-          <div className="mt-3 grid grid-cols-2 gap-3">
-            <Field label="Email">
-              <Input type="email" value={newContact.email} onChange={(e) => setField("email", e.target.value)} />
-            </Field>
-            <Field label="Phone">
-              <Input type="tel" value={newContact.phone} onChange={(e) => setField("phone", e.target.value)} />
-            </Field>
-          </div>
-          <div className="mt-3">
-            <Field label="LinkedIn URL">
-              <Input value={newContact.linkedin} onChange={(e) => setField("linkedin", e.target.value)} />
-            </Field>
-          </div>
+          <ContactFields value={newContact} onChange={setField} />
           {addContact.isError && (
             <p className="mt-2 text-[0.78rem] text-danger">
               {addContact.error instanceof Error ? addContact.error.message : TOASTS.actionFailed}
@@ -125,7 +201,10 @@ function DecisionMakersSection({ leadId }: { leadId: number }) {
       ) : (
         <button
           type="button"
-          onClick={() => setAdding(true)}
+          onClick={() => {
+            setEditingId(null);
+            setAdding(true);
+          }}
           className="cursor-pointer text-left text-[0.8rem] font-semibold text-accent"
         >
           + Add a Decision Maker

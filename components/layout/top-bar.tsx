@@ -96,7 +96,7 @@ export function TopBar() {
             type="search"
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search company, contact, email…"
+            placeholder="Search company, contact, email, phone…"
             aria-label="Search leads"
             className="w-72"
           />
