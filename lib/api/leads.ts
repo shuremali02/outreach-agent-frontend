@@ -15,6 +15,7 @@ export const leadsApi = {
       tried: filters.tried,
       include_meeting_hidden: filters.includeMeetingHidden ? 1 : undefined,
       bucket: filters.bucket,
+      linkedin_owner: filters.linkedinOwner,
     }),
   /** Size of a desk's Voicemail / Hang Up group, so the collapsed section can show it unloaded.
    * `desk` (2026-10-05): defaults to "cold_call" on the backend if omitted. */

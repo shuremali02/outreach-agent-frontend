@@ -87,6 +87,9 @@ export interface Lead {
   /** "" = the default/Cold Call Desk channel, "linkedin" = added via the LinkedIn desk's "This is a
    * LinkedIn lead" checkbox. Permanent, unlike sent_to_desk_at. User request, 2026-10-05. */
   lead_channel: string;
+  /** "" = not set, "maaz" | "bilal" | "asfand" -- whose LinkedIn outreach this lead came from. Only meaningful
+   * alongside lead_channel=="linkedin". See lib/constants.ts LINKEDIN_OWNERS. User request, 2026-10-05. */
+  linkedin_owner: string;
   /** "receptionist" | "decision_maker" | "team_member" | "" -- tag only from the "Call picked by" row,
    * never changes pipeline_stage. */
   call_picked_by: string;
@@ -238,6 +241,8 @@ export interface LeadFilters {
    * returned this way. Pass `desk` alongside it so the right channel's hidden leads come back (2026-10-05).
    * See components/cold-call/cold-call-view.tsx. */
   bucket?: "no_answer" | "not_interested";
+  /** LinkedIn tab's own filter (2026-10-05): whose outreach a lead came from. See LINKEDIN_OWNERS. */
+  linkedinOwner?: "maaz" | "bilal" | "asfand";
 }
 
 /** Payload for POST /leads — the Add a Lead form. */
@@ -265,6 +270,8 @@ export interface CreateLeadInput {
   /** "This is a LinkedIn lead" checkbox (2026-10-05) -- tags the new lead for the isolated LinkedIn
    * desk instead of Cold Call Desk. See components/layout/add-lead-popover.tsx. */
   linkedin_lead?: boolean;
+  /** Whose LinkedIn outreach this came from -- only shown/meaningful alongside linkedin_lead. */
+  linkedin_owner?: "maaz" | "bilal" | "asfand";
 }
 
 export interface ExtraContactInput {

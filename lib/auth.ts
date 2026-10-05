@@ -1,7 +1,8 @@
 /**
  * Browser-side session (auth-plan.md). Two cookies, written by the login page:
- *   elipse_token  the backend's session token (7 days) -- sent as "Authorization: Bearer" by lib/api/client.ts
- *                 and checked for presence/expiry by proxy.ts
+ *   elipse_token  the backend's session token (30 days -- app/config.py's auth_token_days, user request
+ *                 2026-10-05, was 7) -- sent as "Authorization: Bearer" by lib/api/client.ts and checked
+ *                 for presence/expiry by proxy.ts
  *   elipse_user   {id,email,name,avatar_url} JSON, only so the top bar can show who is signed in
  * Not httpOnly on purpose: the browser talks to the backend on another domain, so JavaScript has to
  * be able to read the token. Everything here is a no-op on the server.
@@ -10,7 +11,9 @@ import type { AuthUser } from "@/types";
 
 export const TOKEN_COOKIE = "elipse_token";
 export const USER_COOKIE = "elipse_user";
-const WEEK_SECONDS = 7 * 24 * 60 * 60;
+// Must match (or exceed) app/config.py's auth_token_days -- the cookie should never expire before the
+// token it's carrying does, or the browser would silently drop a still-valid session.
+const SESSION_SECONDS = 30 * 24 * 60 * 60;
 
 function readCookie(name: string): string {
   if (typeof document === "undefined") return "";
@@ -46,8 +49,8 @@ export function getSessionUser(): AuthUser | null {
 }
 
 export function saveSession(token: string, user: AuthUser): void {
-  writeCookie(TOKEN_COOKIE, token, WEEK_SECONDS);
-  writeCookie(USER_COOKIE, JSON.stringify(user), WEEK_SECONDS);
+  writeCookie(TOKEN_COOKIE, token, SESSION_SECONDS);
+  writeCookie(USER_COOKIE, JSON.stringify(user), SESSION_SECONDS);
 }
 
 export function clearSession(): void {

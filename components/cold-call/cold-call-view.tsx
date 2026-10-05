@@ -27,11 +27,13 @@ import {
   LEAD_SOURCE_LABELS,
   COLD_CALL_QUEUE,
   ALREADY_TRIED_FILTER,
+  LINKEDIN_OWNERS,
 } from "@/lib/constants";
 import { currency, leadSource, localClock, num } from "@/lib/format";
 import type { Lead } from "@/types";
 import { EMPTY_STATES } from "@/lib/constants";
 import { stripEmoji, withIcons } from "@/components/ui/emoji-icon";
+import { cn } from "@/lib/utils";
 
 // Module-level, not component-scoped: a `new Set(...)` recreated every render was never referentially
 // stable, so the lint rule correctly flagged it as unusable in a useMemo dependency array -- adding it
@@ -145,6 +147,10 @@ export function ColdCallView({
   // (backend): verified_direct = a person's line, switchboard = a business
   // line that reaches a receptionist, anything else = no usable number.
   const [line, setLine] = useState("all");
+  // LinkedIn tab's own filter (user, 2026-10-05): whose outreach a lead came from -- client-side, same as
+  // category/country/source/line above. Only rendered (see the filter grid below) when channel ===
+  // "linkedin"; stays "all" and inert on Cold Call Desk.
+  const [linkedinOwner, setLinkedinOwner] = useState("all");
   // Snapshot used ONLY for ordering. Re-sorting on a live clock would shuffle
   // cards under a rep mid-call; the order refreshes on mount, on a filter
   // change, or when the rep clicks "Re-sort by local time".
@@ -189,9 +195,10 @@ export function ColdCallView({
           (country === ALL_COUNTRIES ||
             (country === UNKNOWN_COUNTRY ? !l.country : l.country === country)) &&
           (source === ALL_SOURCES || leadSource(l.source_prompt) === source) &&
-          (line === "all" || lineOf(l) === line),
+          (line === "all" || lineOf(l) === line) &&
+          (linkedinOwner === "all" || l.linkedin_owner === linkedinOwner),
       ),
-    [queue, dismissed, category, country, source, line],
+    [queue, dismissed, category, country, source, line, linkedinOwner],
   );
 
   // 0 = at their desk right now, 1 = timezone unknown, 2 = outside hours; then
@@ -234,11 +241,12 @@ export function ColdCallView({
           (category === ALL_CATEGORIES || l.industry_tag === category) &&
           (country === ALL_COUNTRIES || (country === UNKNOWN_COUNTRY ? !l.country : l.country === country)) &&
           (source === ALL_SOURCES || leadSource(l.source_prompt) === source) &&
-          (line === "all" || lineOf(l) === line),
+          (line === "all" || lineOf(l) === line) &&
+          (linkedinOwner === "all" || l.linkedin_owner === linkedinOwner),
       );
     }
     return [];
-  }, [bucket, filtered, rank, bucketResult.data, dismissed, category, country, source, line]);
+  }, [bucket, filtered, rank, bucketResult.data, dismissed, category, country, source, line, linkedinOwner]);
   const newLeads = useMemo(
     () =>
       filtered
@@ -298,7 +306,12 @@ export function ColdCallView({
         <TickerCard label="Dialing Efficiency" value="0s" size="md" valueColor="info" />
       </div>
 
-      <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div
+        className={cn(
+          "mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2",
+          channel === "linkedin" ? "lg:grid-cols-6" : "lg:grid-cols-5",
+        )}
+      >
         <Field label="Category Filter">
           <Select value={category} onChange={(e) => setCategory(e.target.value)}>
             <option value={ALL_CATEGORIES}>{stripEmoji(ALL_CATEGORIES)}</option>
@@ -356,6 +369,20 @@ export function ColdCallView({
             ))}
           </Select>
         </Field>
+        {/* LinkedIn tab only (user, 2026-10-05): whose outreach a lead came from. Cold Call Desk has no
+            concept of this at all -- the field isn't even rendered there, not just left at "all". */}
+        {channel === "linkedin" && (
+          <Field label="LinkedIn Account">
+            <Select value={linkedinOwner} onChange={(e) => setLinkedinOwner(e.target.value)}>
+              <option value="all">All</option>
+              {LINKEDIN_OWNERS.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.label}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        )}
       </div>
       {/* Stacked below `sm` -- user, 2026-10-02: a fixed w-[28rem] search box squeezed down to almost
           nothing next to the Sort button on a phone (flex items shrink by default), which read as the Sort

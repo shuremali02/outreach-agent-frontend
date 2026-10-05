@@ -964,6 +964,19 @@ export const CLOSING_DISPOSITIONS: Record<
  * "Call picked by" row (Cold Call Desk) -- structure-plan.md Phase 3. Tag only: marks who answered,
  * never changes the lead's stage or queue position. No Streamlit analogue.
  */
+/** Whose LinkedIn outreach a LinkedIn-tagged lead came from (user, 2026-10-05) -- set on Add a Lead
+ * alongside "This is a LinkedIn lead", shown as a tag on the battlecard, and filterable on the LinkedIn
+ * tab. See types/lead.ts Lead.linkedin_owner / CreateLeadInput.linkedin_owner. */
+export const LINKEDIN_OWNERS = [
+  { id: "maaz", label: "Syed Maaz Ali" },
+  { id: "bilal", label: "Bilal Lania" },
+  { id: "asfand", label: "Asfand Mohsin" },
+] as const;
+
+export function linkedinOwnerLabel(id: string): string {
+  return LINKEDIN_OWNERS.find((o) => o.id === id)?.label ?? id;
+}
+
 export const CALL_PICKED_BY = {
   heading: "Call picked by",
   options: [

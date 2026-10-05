@@ -38,6 +38,7 @@ import {
   TOASTS,
   countryLabel,
   fallbackScript,
+  linkedinOwnerLabel,
 } from "@/lib/constants";
 import type { CallOutcome, Lead } from "@/types";
 import { CategoryLabel, Ico, withIcons } from "@/components/ui/emoji-icon";
@@ -308,6 +309,12 @@ export function Battlecard({
         <PhoneBadge status={lead.phone_status} phone={lead.contact_phone} />
         <LocalTimeBadge tz={lead.call_tz} hasPhone={Boolean(lead.contact_phone)} />
         <span className="stage-tag"><CategoryLabel value={lead.industry_tag} /></span>
+        {/* LinkedIn desk only (user, 2026-10-05): whose outreach this lead came from. */}
+        {lead.linkedin_owner && (
+          <span className="stage-tag">
+            <Ico e="📇" /> {linkedinOwnerLabel(lead.linkedin_owner)}
+          </span>
+        )}
       </div>
       <p className="mb-1 mt-1 text-[0.88rem] text-muted">
         <Ico e="👤" /> {lead.contact_name || "Decision Maker"}

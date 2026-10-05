@@ -4,7 +4,7 @@ import * as Popover from "@radix-ui/react-popover";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { leadsApi } from "@/lib/api";
-import { ADD_LEAD_COUNTRIES, ADD_LEAD_TEAM, MEETING_BOOKING, MENTIONS, PIPELINE_STAGES, STANDARD_CATEGORIES, TOASTS } from "@/lib/constants";
+import { ADD_LEAD_COUNTRIES, ADD_LEAD_TEAM, LINKEDIN_OWNERS, MEETING_BOOKING, MENTIONS, PIPELINE_STAGES, STANDARD_CATEGORIES, TOASTS } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { Input, Textarea, Select, Field } from "@/components/ui/input";
@@ -171,6 +171,23 @@ export function AddLeadPopover() {
               />
               <Ico e="📇" /> This is a LinkedIn lead
             </label>
+            {/* Whose LinkedIn outreach this came from (user, 2026-10-05) -- only shown/relevant once the
+                checkbox above is picked. Optional: left blank, the lead just has no owner tag/filter hit. */}
+            {form.linkedin_lead && (
+              <Field label="LinkedIn Account">
+                <Select
+                  value={form.linkedin_owner ?? ""}
+                  onChange={(e) => set("linkedin_owner", (e.target.value || undefined) as CreateLeadInput["linkedin_owner"])}
+                >
+                  <option value="">Select…</option>
+                  {LINKEDIN_OWNERS.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.label}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Field label="Contact Person Name">
                 <Input

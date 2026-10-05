@@ -23,6 +23,7 @@ export function leadsKey(filters: LeadFilters = {}) {
     filters.tried ?? null,
     filters.includeMeetingHidden ? "meeting-hidden" : null,
     filters.bucket ?? null,
+    filters.linkedinOwner ?? null,
   ] as const;
 }
 
