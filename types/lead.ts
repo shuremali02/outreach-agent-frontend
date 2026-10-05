@@ -81,8 +81,12 @@ export interface Lead {
   created_by_user_id: number | null;
   last_touched_by_user_id: number | null;
   /** ISO datetime, "" = not on the Cold Call Desk (structure-plan.md Phase 1). Set when a rep presses
-   * "Send to Cold Call Desk" in Contacts; cleared if the lead is sent back (e.g. Wrong Number). */
+   * "Send to Cold Call Desk" in Contacts; cleared if the lead is sent back (e.g. Wrong Number). Also
+   * doubles as the LinkedIn desk's own membership timestamp (lead_channel below says which one). */
   sent_to_desk_at: string;
+  /** "" = the default/Cold Call Desk channel, "linkedin" = added via the LinkedIn desk's "This is a
+   * LinkedIn lead" checkbox. Permanent, unlike sent_to_desk_at. User request, 2026-10-05. */
+  lead_channel: string;
   /** "receptionist" | "decision_maker" | "team_member" | "" -- tag only from the "Call picked by" row,
    * never changes pipeline_stage. */
   call_picked_by: string;
@@ -219,17 +223,20 @@ export interface LeadFilters {
   q?: string;
   /** Default true: the list omits the long text columns (see Lead.slim). Cold Call Desk passes false. */
   slim?: boolean;
-  /** Cold Call Desk only: just the leads sent to the desk (server-side, not filtered in the browser). */
-  onDesk?: boolean;
-  /** With onDesk: false = leave out the Voicemail / Hang Up group, true = only that group. */
+  /** Cold Call Desk / LinkedIn desk only (2026-10-05: a second, isolated desk -- see
+   * components/cold-call/cold-call-view.tsx's `channel` prop): just the leads sent to that one desk
+   * (server-side, not filtered in the browser). */
+  desk?: "cold_call" | "linkedin";
+  /** With desk set: tried=false leaves out the Voicemail / Hang Up group, true = only that group. */
   tried?: boolean;
   /** Meetings page only: also return a lead the meeting popup's "Not Interested" hid, if it has a
    * meeting_at -- see components/meetings/needs-followup-list.tsx. Every other page leaves this off. */
   includeMeetingHidden?: boolean;
   /** Cold Call Desk's "Already Tried" dropdown (2026-10-01): "no_answer" is its own on-demand group
-   * (excluded from the default onDesk+tried:false fetch once anything asks for this bucket); "not_interested"
+   * (excluded from the default desk+tried:false fetch once anything asks for this bucket); "not_interested"
    * bypasses the hidden_at filter server-side, restricted to exactly that outcome -- Dead Line is never
-   * returned this way. See components/cold-call/cold-call-view.tsx. */
+   * returned this way. Pass `desk` alongside it so the right channel's hidden leads come back (2026-10-05).
+   * See components/cold-call/cold-call-view.tsx. */
   bucket?: "no_answer" | "not_interested";
 }
 
@@ -255,6 +262,9 @@ export interface CreateLeadInput {
   team_note?: string;
   mentions?: number[];
   mention_team?: boolean;
+  /** "This is a LinkedIn lead" checkbox (2026-10-05) -- tags the new lead for the isolated LinkedIn
+   * desk instead of Cold Call Desk. See components/layout/add-lead-popover.tsx. */
+  linkedin_lead?: boolean;
 }
 
 export interface ExtraContactInput {
