@@ -28,7 +28,7 @@ export default async function WorkspaceLayout({ children }: LayoutProps<"/">) {
         <Suspense fallback={<div className="h-[53px] border-b border-border" />}>
           <TopBar />
         </Suspense>
-        <main className="flex-1 overflow-y-auto px-8 py-6">{children}</main>
+        <main className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6">{children}</main>
       </div>
     </div>
   );

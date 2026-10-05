@@ -93,7 +93,7 @@ function WeekBlock({ w, defaultOpen }: { w: WeekStats; defaultOpen: boolean }) {
       </button>
       {open && (
         <div className="border-t border-border px-4 py-4">
-          <div className="grid grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {metrics.map((m) => (
               <div key={m.label}>
                 <p className="metric-label">{m.label}</p>
@@ -138,7 +138,7 @@ export function TerminalView({ initialData }: { initialData: TeamMetrics }) {
 
   return (
     <>
-      <div className="mb-5 grid grid-cols-[3fr_1.8fr] items-start gap-6">
+      <div className="mb-5 grid grid-cols-1 items-start gap-6 lg:grid-cols-[3fr_1.8fr]">
         <div>
           <p className="date-eyebrow">{PAGE_HEADERS.terminal.eyebrow}</p>
           <h1 className="hero-heading">{PAGE_HEADERS.terminal.title}</h1>
@@ -163,7 +163,7 @@ export function TerminalView({ initialData }: { initialData: TeamMetrics }) {
       </div>
 
       <p className="date-eyebrow"><Ico e="⏱️" /> Select Sprint Horizon</p>
-      <div className="mb-5 grid grid-cols-4 gap-3">
+      <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {horizons.map((h) => (
           <Button
             key={h.id}
@@ -176,7 +176,7 @@ export function TerminalView({ initialData }: { initialData: TeamMetrics }) {
         ))}
       </div>
 
-      <div className="mb-6 grid grid-cols-5 gap-3">
+      <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <TickerCard
           label="Outreach Attempts"
           value={num(active.attempts)}
@@ -215,7 +215,7 @@ export function TerminalView({ initialData }: { initialData: TeamMetrics }) {
         />
       </div>
 
-      <div className="grid grid-cols-[1.4fr_1.6fr] gap-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.4fr_1.6fr]">
         <Card>
           <p className="metric-label mb-3">Conversion Funnel &amp; Efficiency</p>
           <FunnelStep

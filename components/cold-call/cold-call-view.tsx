@@ -258,7 +258,7 @@ export function ColdCallView({ initialLeads, q }: { initialLeads: Lead[]; q: str
     <>
       <IngestDrawer />
 
-      <div className="mb-5 grid grid-cols-5 gap-3">
+      <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <TickerCard
           label="Call-Ready Queue"
           value={num(mainLeads.filter((l) => l.sent_to_desk_at).length + triedTotal)}
@@ -285,7 +285,7 @@ export function ColdCallView({ initialLeads, q }: { initialLeads: Lead[]; q: str
         <TickerCard label="Dialing Efficiency" value="0s" size="md" valueColor="info" />
       </div>
 
-      <div className="mb-4 grid grid-cols-5 gap-4">
+      <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <Field label="Category Filter">
           <Select value={category} onChange={(e) => setCategory(e.target.value)}>
             <option value={ALL_CATEGORIES}>{stripEmoji(ALL_CATEGORIES)}</option>
@@ -344,14 +344,18 @@ export function ColdCallView({ initialLeads, q }: { initialLeads: Lead[]; q: str
           </Select>
         </Field>
       </div>
-      <div className="mb-4 flex items-center justify-between gap-3">
+      {/* Stacked below `sm` -- user, 2026-10-02: a fixed w-[28rem] search box squeezed down to almost
+          nothing next to the Sort button on a phone (flex items shrink by default), which read as the Sort
+          button being part of/attached to the search bar instead of its own separate control. Each gets its
+          own full-width line on mobile; `sm:` and up is pixel-identical to before. */}
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <Input
           type="search"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search company, contact, email, phone…"
           aria-label="Search leads"
-          className="w-[28rem]"
+          className="w-full sm:w-[28rem]"
         />
         <div className="flex items-center gap-2">
           <Button

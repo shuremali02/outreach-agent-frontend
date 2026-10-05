@@ -42,7 +42,7 @@ function ContactFields({
 }) {
   return (
     <>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Field label="Name">
           <Input value={value.name} onChange={(e) => onChange("name", e.target.value)} />
         </Field>
@@ -50,7 +50,7 @@ function ContactFields({
           <Input value={value.role} onChange={(e) => onChange("role", e.target.value)} />
         </Field>
       </div>
-      <div className="mt-3 grid grid-cols-2 gap-3">
+      <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Field label="Email">
           <Input type="email" value={value.email} onChange={(e) => onChange("email", e.target.value)} />
         </Field>
@@ -127,7 +127,7 @@ function DecisionMakersSection({ leadId }: { leadId: number }) {
                     {editMutation.error instanceof Error ? editMutation.error.message : TOASTS.actionFailed}
                   </p>
                 )}
-                <div className="mt-3 grid grid-cols-2 gap-2">
+                <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <Button variant="secondary" size="sm" onClick={() => setEditingId(null)}>
                     Cancel
                   </Button>
@@ -296,7 +296,7 @@ function LeadEditFormFields({ lead, onDone }: { lead: Lead; onDone?: () => void 
       </Field>
       {stage === "meeting_booked" && (
         <>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <Field label={MEETING_BOOKING.dateLabel}>
               <Input type="date" value={meetingDate} onChange={(e) => setMeetingDate(e.target.value)} />
             </Field>
@@ -318,7 +318,7 @@ function LeadEditFormFields({ lead, onDone }: { lead: Lead; onDone?: () => void 
       {showCallback && (
         <>
           <p className="text-[0.85rem] font-semibold">{withIcons(CALLBACK_BOOKING.prompt)}</p>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <Field label={CALLBACK_BOOKING.dateLabel}>
               <Input type="date" value={callbackDate} onChange={(e) => setCallbackDate(e.target.value)} />
             </Field>

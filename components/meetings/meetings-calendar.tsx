@@ -180,12 +180,17 @@ export function MeetingsCalendar({ initialLeads }: { initialLeads: Lead[] }) {
           {withIcons(EMPTY_STATES.meetings(monthLabel))}
         </p>
       ) : (
-        <div className="overflow-hidden rounded-[12px] border border-border">
+        // A calendar can't drop below 7 columns, so instead of stacking, this scrolls sideways on a
+        // narrow phone -- same tradeoff components/team/team-table.tsx already makes for its own
+        // too-wide-to-shrink-further content. min-w-[560px] keeps each cell at least 80px, never so
+        // cramped a day number or meeting pill becomes unreadable.
+        <div className="overflow-x-auto rounded-[12px] border border-border">
+        <div className="min-w-[560px]">
           <div className="grid grid-cols-7">
             {WEEKDAY_LABELS.map((w) => (
               <div
                 key={w}
-                className="border-b border-border bg-tag px-2 py-1.5 text-center text-[0.72rem] font-semibold uppercase tracking-wide text-muted"
+                className="border-b border-border bg-tag px-1.5 py-1 text-center text-[0.68rem] font-semibold uppercase tracking-wide text-muted sm:px-2 sm:py-1.5 sm:text-[0.72rem]"
               >
                 {w}
               </div>
@@ -202,7 +207,7 @@ export function MeetingsCalendar({ initialLeads }: { initialLeads: Lead[] }) {
               return (
                 <div
                   key={key}
-                  className="min-h-[100px] border-b border-r border-border p-1.5 last:border-r-0"
+                  className="min-h-[80px] border-b border-r border-border p-1 last:border-r-0 sm:min-h-[100px] sm:p-1.5"
                   style={{
                     opacity: inMonth ? 1 : 0.45,
                     backgroundColor: dayMeetings.length > 0 ? "var(--warn-tint)" : undefined,
@@ -227,6 +232,7 @@ export function MeetingsCalendar({ initialLeads }: { initialLeads: Lead[] }) {
               );
             })}
           </div>
+        </div>
         </div>
       )}
     </div>

@@ -144,7 +144,7 @@ export function ContactsView({ initialLeads, q }: { initialLeads: Lead[]; q: str
 
   return (
     <>
-      <div className="mb-4 grid grid-cols-3 gap-4">
+      <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Field label="Category Filter">
           <Select value={category} onChange={(e) => setCategory(e.target.value)}>
             <option value={ALL_CATEGORIES}>{stripEmoji(ALL_CATEGORIES)}</option>
@@ -180,7 +180,7 @@ export function ContactsView({ initialLeads, q }: { initialLeads: Lead[]; q: str
 
       {/* Two separate blocks, not one shared card (user, 2026-09-22 -- "yeh is trhn sy nhi do, block
           banao"), same MetricCard the Today page's own stat row uses. */}
-      <div className="my-4 grid grid-cols-2 gap-4">
+      <div className="my-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <MetricCard label="📅 Today's Leads" value={String(leadsToday)} />
         <MetricCard label="🗓️ This Week's Leads" value={String(leadsThisWeek)} />
       </div>
@@ -203,7 +203,10 @@ export function ContactsView({ initialLeads, q }: { initialLeads: Lead[]; q: str
                 — {currency(lead.deal_value)} · <CategoryLabel value={lead.industry_tag} /> (
                 {STAGE_LABELS[lead.pipeline_stage]})
               </span>
-              <span className="ml-2 text-[0.75rem] text-muted">
+              {/* block below `sm`, same reasoning as projects-view.tsx/pipeline-view.tsx (2026-10-03):
+                  keeps this trailing line from wrapping stranded mid-row on a phone. `sm:inline` restores
+                  today's exact inline-at-the-end-of-the-line look. */}
+              <span className="mt-1 block text-[0.75rem] text-muted sm:ml-2 sm:mt-0 sm:inline">
                 <Ico e="🕒" /> {addedAt(lead.created_at)} · {withIcons(LEAD_SOURCE_LABELS[leadSource(lead.source_prompt)])}
                 <LeadWho lead={lead} />
               </span>
@@ -213,7 +216,7 @@ export function ContactsView({ initialLeads, q }: { initialLeads: Lead[]; q: str
           <div className="mb-4">
             <SendToDeskButton lead={lead} />
           </div>
-          <div className="grid grid-cols-[1.8fr_1.8fr_1.4fr] gap-6">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.8fr_1.8fr_1.4fr]">
             <div className="flex flex-col gap-3">
               <h4 className="text-[1rem] font-semibold"><Ico e="🏢" /> Company &amp; Contact</h4>
               {lead.company_website && (

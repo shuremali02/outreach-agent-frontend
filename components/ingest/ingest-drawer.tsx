@@ -207,7 +207,7 @@ export function IngestDrawer() {
               >
                 {withIcons(APOLLO_IMPORT.notice)}
               </p>
-              <div className="grid grid-cols-[3fr_1.2fr] gap-3">
+              <div className="grid grid-cols-1 gap-3 lg:grid-cols-[3fr_1.2fr]">
                 <Field label={APOLLO_IMPORT.label}>
                   <Input value={apolloPrompt} onChange={(e) => setApolloPrompt(e.target.value)} />
                 </Field>

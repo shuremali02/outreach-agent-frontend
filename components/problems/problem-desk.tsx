@@ -55,15 +55,15 @@ export function ProblemDesk({ defaultExpanded = false }: { defaultExpanded?: boo
   return (
     <section>
       <Card accent="danger" className="mb-3">
-        <div className="flex items-start gap-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-4">
           <div className="min-w-0 flex-1">
             <p className="date-eyebrow">{PROBLEM_DESK_HEADER.eyebrow}</p>
-            <h2 className="serif-title text-[1.5rem] font-bold">
+            <h2 className="serif-title text-[1.25rem] font-bold sm:text-[1.5rem]">
               {PROBLEM_DESK_HEADER.title}
             </h2>
             <p className="mt-1 text-[0.9rem] text-muted">{PROBLEM_DESK_HEADER.subtitle}</p>
           </div>
-          <div className="flex shrink-0 flex-col items-end gap-1.5">
+          <div className="flex shrink-0 flex-wrap items-center gap-1.5 sm:flex-col sm:items-end">
             <span className="terminal-pill" style={{ background: "var(--danger-tint)", color: "var(--danger)" }}>
               <Ico e="🔴" /> {highCount} High Priority
             </span>
@@ -100,7 +100,7 @@ export function ProblemDesk({ defaultExpanded = false }: { defaultExpanded?: boo
             }}
             className="mt-2 rounded-[10px] border border-border bg-card p-4"
           >
-            <div className="grid grid-cols-[3fr_1.5fr] gap-3">
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-[3fr_1.5fr]">
               <Field label={PROBLEM_FORM.titleLabel}>
                 <Input value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={300} />
               </Field>
@@ -123,7 +123,7 @@ export function ProblemDesk({ defaultExpanded = false }: { defaultExpanded?: boo
                 </div>
               </fieldset>
             </div>
-            <div className="mt-3 grid grid-cols-[3fr_1.5fr] gap-3">
+            <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-[3fr_1.5fr]">
               <Field label="Details">
                 <MentionField rows={3} value={description} onChange={setDescription} />
               </Field>

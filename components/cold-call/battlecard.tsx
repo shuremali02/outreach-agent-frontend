@@ -345,7 +345,7 @@ export function Battlecard({
     // losing their place in the queue -- previously this whole card had no
     // collapse at all.
     <LeadCard lead={lead} summary={summary} defaultOpen>
-      <div className="grid grid-cols-[1.2fr_2fr] gap-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.2fr_2fr]">
         {/* Dialer column */}
         <div className="flex flex-col gap-3">
           <h4 className="text-[0.95rem] font-semibold"><Ico e="📞" /> Direct Outbound Line</h4>
@@ -598,7 +598,7 @@ export function Battlecard({
           {bookingPrompt ? (
             <div className="flex flex-col gap-2 rounded-[8px] border border-accent bg-input px-3 py-3">
               <p className="text-[0.85rem] font-semibold">{withIcons(MEETING_BOOKING.prompt)}</p>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <Field label={MEETING_BOOKING.dateLabel}>
                   <Input
                     type="date"
@@ -614,7 +614,7 @@ export function Battlecard({
                   />
                 </Field>
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <Button variant="secondary" size="sm" onClick={cancelBooking}>
                   {withIcons(MEETING_BOOKING.cancel)}
                 </Button>
@@ -632,7 +632,7 @@ export function Battlecard({
           ) : callbackPrompt ? (
             <div className="flex flex-col gap-2 rounded-[8px] border border-accent bg-input px-3 py-3">
               <p className="text-[0.85rem] font-semibold">{withIcons(CALLBACK_BOOKING.prompt)}</p>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <Field label={CALLBACK_BOOKING.dateLabel}>
                   <Input type="date" value={callbackDate} onChange={(e) => setCallbackDate(e.target.value)} />
                 </Field>
@@ -640,7 +640,7 @@ export function Battlecard({
                   <Input type="time" value={callbackTime} onChange={(e) => setCallbackTime(e.target.value)} />
                 </Field>
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <Button variant="secondary" size="sm" onClick={cancelCallback}>
                   {withIcons(CALLBACK_BOOKING.cancel)}
                 </Button>
@@ -665,7 +665,7 @@ export function Battlecard({
                   Callback Scheduled open a prompt instead of calling record.mutate() directly here, so
                   they're never the one lit up by this comparison -- their own Confirm buttons (below)
                   handle their own loading state separately. */}
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {DISPOSITIONS.map((d) => (
                   <Button
                     key={d.outcome}

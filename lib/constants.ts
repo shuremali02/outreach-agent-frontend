@@ -95,11 +95,13 @@ export function countryLabel(code: string): string {
 /**
  * Add a Lead popover's own Country dropdown -- was narrowed to just US/UK/Canada on 2026-09-18; France
  * and Saudi Arabia added back 2026-09-23, United Arab Emirates 2026-09-24 (user request -- asked for
- * "Dubai", which is a city: the country entry is "AE", labelled United Arab Emirates). Pipeline/Contacts/
- * Cold Call Desk's filter dropdowns keep the full COUNTRIES list above so leads already in the CRM from any
- * other country (Pakistan, etc.) stay filterable regardless of what this popover offers.
+ * "Dubai", which is a city: the country entry is "AE", labelled United Arab Emirates), Pakistan 2026-10-05
+ * (user request -- was already in the full COUNTRIES list/filterable everywhere, backend already supports
+ * it (services/countries.py, validation.py's timezone map), it just wasn't offered here yet).
+ * Pipeline/Contacts/Cold Call Desk's filter dropdowns keep the full COUNTRIES list above so leads already
+ * in the CRM from any other country stay filterable regardless of what this popover offers.
  */
-export const ADD_LEAD_COUNTRIES = COUNTRIES.filter((c) => ["US", "GB", "CA", "FR", "SA", "AE", "QA", "EG"].includes(c.id));
+export const ADD_LEAD_COUNTRIES = COUNTRIES.filter((c) => ["US", "GB", "CA", "FR", "SA", "AE", "QA", "EG", "PK"].includes(c.id));
 
 export const ALL_SOURCES = "All Sources";
 

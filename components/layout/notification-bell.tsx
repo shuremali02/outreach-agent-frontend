@@ -205,7 +205,21 @@ export function NotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 z-50 mt-2 w-96 max-w-[90vw] rounded-[10px] border border-border bg-card shadow-lg">
+        <>
+          {/* Backdrop, mobile only (2026-10-03, caught live on a phone -- "acha nahi lag raha"): without
+              it, whatever sits behind the panel (other top bar buttons, the page content underneath) kept
+              showing through at the edges, reading as cluttered/half-transparent. Same `fixed inset-0`
+              dim-and-tap-to-close pattern the mobile sidebar drawer already uses. Not shown at `sm:` and
+              up -- the panel is narrow there and this never looked like a problem on a bigger screen. */}
+          <div className="fixed inset-0 z-40 bg-black/50 sm:hidden" onClick={() => setOpen(false)} aria-hidden />
+          {/* max-w is viewport-relative, not just 90vw (2026-10-03, caught live on a phone): the bell
+              isn't the rightmost element -- UserMenu's avatar sits to its right below `lg` -- so `right-0`
+              anchors this panel's right edge well short of the true screen edge. A width that's merely
+              "90% of the viewport" could still be wider than the actual room to the panel's left, pushing
+              its left edge past x=0 and clipping it (confirmed: the first letter of "Notifications" was
+              cut off). Reserving a fixed ~3.5rem (covers the avatar + gap) out of 100vw guarantees the
+              left edge never goes negative, however narrow the phone. */}
+          <div className="absolute right-0 z-50 mt-2 w-96 max-w-[calc(100vw-3.5rem)] rounded-[10px] border border-border bg-card shadow-lg">
           <div className="flex items-center justify-between border-b border-border px-3 py-2">
             <span className="text-[0.95rem] font-semibold">{NOTIFICATIONS.title}</span>
             {unread > 0 && (
@@ -281,7 +295,8 @@ export function NotificationBell() {
               </li>
             ))}
           </ul>
-        </div>
+          </div>
+        </>
       )}
     </div>
   );

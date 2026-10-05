@@ -53,7 +53,7 @@ export function PriorityOutreachList({ initialLeads }: { initialLeads: Lead[] })
 function PriorityDetails({ lead: listLead }: { lead: Lead }) {
   const { lead } = useFullLead(listLead);
   return (
-    <div className="grid grid-cols-[3fr_1fr] gap-6">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[3fr_1fr]">
       <div className="flex flex-col gap-3">
         <p className="text-[0.9rem]">
           <strong>Decision maker:</strong> {lead.contact_name || "—"}

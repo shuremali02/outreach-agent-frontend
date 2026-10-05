@@ -54,7 +54,7 @@ export function CommentThread({ problemId, count }: { problemId: number; count: 
             </div>
           ))}
 
-          <form onSubmit={submit} className="mt-2 grid grid-cols-[1.3fr_3fr] items-start gap-2">
+          <form onSubmit={submit} className="mt-2 grid grid-cols-1 items-start gap-2 lg:grid-cols-[1.3fr_3fr]">
             <Input
               value={author}
               onChange={(e) => setAuthor(e.target.value)}

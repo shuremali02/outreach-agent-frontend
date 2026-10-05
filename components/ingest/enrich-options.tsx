@@ -16,7 +16,7 @@ export function EnrichOptions({
   onEnrich: (v: boolean) => void;
 }) {
   return (
-    <div className="grid grid-cols-2 gap-3">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
       <label
         className="flex cursor-pointer items-center gap-2 text-[0.85rem]"
         title={ENRICH_OPTIONS.scrapeHelp}

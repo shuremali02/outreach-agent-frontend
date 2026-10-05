@@ -67,10 +67,10 @@ function ActivityFeed() {
         <ul className="overflow-hidden rounded-[10px] border border-border bg-card">
           {feed.map((i) => (
             <li key={i.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 border-b border-border px-4 py-2.5 last:border-0">
-              <span className="w-[150px] shrink-0 text-[0.8rem] tabular-nums text-muted">
+              <span className="w-auto shrink-0 text-[0.8rem] tabular-nums text-muted sm:w-[150px]">
                 {new Date(i.at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
               </span>
-              <span className={cn("w-[140px] shrink-0 font-semibold", i.user_id === null && "italic text-muted")}>
+              <span className={cn("w-auto shrink-0 font-semibold sm:w-[140px]", i.user_id === null && "italic text-muted")}>
                 {i.user_name}
               </span>
               <span className="min-w-0 flex-1 text-[0.92rem]">

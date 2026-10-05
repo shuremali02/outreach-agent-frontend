@@ -102,7 +102,7 @@ export function AddLeadPopover() {
           // the form grows taller than the viewport, and this had no
           // max-height/overflow of its own -- the extra rows were just
           // clipped, with nothing on the page able to scroll to reach them.
-          className="z-50 max-h-[85vh] w-[420px] overflow-y-auto rounded-[12px] border border-border bg-card p-5 shadow-[var(--shadow-overlay)]"
+          className="z-50 max-h-[85vh] w-[92vw] max-w-[420px] overflow-y-auto rounded-[12px] border border-border bg-card p-5 shadow-[var(--shadow-overlay)]"
         >
           <form
             onSubmit={(e) => {
@@ -155,7 +155,7 @@ export function AddLeadPopover() {
                 placeholder="https://"
               />
             </Field>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Field label="Contact Person Name">
                 <Input
                   value={form.contact_name}
@@ -169,7 +169,7 @@ export function AddLeadPopover() {
                 />
               </Field>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Field label="Contact Email">
                 <Input
                   type="email"
@@ -199,7 +199,7 @@ export function AddLeadPopover() {
                     <Ico e="✕" /> Remove
                   </button>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <Field label="Name">
                     <Input value={row.name} onChange={(e) => setContactRow(row._rowId, "name", e.target.value)} />
                   </Field>
@@ -207,7 +207,7 @@ export function AddLeadPopover() {
                     <Input value={row.role} onChange={(e) => setContactRow(row._rowId, "role", e.target.value)} />
                   </Field>
                 </div>
-                <div className="mt-3 grid grid-cols-2 gap-3">
+                <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <Field label="Email">
                     <Input
                       type="email"
@@ -241,7 +241,7 @@ export function AddLeadPopover() {
               + Add Another Contact
             </button>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Field label="Estimated Deal Value ($)">
                 <Input
                   type="number"
@@ -266,7 +266,7 @@ export function AddLeadPopover() {
             </div>
             {form.pipeline_stage === "meeting_booked" && (
               <>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <Field label={MEETING_BOOKING.dateLabel}>
                     <Input type="date" value={meetingDate} onChange={(e) => setMeetingDate(e.target.value)} />
                   </Field>
@@ -285,7 +285,7 @@ export function AddLeadPopover() {
                 )}
               </>
             )}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Field label="Industry Category *">
                 <Select
                   value={form.industry_tag}

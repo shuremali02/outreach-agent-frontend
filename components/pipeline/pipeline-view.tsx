@@ -111,7 +111,7 @@ function PipelineActions({ lead }: { lead: Lead }) {
     return (
       <div className="flex flex-col gap-2 rounded-[8px] border border-accent bg-input px-3 py-3">
         <p className="text-[0.85rem] font-semibold">{withIcons(MEETING_BOOKING.prompt)}</p>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <Field label={MEETING_BOOKING.dateLabel}>
             <Input type="date" value={meetingDate} onChange={(e) => setMeetingDate(e.target.value)} />
           </Field>
@@ -119,7 +119,7 @@ function PipelineActions({ lead }: { lead: Lead }) {
             <Input type="time" value={meetingTime} onChange={(e) => setMeetingTime(e.target.value)} />
           </Field>
         </div>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <Button variant="secondary" size="sm" onClick={() => setBookingPrompt(false)}>
             {withIcons(MEETING_BOOKING.cancel)}
           </Button>
@@ -143,7 +143,7 @@ function PipelineActions({ lead }: { lead: Lead }) {
   }
 
   return (
-    <div className="grid grid-cols-2 gap-2">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
       {/* One shared `outcome` mutation for all 3 buttons -- `disabled` blocks all of them while any one
           is in flight (a rep noticed, 2026-09-23: "loader spinner har button par chal rha hai"), but the
           spinner itself only shows on the specific button actually clicked (outcome.variables), same
@@ -360,7 +360,7 @@ export function PipelineView({
 
   return (
     <>
-      <div className="my-4 grid grid-cols-3 gap-4">
+      <div className="my-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <MetricCard label="Opportunity" value={currency(opportunityValue)} />
         <MetricCard
           label="Proposal Sent"
@@ -370,7 +370,7 @@ export function PipelineView({
         <MetricCard label="Client Closed" value={currency(wonValue)} />
       </div>
 
-      <div className="mb-4 grid grid-cols-5 gap-4">
+      <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <Field label={PIPELINE_VIEW_FILTER.label}>
           <Select value={view} onChange={(e) => setView(e.target.value as typeof view)}>
             <option value="all">{stripEmoji(PIPELINE_VIEW_FILTER.all)}</option>
@@ -431,59 +431,68 @@ export function PipelineView({
                 — {currency(lead.deal_value)} · <CategoryLabel value={lead.industry_tag} /> (
                 {STAGE_LABELS[lead.pipeline_stage]})
               </span>
-              {lead.callback_at ? (
-                <span className="ml-2 rounded-[6px] bg-input px-1.5 py-0.5 text-[0.75rem] font-semibold text-muted">
-                  {withIcons(PIPELINE_CARD.callbackTag(
-                    new Date(lead.callback_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-                  ))}
-                </span>
-              ) : (
-                lead.last_call_outcome === "callback_scheduled" && (
-                  <span
-                    className="ml-2 rounded-[6px] px-1.5 py-0.5 text-[0.75rem] font-semibold"
-                    style={{ background: "var(--warn-tint)", color: "var(--warn)" }}
-                    title="Callback Scheduled, but no date/time was captured -- set one via Edit."
-                  >
-                    {withIcons(PIPELINE_CARD.callbackNoTimeTag)}
+              {/* All the badges + the added-at line, grouped so they always wrap together as a unit
+                  instead of being loose inline text: on a phone, a long company name alone could push
+                  these onto a wrapped line in the middle of nowhere, interleaved unpredictably with
+                  whichever badges happened to apply to that lead (same root cause fixed in
+                  needs-followup-list.tsx, 2026-10-03). `flex flex-wrap gap-2` below `sm` gives every
+                  card the same shape (text, then badges on their own row); `sm:inline` + each child's
+                  `sm:ml-2` restores today's exact inline-at-the-end-of-the-line look. */}
+              <span className="mt-1 flex flex-wrap items-center gap-1.5 sm:mt-0 sm:inline sm:gap-0">
+                {lead.callback_at ? (
+                  <span className="rounded-[6px] bg-input px-1.5 py-0.5 text-[0.75rem] font-semibold text-muted sm:ml-2">
+                    {withIcons(PIPELINE_CARD.callbackTag(
+                      new Date(lead.callback_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+                    ))}
                   </span>
-                )
-              )}
-              {lead.pipeline_stage === "meeting_booked" && lead.meeting_at && (
-                <span className="ml-2 rounded-[6px] bg-input px-1.5 py-0.5 text-[0.75rem] font-semibold text-muted">
-                  {withIcons(PIPELINE_CARD.meetingTag(
-                    new Date(lead.meeting_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-                  ))}
+                ) : (
+                  lead.last_call_outcome === "callback_scheduled" && (
+                    <span
+                      className="rounded-[6px] px-1.5 py-0.5 text-[0.75rem] font-semibold sm:ml-2"
+                      style={{ background: "var(--warn-tint)", color: "var(--warn)" }}
+                      title="Callback Scheduled, but no date/time was captured -- set one via Edit."
+                    >
+                      {withIcons(PIPELINE_CARD.callbackNoTimeTag)}
+                    </span>
+                  )
+                )}
+                {lead.pipeline_stage === "meeting_booked" && lead.meeting_at && (
+                  <span className="rounded-[6px] bg-input px-1.5 py-0.5 text-[0.75rem] font-semibold text-muted sm:ml-2">
+                    {withIcons(PIPELINE_CARD.meetingTag(
+                      new Date(lead.meeting_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+                    ))}
+                  </span>
+                )}
+                {lead.pipeline_stage === "proposal_sent" && (
+                  <span className="rounded-[6px] bg-input px-1.5 py-0.5 text-[0.75rem] font-semibold text-muted sm:ml-2">
+                    {withIcons(PIPELINE_CARD.proposalTag)}
+                  </span>
+                )}
+                {lead.pipeline_stage === "followup_due" && lead.no_show_at && (
+                  <span
+                    className="rounded-[6px] px-1.5 py-0.5 text-[0.75rem] font-semibold sm:ml-2"
+                    style={{ background: "var(--danger-tint)", color: "var(--danger)" }}
+                  >
+                    {withIcons(
+                      PIPELINE_CARD.noShowTag(
+                        new Date(lead.no_show_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+                      ),
+                    )}
+                  </span>
+                )}
+                {/* Ali (Sales Rep, 2026-09-15): leads couldn't be verified
+                    without knowing when/how they were added. */}
+                <span className="text-[0.75rem] text-muted sm:ml-2">
+                  <Ico e="🕒" /> {addedAt(lead.created_at)} · {withIcons(LEAD_SOURCE_LABELS[leadSource(lead.source_prompt)])}
+                  <LeadWho lead={lead} />
                 </span>
-              )}
-              {lead.pipeline_stage === "proposal_sent" && (
-                <span className="ml-2 rounded-[6px] bg-input px-1.5 py-0.5 text-[0.75rem] font-semibold text-muted">
-                  {withIcons(PIPELINE_CARD.proposalTag)}
-                </span>
-              )}
-              {lead.pipeline_stage === "followup_due" && lead.no_show_at && (
-                <span
-                  className="ml-2 rounded-[6px] px-1.5 py-0.5 text-[0.75rem] font-semibold"
-                  style={{ background: "var(--danger-tint)", color: "var(--danger)" }}
-                >
-                  {withIcons(
-                    PIPELINE_CARD.noShowTag(
-                      new Date(lead.no_show_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-                    ),
-                  )}
-                </span>
-              )}
-              {/* Ali (Sales Rep, 2026-09-15): leads couldn't be verified
-                  without knowing when/how they were added. */}
-              <span className="ml-2 text-[0.75rem] text-muted">
-                <Ico e="🕒" /> {addedAt(lead.created_at)} · {withIcons(LEAD_SOURCE_LABELS[leadSource(lead.source_prompt)])}
-                <LeadWho lead={lead} />
               </span>
             </span>
           }
         >
           {/* Three columns: company/contact | deal + actions | notes. Notes added 2026-09-24 ("yeh notes
               pipeline me nhi dikh rhy") -- the same NotesPanel Leads/Projects/the Meeting popup already use. */}
-          <div className="grid grid-cols-[1.4fr_1fr_1.2fr] gap-6">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.4fr_1fr_1.2fr]">
             <div className="flex flex-col gap-3">
               <h4 className="text-[1rem] font-semibold"><Ico e="🏢" /> Company &amp; Contact</h4>
               {lead.company_website && (

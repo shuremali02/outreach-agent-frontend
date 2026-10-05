@@ -101,7 +101,7 @@ export function MeetingDetailDialog({
       <Dialog.Trigger asChild>{trigger}</Dialog.Trigger>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/50" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 max-h-[85vh] w-[440px] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-[12px] border border-border bg-card p-5 shadow-[var(--shadow-overlay)]">
+        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 max-h-[85vh] w-[92vw] max-w-[440px] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-[12px] border border-border bg-card p-5 shadow-[var(--shadow-overlay)]">
           <div className="mb-3 flex items-start justify-between gap-3">
             <Dialog.Title className="text-[1.05rem] font-semibold">
               {lead.company_name}
@@ -173,7 +173,7 @@ export function MeetingDetailDialog({
               {callbackPrompt ? (
                 <div className="flex flex-col gap-2 rounded-[8px] border border-accent bg-input px-3 py-3">
                   <p className="text-[0.85rem] font-semibold">{withIcons(CALLBACK_BOOKING.prompt)}</p>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <Field label={CALLBACK_BOOKING.dateLabel}>
                       <Input type="date" value={callbackDate} onChange={(e) => setCallbackDate(e.target.value)} />
                     </Field>
@@ -181,7 +181,7 @@ export function MeetingDetailDialog({
                       <Input type="time" value={callbackTime} onChange={(e) => setCallbackTime(e.target.value)} />
                     </Field>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <Button variant="secondary" size="sm" onClick={cancelCallback}>
                       {withIcons(CALLBACK_BOOKING.cancel)}
                     </Button>
@@ -197,7 +197,7 @@ export function MeetingDetailDialog({
                   </div>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {MEETING_OUTCOMES.map((outcome) => (
                     <Button
                       key={outcome.noShow ? "no_show" : outcome.stage}

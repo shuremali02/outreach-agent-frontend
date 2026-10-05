@@ -46,21 +46,30 @@ function NeedsFollowUpCard({ lead, calendarLink }: { lead: Lead; calendarLink: s
             — Next Step for {lead.contact_name || "this account"}
             {lead.meeting_at && ` · met ${addedAt(lead.meeting_at)}`}
           </span>
-          <span className="stage-tag ml-2">{STAGE_LABELS[lead.pipeline_stage]}</span>
-          {/* User, 2026-09-28: "kese pata hoga ke yeh banda already meeting booked tha pehle" -- this list
-              is exactly where a No Show ends up (still at followup_due), so it needs the tag most. */}
-          {lead.no_show_at && (
-            <span
-              className="ml-2 rounded-[6px] px-1.5 py-0.5 text-[0.75rem] font-semibold"
-              style={{ background: "var(--danger-tint)", color: "var(--danger)" }}
-            >
-              {withIcons(
-                PIPELINE_CARD.noShowTag(
-                  new Date(lead.no_show_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-                ),
-              )}
-            </span>
-          )}
+          {/* Badges in their own always-wrapped group, not loose inline text: on a phone this run-on
+              line (icon + bold company name + muted description + an uppercase stage pill) wrapped
+              unpredictably depending on how long the company/contact name happened to be, so a bold
+              pill like "FOLLOW-UP DUE" sometimes landed stranded alone on its own line, mid-sentence,
+              making every card a different shape (user screenshot, 2026-10-03: "cards equal nahi hain").
+              `block` below `sm` gives every card the same predictable shape (text, then badges on their
+              own line); `sm:inline sm:ml-2` restores today's exact inline-at-the-end-of-the-line look. */}
+          <span className="mt-1 block sm:ml-2 sm:mt-0 sm:inline">
+            <span className="stage-tag">{STAGE_LABELS[lead.pipeline_stage]}</span>
+            {/* User, 2026-09-28: "kese pata hoga ke yeh banda already meeting booked tha pehle" -- this list
+                is exactly where a No Show ends up (still at followup_due), so it needs the tag most. */}
+            {lead.no_show_at && (
+              <span
+                className="ml-2 rounded-[6px] px-1.5 py-0.5 text-[0.75rem] font-semibold"
+                style={{ background: "var(--danger-tint)", color: "var(--danger)" }}
+              >
+                {withIcons(
+                  PIPELINE_CARD.noShowTag(
+                    new Date(lead.no_show_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+                  ),
+                )}
+              </span>
+            )}
+          </span>
         </span>
       }
     >
@@ -83,7 +92,7 @@ function NeedsFollowUpCard({ lead, calendarLink }: { lead: Lead; calendarLink: s
           <h4 className="mb-1 text-[1rem] font-semibold"><Ico e="⚡" /> Quick Follow-up Draft</h4>
           <Textarea rows={6} value={draft} onChange={(e) => setDraft(e.target.value)} />
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <MailtoButton
             email={lead.contact_email}
             subject={`Re: ${lead.subject}`}

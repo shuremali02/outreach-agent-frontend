@@ -160,7 +160,7 @@ export function DiscoveryForm() {
                 required
               />
             </Field>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Field label="Industry Category">
                 <Select value={category} onChange={(e) => setCategory(e.target.value)}>
                   {STANDARD_CATEGORIES.map((c) => (

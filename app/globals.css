@@ -98,11 +98,24 @@
 
   .hero-heading {
     font-family: var(--font-inter), ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
-    font-size: 2.75rem;
+    font-size: 1.75rem;
     font-weight: 600;
-    line-height: 1.15;
+    line-height: 1.2;
     color: var(--text);
     margin-bottom: 0.25rem;
+  }
+
+  @media (min-width: 640px) {
+    .hero-heading {
+      font-size: 2.25rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .hero-heading {
+      font-size: 2.75rem;
+      line-height: 1.15;
+    }
   }
 
   .date-eyebrow {
