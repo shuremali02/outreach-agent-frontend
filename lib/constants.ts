@@ -47,7 +47,10 @@ export const UNKNOWN_COUNTRY = "unknown";
 export const COUNTRIES: { id: string; label: string }[] = [
   { id: "US", label: "🇺🇸 United States" },
   { id: "GB", label: "🇬🇧 United Kingdom" },
-  { id: "AE", label: "🇦🇪 United Arab Emirates" },
+  // Relabelled 2026-10-05 (user asked for "Dubai UAE" again, having already asked once on 2026-09-24 --
+  // the plain "United Arab Emirates" label apparently didn't read as "Dubai" when scanning the dropdown).
+  // Same "AE" code as before, just a clearer label.
+  { id: "AE", label: "🇦🇪 UAE (Dubai)" },
   { id: "SA", label: "🇸🇦 Saudi Arabia" },
   { id: "QA", label: "🇶🇦 Qatar" },
   { id: "KW", label: "🇰🇼 Kuwait" },
@@ -269,6 +272,11 @@ export const NAV_ITEMS = [
   // Badge removed (user, 2026-09-29, Neon quota-reduction pass) -- Meetings is the only nav badge left.
   { name: "Problem Desk", icon: "🎯", href: "/problems", badge: null },
   { name: "AI Lead Finder", icon: "🔍", href: "/lead-finder", badge: null },
+  // New isolated desk (user, 2026-10-05): same structure/buttons as Cold Call Desk, but a completely
+  // separate queue for leads added manually via Add a Lead's "This is a LinkedIn lead" checkbox -- never
+  // mixes with Cold Call Desk's own leads. Kept at the bottom of the nav (user, 2026-10-05: "neechy rakho
+  // sab sy").
+  { name: "LinkedIn", icon: "🔗", href: "/linkedin", badge: null },
 ] as const;
 
 /** Rotates on a 15-minute slot (app.py: int(time.time() // 900)). */
@@ -467,6 +475,12 @@ export const PAGE_HEADERS = {
     title: "Cold Call Battlecard Deck",
     subtitle:
       "300 daily pre-scrubbed leads with verified direct lines, live on-screen 20-second scripts, and objection rebuttals.",
+  },
+  // New isolated desk (2026-10-05) -- same battlecard/buttons as Cold Call Desk, manually-added leads only.
+  linkedin: {
+    eyebrow: "LINKEDIN OUTREACH // ISOLATED CALLING DESK",
+    title: "LinkedIn Leads",
+    subtitle: "Leads sourced from LinkedIn, added manually -- kept separate from the Cold Call Desk until actioned.",
   },
   problems: {
     eyebrow: "SALES OPERATIONS & STRATEGY",

@@ -39,6 +39,7 @@ const EMPTY: CreateLeadInput = {
   industry_tag: "",
   pipeline_stage: "draft_ready",
   reason: "",
+  linkedin_lead: false,
 };
 
 export function AddLeadPopover() {
@@ -155,6 +156,21 @@ export function AddLeadPopover() {
                 placeholder="https://"
               />
             </Field>
+            {/* New isolated desk (user, 2026-10-05): picking this at add-time is the ONE way a lead ever
+                lands on the LinkedIn tab instead of Cold Call Desk -- never shows on Contacts or Cold Call
+                Desk until it's actually been actioned. See crud/leads.py's lead_channel. */}
+            <label
+              className="flex cursor-pointer items-center gap-2 rounded-[8px] border border-border bg-input px-3 py-2 text-[0.85rem]"
+              title="Adds this lead to the LinkedIn tab instead of Cold Call Desk."
+            >
+              <input
+                type="checkbox"
+                checked={form.linkedin_lead ?? false}
+                onChange={(e) => set("linkedin_lead", e.target.checked)}
+                className="accent-[var(--accent)]"
+              />
+              <Ico e="📇" /> This is a LinkedIn lead
+            </label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Field label="Contact Person Name">
                 <Input

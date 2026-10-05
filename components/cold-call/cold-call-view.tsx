@@ -51,24 +51,37 @@ function lineOf(l: Lead): string {
   return "none";
 }
 
-export function ColdCallView({ initialLeads, q }: { initialLeads: Lead[]; q: string }) {
+export function ColdCallView({
+  initialLeads,
+  q,
+  channel = "cold_call",
+}: {
+  initialLeads: Lead[];
+  q: string;
+  /** Which desk this is -- "linkedin" (2026-10-05) renders the exact same view/buttons/actions, scoped to
+   * the isolated LinkedIn desk instead. See app/(workspace)/linkedin/page.tsx. */
+  channel?: "cold_call" | "linkedin";
+}) {
   // Full rows, not slim: every card here shows the phone script and objections (and the mailto body), and
   // 139 cards each fetching their own full lead would be far worse than one bigger list.
   // Only the desk's own leads (filtered in SQL, not in the browser), and NOT Voicemail/Hang Up or No
   // Answer: those (plus Not Interested) only load once the rep picks one from the "Already Tried" dropdown
   // below, so none of the three is downloaded on every visit. These filters must match
-  // app/(workspace)/cold-call/page.tsx exactly.
-  const { data: mainLeads = [] } = useLeads({ q, slim: false, onDesk: true, tried: false }, initialLeads);
+  // app/(workspace)/cold-call/page.tsx (or linkedin/page.tsx) exactly.
+  const { data: mainLeads = [] } = useLeads({ q, slim: false, desk: channel, tried: false }, initialLeads);
   const qc = useQueryClient();
   // "Already Tried" dropdown (user, 2026-10-01): "" = nothing picked, nothing fetched. "tried" reuses the
-  // existing onDesk+tried=true query; "no_answer"/"not_interested" are the new `bucket` filter -- see
-  // lib/constants.ts ALREADY_TRIED_FILTER and types/lead.ts LeadFilters.bucket.
+  // existing desk+tried=true query; "no_answer"/"not_interested" are the new `bucket` filter -- see
+  // lib/constants.ts ALREADY_TRIED_FILTER and types/lead.ts LeadFilters.bucket. `desk` is always sent
+  // (2026-10-05) -- even for "not_interested", where it no longer gates membership (that outcome already
+  // left the desk) but still scopes which channel's hidden leads come back, keeping the two desks' buckets
+  // from leaking into each other.
   const [bucket, setBucket] = useState<"" | "tried" | "no_answer" | "not_interested">("");
   const bucketResult = useLeads(
     {
       q,
       slim: false,
-      onDesk: bucket !== "not_interested",
+      desk: channel,
       tried: bucket === "tried" ? true : undefined,
       bucket: bucket === "no_answer" || bucket === "not_interested" ? bucket : undefined,
     },
@@ -78,8 +91,8 @@ export function ColdCallView({ initialLeads, q }: { initialLeads: Lead[]; q: str
   // The ticker total still needs an accurate count even before anything is picked -- one lightweight COUNT
   // query (never the rows themselves), same pattern as before.
   const triedCount = useQuery({
-    queryKey: ["desk-tried-count", q],
-    queryFn: () => leadsApi.deskTriedCount(q),
+    queryKey: ["desk-tried-count", q, channel],
+    queryFn: () => leadsApi.deskTriedCount(q, channel),
     staleTime: 60_000,
   });
   const triedTotal = triedCount.data?.count ?? 0;

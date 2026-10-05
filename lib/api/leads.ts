@@ -11,13 +11,15 @@ export const leadsApi = {
       q: filters.q,
       // Slim unless a page asks for full (Cold Call Desk, whose cards show the script and objections).
       slim: filters.slim === false ? undefined : 1,
-      on_desk: filters.onDesk ? 1 : undefined,
+      desk: filters.desk,
       tried: filters.tried,
       include_meeting_hidden: filters.includeMeetingHidden ? 1 : undefined,
       bucket: filters.bucket,
     }),
-  /** Size of the Cold Call Desk's Voicemail / Hang Up group, so the collapsed section can show it unloaded. */
-  deskTriedCount: (q?: string) => api.get<{ count: number }>("/leads/desk-tried-count", { q }),
+  /** Size of a desk's Voicemail / Hang Up group, so the collapsed section can show it unloaded.
+   * `desk` (2026-10-05): defaults to "cold_call" on the backend if omitted. */
+  deskTriedCount: (q?: string, desk?: "cold_call" | "linkedin") =>
+    api.get<{ count: number }>("/leads/desk-tried-count", { q, desk }),
   get: (id: number) => api.get<Lead>(`/leads/${id}`),
   create: (input: CreateLeadInput) => api.post<Lead>("/leads", input),
   update: (id: number, input: UpdateLeadInput) => api.patch<Lead>(`/leads/${id}`, input),

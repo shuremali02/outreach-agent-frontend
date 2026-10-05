@@ -339,9 +339,8 @@ export function PipelineView({
   // "Opportunity" -- every lead currently active in Pipeline that has NOT reached Proposal Sent yet (open,
   // not yet won or lost). A lead moves Opportunity -> Proposal Sent -> Client Closed and is only ever in
   // one of the three cards (user, 2026-09-25).
-  const opportunityValue = inScope
-    .filter((l) => l.pipeline_stage !== "proposal_sent")
-    .reduce((s, l) => s + l.deal_value, 0);
+  const opportunityLeads = useMemo(() => inScope.filter((l) => l.pipeline_stage !== "proposal_sent"), [inScope]);
+  const opportunityValue = opportunityLeads.reduce((s, l) => s + l.deal_value, 0);
   // "Client Closed" (was "Interested" until 2026-09-24, renamed on request -- it's exactly the leads at stage
   // won, the same label the Client Closed button and Projects use) -- stays 0 until a lead is actually
   // Client Closed (won leaves this page for Projects,
@@ -361,7 +360,11 @@ export function PipelineView({
   return (
     <>
       <div className="my-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <MetricCard label="Opportunity" value={currency(opportunityValue)} />
+        <MetricCard
+          label="Opportunity"
+          value={currency(opportunityValue)}
+          sub={`${opportunityLeads.length} ${opportunityLeads.length === 1 ? "lead" : "leads"}`}
+        />
         <MetricCard
           label="Proposal Sent"
           value={currency(proposalValue)}

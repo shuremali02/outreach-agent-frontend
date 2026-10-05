@@ -13,7 +13,7 @@ export default async function ColdCallPage({ searchParams }: PageProps<"/cold-ca
   const q = typeof sp.q === "string" ? sp.q : "";
   // Must match ColdCallView's useLeads() filters exactly, or its initialData is thrown away. Only the desk's
   // own leads, and not the Voicemail / Hang Up group -- that loads when the rep opens its section.
-  const leads = await leadsApi.list({ q, slim: false, onDesk: true, tried: false });
+  const leads = await leadsApi.list({ q, slim: false, desk: "cold_call", tried: false });
 
   return (
     <div>

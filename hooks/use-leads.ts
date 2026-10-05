@@ -19,7 +19,7 @@ export function leadsKey(filters: LeadFilters = {}) {
     filters.q ?? null,
     // A slim and a full list are different payloads -- never serve one from the other's cache entry.
     filters.slim === false ? "full" : "slim",
-    filters.onDesk ? "desk" : null,
+    filters.desk ?? null,
     filters.tried ?? null,
     filters.includeMeetingHidden ? "meeting-hidden" : null,
     filters.bucket ?? null,
