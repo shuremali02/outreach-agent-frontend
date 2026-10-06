@@ -191,38 +191,58 @@ export function NeedsFollowUpList({ initialLeads, calendarLink }: { initialLeads
     );
   }, [scoped, search, sortRecent]);
 
+  // Collapsed by default (user, 2026-10-06: "meeting tab par on karte he humein recent activities na show
+  // hon jaise abhi ho raha hai, hum dekhna chahein to show ho warna calendar he ho") -- opening Meetings
+  // used to always show this whole list above the calendar; now it's one line (a toggle, same chevron
+  // affordance LeadCard's own expander uses) until a rep actually wants to look at it.
+  const [open, setOpen] = useState(false);
+
   if (scoped.length === 0) return null;
 
   return (
     <div className="mb-6">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="mb-3 flex cursor-pointer items-center gap-2 text-left"
+      >
+        <span className="text-[1.1rem] text-muted" aria-hidden>
+          {open ? "▾" : "▸"}
+        </span>
         <h3 className="text-[1.05rem] font-semibold">{withIcons(NEEDS_FOLLOWUP.heading(scoped.length))}</h3>
-        <Input
-          type="search"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder={NEEDS_FOLLOWUP.searchPlaceholder}
-          aria-label={NEEDS_FOLLOWUP.searchPlaceholder}
-          className="w-full sm:w-72"
-        />
-      </div>
-      <p className="mb-3 text-[0.85rem] text-muted">
-        {NEEDS_FOLLOWUP.note} · {NEEDS_FOLLOWUP.showing(leads.length, scoped.length)}
-      </p>
-      <div className="mb-3 max-w-xs">
-        <Field label="Sort By">
-          <Select value={sortRecent ? "recent" : "oldest"} onChange={(e) => setSortRecent(e.target.value === "recent")}>
-            <option value="recent">{stripEmoji(NEEDS_FOLLOWUP.sortRecent)}</option>
-            <option value="oldest">{stripEmoji(NEEDS_FOLLOWUP.sortOldest)}</option>
-          </Select>
-        </Field>
-      </div>
-      {leads.length === 0 ? (
-        <p className="rounded-[8px] px-3 py-2 text-[0.9rem]" style={{ background: "var(--info-tint)", color: "var(--info)" }}>
-          {withIcons(NEEDS_FOLLOWUP.empty)}
-        </p>
-      ) : (
-        leads.map((lead) => <NeedsFollowUpCard key={lead.id} lead={lead} calendarLink={calendarLink} />)
+      </button>
+      {open && (
+        <>
+          <div className="mb-3 flex justify-end">
+            <Input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={NEEDS_FOLLOWUP.searchPlaceholder}
+              aria-label={NEEDS_FOLLOWUP.searchPlaceholder}
+              className="w-full sm:w-72"
+            />
+          </div>
+          <p className="mb-3 text-[0.85rem] text-muted">
+            {NEEDS_FOLLOWUP.note} · {NEEDS_FOLLOWUP.showing(leads.length, scoped.length)}
+          </p>
+          <div className="mb-3 max-w-xs">
+            <Field label="Sort By">
+              <Select value={sortRecent ? "recent" : "oldest"} onChange={(e) => setSortRecent(e.target.value === "recent")}>
+                <option value="recent">{stripEmoji(NEEDS_FOLLOWUP.sortRecent)}</option>
+                <option value="oldest">{stripEmoji(NEEDS_FOLLOWUP.sortOldest)}</option>
+              </Select>
+            </Field>
+          </div>
+          {leads.length === 0 ? (
+            <p className="rounded-[8px] px-3 py-2 text-[0.9rem]" style={{ background: "var(--info-tint)", color: "var(--info)" }}>
+              {withIcons(NEEDS_FOLLOWUP.empty)}
+            </p>
+          ) : (
+            leads.map((lead) => <NeedsFollowUpCard key={lead.id} lead={lead} calendarLink={calendarLink} />)
+          )}
+        </>
       )}
     </div>
   );
