@@ -21,6 +21,13 @@ export const leadsApi = {
    * `desk` (2026-10-05): defaults to "cold_call" on the backend if omitted. */
   deskTriedCount: (q?: string, desk?: "cold_call" | "linkedin") =>
     api.get<{ count: number }>("/leads/desk-tried-count", { q, desk }),
+  /** Live-typing check on Add a Lead (2026-10-06) -- same check POST /leads enforces on submit (409),
+   * surfaced earlier so a rep finds out before filling in the rest of the form. */
+  checkDuplicate: (companyName: string, companyWebsite: string) =>
+    api.get<{ duplicate: boolean; lead_id?: number; company_name?: string }>("/leads/check-duplicate", {
+      company_name: companyName,
+      company_website: companyWebsite,
+    }),
   get: (id: number) => api.get<Lead>(`/leads/${id}`),
   create: (input: CreateLeadInput) => api.post<Lead>("/leads", input),
   update: (id: number, input: UpdateLeadInput) => api.patch<Lead>(`/leads/${id}`, input),

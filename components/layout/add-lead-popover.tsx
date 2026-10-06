@@ -1,7 +1,7 @@
 "use client";
 
 import * as Popover from "@radix-ui/react-popover";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { leadsApi } from "@/lib/api";
 import { ADD_LEAD_COUNTRIES, ADD_LEAD_TEAM, LINKEDIN_OWNERS, MEETING_BOOKING, MENTIONS, PIPELINE_STAGES, STANDARD_CATEGORIES, TOASTS } from "@/lib/constants";
@@ -59,6 +59,39 @@ export function AddLeadPopover() {
   const toast = useToast();
   const { data: users = [] } = useUsers();
 
+  // Live-typing duplicate check (user, 2026-10-06: "save button par nahi, name/website add karte hi hamein
+  // bata de k yeh already hai, pura form bhar kar time na waste karna pade") -- debounced, best-effort
+  // only: a failed/slow check never blocks typing or submitting, it just doesn't show a warning that run.
+  // POST /leads below still enforces this for real on submit either way (the 409 branch), this is purely
+  // an earlier heads-up.
+  const [duplicateMatch, setDuplicateMatch] = useState<{ leadId: number; companyName: string } | null>(null);
+  const duplicateCheckId = useRef(0);
+  useEffect(() => {
+    const name = form.company_name.trim();
+    const website = (form.company_website || "").trim();
+    const requestId = ++duplicateCheckId.current;
+    const timer = setTimeout(() => {
+      // Deliberately inside the timeout, not synchronously in the effect body (react-hooks/set-state-in-
+      // effect flagged the first version of this) -- nothing to check yet, so no network call either.
+      if (!name && !website) {
+        setDuplicateMatch(null);
+        return;
+      }
+      leadsApi
+        .checkDuplicate(name, website)
+        .then((res) => {
+          if (requestId !== duplicateCheckId.current) return; // a newer keystroke already superseded this
+          setDuplicateMatch(
+            res.duplicate && res.lead_id !== undefined && res.company_name !== undefined
+              ? { leadId: res.lead_id, companyName: res.company_name }
+              : null,
+          );
+        })
+        .catch(() => undefined);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [form.company_name, form.company_website]);
+
   const create = useMutation({
     mutationFn: (input: CreateLeadInput) => leadsApi.create(input),
     onSuccess: (lead) => {
@@ -69,6 +102,7 @@ export function AddLeadPopover() {
       setMeetingDate("");
       setMeetingTime("");
       setExtraContacts([]);
+      setDuplicateMatch(null);
       setError(null);
       setOpen(false);
     },
@@ -156,6 +190,14 @@ export function AddLeadPopover() {
                 placeholder="https://"
               />
             </Field>
+            {duplicateMatch && (
+              <p
+                className="rounded-[8px] px-3 py-2 text-[0.8rem]"
+                style={{ background: "var(--warn-tint)", color: "var(--warn)" }}
+              >
+                <Ico e="⚠️" /> &quot;{duplicateMatch.companyName}&quot; is already in the CRM (lead #{duplicateMatch.leadId}).
+              </p>
+            )}
             {/* New isolated desk (user, 2026-10-05): picking this at add-time is the ONE way a lead ever
                 lands on the LinkedIn tab instead of Cold Call Desk -- never shows on Contacts or Cold Call
                 Desk until it's actually been actioned. See crud/leads.py's lead_channel. */}

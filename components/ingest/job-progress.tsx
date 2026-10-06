@@ -2,18 +2,24 @@
 
 import type { Job } from "@/types";
 import { Ico } from "@/components/ui/emoji-icon";
+import { JOB_PROGRESS } from "@/lib/constants";
 
 /** Replaces st.progress — driven by polling instead of a blocked script thread. */
 export function JobProgress({ job }: { job: Job | undefined }) {
   if (!job) return null;
 
   if (job.status === "error") {
+    // Never job.error itself (user report, 2026-10-06): that's the raw str(exc) the backend caught --
+    // for a SQL failure it can be the entire statement and every bound parameter, which is exactly what
+    // got shown on screen once. The real detail is always in the server logs already; this one generic
+    // line is all a rep ever needs to see here.
+    if (job.error) console.error("Job failed:", job.error);
     return (
       <p
         className="rounded-[8px] px-3 py-2 text-[0.85rem]"
         style={{ background: "var(--danger-tint)", color: "var(--danger)" }}
       >
-        {job.error}
+        {JOB_PROGRESS.genericError}
       </p>
     );
   }

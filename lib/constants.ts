@@ -1121,6 +1121,19 @@ export const ACTIVITY_SCROLLER = {
 } as const;
 
 /**
+ * Shared background-job progress bar (components/ingest/job-progress.tsx), used by AI Lead Finder and the
+ * CSV/batch ingest drawer. `genericError`, not `job.error` itself (user report, 2026-10-06 -- a Postgres
+ * column-width crash showed its ENTIRE raw SQL statement, every bound parameter, on screen; this was
+ * already raised once before as a general rule, not just that one bug): a job can fail for any reason --
+ * a SQL error, a network timeout, anything -- and none of that text is for a rep to read. The real detail
+ * always reaches the server logs already (registry.py logs the full exception + traceback before this
+ * message is even set), so the UI only ever needs one calm, generic line.
+ */
+export const JOB_PROGRESS = {
+  genericError: "Something went wrong while running this job. Try again, or ask for help if it keeps happening.",
+} as const;
+
+/**
  * app.py:877, 931, 1147, 1223, 1859, 2065, 2231, 2320 — empty and warning states.
  * These are what the sales team is used to reading; a shorter paraphrase drops
  * the instruction telling them what to do next.
