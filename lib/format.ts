@@ -62,6 +62,22 @@ export function commentTime(iso: string): string {
 }
 
 /**
+ * Notification timestamps (user, 2026-10-06: "notification par timezone 24 hours nahi 12 hours wala
+ * standard rakho") -- same "date time" shape commentTime() above has, just 12-hour/AM-PM instead of
+ * 24-hour. A separate function rather than changing commentTime() itself, which comment-thread.tsx still
+ * uses and deliberately matches app.py's original 24-hour comment rendering (see the comment above it) --
+ * this request was specifically about notifications, not Problem Desk comments.
+ */
+export function notificationTime(iso: string): string {
+  const parts = localDateTimeParts(iso);
+  if (!parts) return "";
+  const { date, hour, minute } = parts;
+  const h12 = hour % 12 === 0 ? 12 : hour % 12;
+  const time = `${h12}:${String(minute).padStart(2, "0")} ${hour < 12 ? "AM" : "PM"}`;
+  return `${date} ${time}`;
+}
+
+/**
  * "2026-09-15 · 5:30 PM" -- when a lead was added, shown on lead cards.
  * 12-hour, unlike commentTime's 24-hour above -- that one deliberately
  * matches app.py's original comment-timestamp rendering, this one has no

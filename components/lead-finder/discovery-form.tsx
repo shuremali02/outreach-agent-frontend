@@ -98,6 +98,11 @@ export function DiscoveryForm() {
   // which TS refuses as a ReactNode. A boolean-typed guard avoids that.
   const hasResult = result !== undefined;
   const ready = source === "maps" ? mapsQuery.trim().length > 0 : prompt.trim().length > 0;
+  // User, 2026-10-08: "yeh 1 2 3 4 5 nahi, direct 5 rakho phir 10 phir 15 phir 20 phir 25" -- step=5
+  // instead of 1, so the slider only lands on round numbers. Both tabs now allow up to 25 server-side
+  // (schemas/job.py's DiscoverJobInput and, since the same request, MapsQualifyJobInput -- raised from
+  // 10 to 25 on 2026-10-08 at the user's ask, even though the qualify funnel is heavier per-lead).
+  const maxCount = 25;
 
   return (
     <Card className="max-w-3xl">
@@ -200,8 +205,9 @@ export function DiscoveryForm() {
           label={LEAD_FINDER.sliderLabel}
           value={count}
           onChange={setCount}
-          min={1}
-          max={10}
+          min={5}
+          max={maxCount}
+          step={5}
           showQuotaCaption={false}
         />
 

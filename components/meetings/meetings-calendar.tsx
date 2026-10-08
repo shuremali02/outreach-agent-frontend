@@ -19,6 +19,27 @@ function dateKey(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
+/**
+ * "YYYY-MM-DD" / {year, month, day} for right now, in Asia/Karachi (PKT, fixed UTC+5, no DST) -- NOT the
+ * viewer's own browser timezone (user, 2026-10-06: "date hum PKT standard se he rakhenge Karachi timezone
+ * ke hisaab se"). Drives both which month the calendar opens to and which cell gets the "today" dot below
+ * -- a rep in a different timezone must still see Karachi's today, not their own.
+ */
+function todayKeyPKT(): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Karachi",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+  return `${get("year")}-${get("month")}-${get("day")}`;
+}
+function todayInPKT(): { year: number; month: number } {
+  const [y, m] = todayKeyPKT().split("-").map(Number);
+  return { year: y, month: m - 1 };
+}
+
 /** Background/text pair for the stage pill on each calendar entry -- meeting_booked
  *  (still awaiting an outcome) deliberately reuses the same amber the day cell
  *  itself already uses, so "not yet decided" reads consistently; the other four
@@ -96,11 +117,10 @@ export function MeetingsCalendar({ initialLeads }: { initialLeads: Lead[] }) {
   // on the grid, which is correct: there is nowhere to put them.
   const meetings = useMemo(() => allLeads.filter((l) => l.meeting_at), [allLeads]);
 
-  const [cursor, setCursor] = useState(() => {
-    const d = new Date();
-    return { year: d.getFullYear(), month: d.getMonth() };
-  });
+  const [cursor, setCursor] = useState(() => todayInPKT());
   const [expanded, setExpanded] = useState<string | null>(null);
+  // Which cell gets the green "today" dot below -- PKT, same reasoning as todayInPKT() above.
+  const todayKey = todayKeyPKT();
 
   const byDay = useMemo(() => {
     const map = new Map<string, Lead[]>();
@@ -151,8 +171,7 @@ export function MeetingsCalendar({ initialLeads }: { initialLeads: Lead[] }) {
   }
   function goToday() {
     setExpanded(null);
-    const d = new Date();
-    setCursor({ year: d.getFullYear(), month: d.getMonth() });
+    setCursor(todayInPKT());
   }
 
   return (
@@ -200,6 +219,7 @@ export function MeetingsCalendar({ initialLeads }: { initialLeads: Lead[] }) {
             {cells.map((d) => {
               const key = dateKey(d);
               const inMonth = d.getMonth() === cursor.month;
+              const isToday = key === todayKey;
               const dayMeetings = byDay.get(key) ?? [];
               const isExpanded = expanded === key;
               const visible = isExpanded ? dayMeetings : dayMeetings.slice(0, 2);
@@ -213,7 +233,18 @@ export function MeetingsCalendar({ initialLeads }: { initialLeads: Lead[] }) {
                     backgroundColor: dayMeetings.length > 0 ? "var(--warn-tint)" : undefined,
                   }}
                 >
-                  <p className="mb-1 text-[0.75rem] text-muted">{d.getDate()}</p>
+                  <p className="mb-1 flex items-center gap-1 text-[0.75rem] text-muted">
+                    {d.getDate()}
+                    {isToday && (
+                      <span
+                        className="inline-block h-1.5 w-1.5 shrink-0 rounded-full"
+                        style={{ background: "var(--success)" }}
+                        role="img"
+                        aria-label="Today"
+                        title="Today (PKT)"
+                      />
+                    )}
+                  </p>
                   <div className="flex flex-col gap-0.5">
                     {visible.map((lead) => (
                       <MeetingEntry key={lead.id} lead={lead} />

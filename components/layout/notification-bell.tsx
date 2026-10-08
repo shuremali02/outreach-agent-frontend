@@ -8,7 +8,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { notificationsApi } from "@/lib/api";
 import { useSessionUser } from "@/hooks/use-session-user";
 import { NOTIFICATIONS } from "@/lib/constants";
-import { commentTime } from "@/lib/format";
+import { notificationTime } from "@/lib/format";
 import { useToast } from "@/components/ui/toast";
 import { Loader } from "@/components/ui/loader";
 import type { AppNotification } from "@/types";
@@ -289,7 +289,7 @@ export function NotificationBell() {
                     {n.kind !== "meeting_reminder" && n.excerpt && (
                       <span className="mt-0.5 block truncate text-[0.8rem] text-muted">{n.excerpt}</span>
                     )}
-                    <span className="mt-0.5 block text-[0.72rem] text-muted">{commentTime(n.created_at)}</span>
+                    <span className="mt-0.5 block text-[0.72rem] text-muted">{notificationTime(n.created_at)}</span>
                   </span>
                 </button>
               </li>

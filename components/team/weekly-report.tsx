@@ -34,51 +34,73 @@ function fmtRange(start: string, end: string): string {
   return `${f(start)} to ${f(end)}`;
 }
 
-/** Recent Activity: who did what, newest first, optionally one person. */
+/**
+ * Recent Activity: who did what, newest first, optionally one person. Collapsed by default and the feed
+ * isn't fetched at all until opened (user, 2026-10-07: "itni bari recent activity aa rahi hai... itna sab
+ * kuch sirf 50 leads aane chahiye woh bhi tab jab hum click karein Recent Activity ke dropdown par" --
+ * revised moments later in the same conversation to "50 nahi, last 10 dekha dete hain") -- was always
+ * rendering immediately, 100 rows deep, the moment Sales Terminal loaded.
+ */
 function ActivityFeed() {
+  const [open, setOpen] = useState(false);
   const [person, setPerson] = useState<string>("all");
   const { data: users = [] } = useUsers();
   const userId = person === "all" ? null : Number(person);
   const { data: feed = [] } = useQuery({
     queryKey: ["team-feed", userId],
-    queryFn: () => metricsApi.teamFeed(userId, 100),
+    queryFn: () => metricsApi.teamFeed(userId, 10),
     // A report page, not a live feed -- 60s was excess load per the Neon free-tier quota audit (2026-09-29).
     refetchInterval: 180_000,
+    enabled: open,
   });
 
   return (
     <section className="mt-8">
-      <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="flex cursor-pointer items-center gap-2 text-left"
+      >
+        <span className="text-[1.1rem] text-muted" aria-hidden>
+          {open ? "▾" : "▸"}
+        </span>
         <h2 className="text-[1.2rem] font-semibold">{withIcons(TEAM_ACTIVITY.feedHeading)}</h2>
-        <Field label={TEAM_ACTIVITY.feedFilter} className="w-56">
-          <Select value={person} onChange={(e) => setPerson(e.target.value)}>
-            <option value="all">{stripEmoji(TEAM_ACTIVITY.allPeople)}</option>
-            {users.map((u) => (
-              <option key={u.id} value={u.id}>
-                {stripEmoji(u.name || u.email)}
-              </option>
-            ))}
-          </Select>
-        </Field>
-      </div>
-      {feed.length === 0 ? (
-        <p className="text-[0.9rem] text-muted">{withIcons(TEAM_ACTIVITY.feedEmpty)}</p>
-      ) : (
-        <ul className="overflow-hidden rounded-[10px] border border-border bg-card">
-          {feed.map((i) => (
-            <li key={i.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 border-b border-border px-4 py-2.5 last:border-0">
-              <span className="w-auto shrink-0 text-[0.8rem] tabular-nums text-muted sm:w-[150px]">
-                {new Date(i.at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
-              </span>
-              <span className={cn("w-auto shrink-0 font-semibold sm:w-[140px]", i.user_id === null && "italic text-muted")}>
-                {i.user_name}
-              </span>
-              <span className="min-w-0 flex-1 text-[0.92rem]">
-                {describe(i)} <span className="text-muted">·</span> <strong>{i.company_name}</strong>
-              </span>
-            </li>
-          ))}
-        </ul>
+      </button>
+      {open && (
+        <>
+          <div className="mb-3 mt-3 flex flex-wrap items-end justify-end gap-3">
+            <Field label={TEAM_ACTIVITY.feedFilter} className="w-56">
+              <Select value={person} onChange={(e) => setPerson(e.target.value)}>
+                <option value="all">{stripEmoji(TEAM_ACTIVITY.allPeople)}</option>
+                {users.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {stripEmoji(u.name || u.email)}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          {feed.length === 0 ? (
+            <p className="text-[0.9rem] text-muted">{withIcons(TEAM_ACTIVITY.feedEmpty)}</p>
+          ) : (
+            <ul className="overflow-hidden rounded-[10px] border border-border bg-card">
+              {feed.map((i) => (
+                <li key={i.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 border-b border-border px-4 py-2.5 last:border-0">
+                  <span className="w-auto shrink-0 text-[0.8rem] tabular-nums text-muted sm:w-[150px]">
+                    {new Date(i.at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                  </span>
+                  <span className={cn("w-auto shrink-0 font-semibold sm:w-[140px]", i.user_id === null && "italic text-muted")}>
+                    {i.user_name}
+                  </span>
+                  <span className="min-w-0 flex-1 text-[0.92rem]">
+                    {describe(i)} <span className="text-muted">·</span> <strong>{i.company_name}</strong>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
       )}
     </section>
   );
