@@ -166,6 +166,35 @@ export const TEAM_ACTIVITY = {
 } as const;
 
 /**
+ * Sales Terminal -> Weekly Report's "Lead Breakdown" section (components/terminal/
+ * lead-breakdown-charts.tsx). User, 2026-10-12: which country's/category's leads are
+ * connecting, becoming part of Pipeline, and so on -- all-time totals, not a time window.
+ */
+export const LEAD_BREAKDOWN = {
+  heading: "📊 Lead Breakdown",
+  byCountry: "By Country",
+  byCategory: "By Category",
+  totalLeadsHeading: "Total Leads",
+  connectRateHeading: "Connect Rate (% of leads where a live person was reached)",
+  empty: "No leads yet.",
+  unknown: "Unknown",
+  // Cross-filters (2026-10-12) -- see components/terminal/lead-breakdown-charts.tsx's own comment.
+  filterCountry: "Filter to one country",
+  filterCategory: "Filter to one category",
+  updating: "Updating…",
+  columns: {
+    name: "",
+    connectRate: "Connect %",
+    leads: "Leads",
+    connecting: "Connecting",
+    pipeline: "Pipeline",
+    meetings: "Meetings",
+    projects: "Projects",
+    emails: "Emails",
+  },
+} as const;
+
+/**
  * Sign-in page and user menu (components/auth/login-view.tsx, components/layout/user-menu.tsx).
  * No Streamlit analogue: app.py had no login (auth-plan.md).
  */
@@ -552,8 +581,17 @@ export const CONTACT_LOOKUP = {
 export const BATTLECARD = {
   researchHeading: "🌐 Research & Channels",
   websiteLink: "↗ Website",
-  linkedInLink: "🔗 LinkedIn",
-  linkedInSearchLink: "🔗 Search LinkedIn",
+  // The COMPANY's own LinkedIn page -- not a person's (LinkedInResearchPanel, next to this button,
+  // handles that). A free search (agent_core.find_company_linkedin_url(), same real-search-then-save
+  // posture as the per-contact "Find LinkedIn" button), 2026-10-12. Disables itself (companyLinkedIn
+  // NotFound) once company_linkedin_checked_at is set and nothing was found, rather than staying
+  // clickable forever -- no manual fallback link kept this time, per the user's "bas 2 rakho jo kaam ke
+  // hain" (just keep the 2 that are useful) when this was trimmed down from 6 LinkedIn-related buttons.
+  companyLinkedInLink: "🔗 Company LinkedIn",
+  companyLinkedInSearchLink: "🔎 Search Company LinkedIn (free)",
+  searchingCompanyLinkedIn: "Searching…",
+  companyLinkedInNotFound: "No company LinkedIn found",
+  companyLinkedInNotFoundHelp: "Already searched -- no company LinkedIn page was found",
   editContact: "✏️ Edit Phone / LinkedIn",
   // components/cold-call/battlecard.tsx -- click-to-reveal for
   // HunterDecisionMakers, so a Call Desk page full of leads doesn't fire one
@@ -1080,6 +1118,8 @@ export const TOASTS = {
   revealRequested: "Reveal requested. The details arrive in a few seconds.",
   linkedInResearched: (name: string) => `LinkedIn research found ${name}`,
   linkedInResearchNone: "LinkedIn research found no matching person",
+  companyLinkedInFound: (name: string) => `Found ${name}'s LinkedIn page`,
+  companyLinkedInNotFound: "No company LinkedIn page found",
   websiteFound: (company: string) => `Website found for ${company}`,
   enrichDone: "Enrichment finished",
   scanDone: "Site scan finished",
@@ -1229,18 +1269,6 @@ export const PROBLEM_DESK_HEADER = {
 export const WEEKLY_VELOCITY = {
   title: "Weekly Velocity & Sprint Momentum",
   subtitle: "Sprint-over-sprint tracking across all 3 weeks of team execution.",
-} as const;
-
-/** app.py:843-859 — render_linkedin_research_and_reveal_ui link labels. */
-export const LINKEDIN_PANEL = {
-  research: "🤖 AI Research LinkedIn (Gemini Flash)",
-  // "(Apollo Reveal)" dropped -- these links never call Apollo, see
-  // components/enrichment/linkedin-panel.tsx. Note: open/xray below are
-  // currently unused -- linkedin-panel.tsx hardcodes its own copy of them.
-  open: "🔗 Open LinkedIn",
-  xray: "🌐 Google X-Ray Search",
-  directSearch: "Or open in LinkedIn search bar",
-  unresolved: "Could not resolve direct URL automatically. Use Google X-Ray link below.",
 } as const;
 
 /**

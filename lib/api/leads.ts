@@ -175,4 +175,10 @@ export const enrichmentApi = {
    */
   findLinkedIn: (leadId: number, contactId: number) =>
     api.post<LeadContact[]>(`/leads/${leadId}/find-linkedin`, { contact_id: contactId }),
+
+  /**
+   * FREE: search the web for the COMPANY's own LinkedIn page (not a person's -- that's findLinkedIn
+   * above) and save it on the lead. Synchronous. "Search Company LinkedIn" battlecard button, 2026-10-12.
+   */
+  findCompanyLinkedIn: (leadId: number) => api.post<Lead>(`/leads/${leadId}/find-company-linkedin`, {}),
 };

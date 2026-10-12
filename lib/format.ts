@@ -194,11 +194,6 @@ export function linkedInXrayUrl(contactName: string, companyName: string): strin
   return `https://www.google.com/search?q=${encodeURIComponent(q)}`;
 }
 
-export function linkedInDirectSearchUrl(contactName: string, companyName: string): string {
-  const q = `${contactName} ${companyName}`.trim();
-  return `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(q)}`;
-}
-
 /** Prefix bare domains so href doesn't resolve relative to the app. */
 export function externalUrl(url: string): string {
   if (!url) return "";

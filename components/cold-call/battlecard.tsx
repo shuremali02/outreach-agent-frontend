@@ -21,7 +21,6 @@ import { useToast } from "@/components/ui/toast";
 import { enrichmentApi, leadsApi } from "@/lib/api";
 import {
   addedAt, currency, externalUrl, hasUsableEmail, leadSource, mailtoUrl,
-  linkedInXrayUrl,
 } from "@/lib/format";
 import {
   BATTLECARD,
@@ -134,6 +133,20 @@ export function Battlecard({
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["leads"] });
       toast.success(TOASTS.battlecardReady(lead.company_name));
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : TOASTS.actionFailed),
+  });
+  // "Search Company LinkedIn (free)" -- same free-search-then-save pattern as the per-contact
+  // "Find LinkedIn (free)" button (contacts-panel.tsx), but for the company's own page, not a person's.
+  const findCompanyLinkedIn = useMutation({
+    mutationFn: () => enrichmentApi.findCompanyLinkedIn(lead.id),
+    onSuccess: (updated) => {
+      qc.invalidateQueries({ queryKey: ["leads"] });
+      if (updated.company_linkedin) {
+        toast.success(TOASTS.companyLinkedInFound(lead.company_name));
+      } else {
+        toast.info(TOASTS.companyLinkedInNotFound);
+      }
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : TOASTS.actionFailed),
   });
@@ -368,6 +381,37 @@ export function Battlecard({
           )}
 
           <LinkedInResearchPanel lead={lead} />
+          {/* Moved here from the Research & Channels block below, next to Google X-Ray Search --
+              user, 2026-10-12: "yeh jahan abhi add kiya hai button, yeh yahan nahi, google search wale
+              button ke saath rakho." Disables itself once a search has already come back empty
+              (company_linkedin_checked_at set, company_linkedin still "") instead of staying
+              clickable forever -- "na milne par us button ko disable kar do." */}
+          {lead.company_linkedin ? (
+            <a
+              href={lead.company_linkedin}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block rounded-[7px] border border-linkedin bg-xray-bg px-3 py-2 text-center text-[0.85rem] font-semibold text-xray-text no-underline"
+            >
+              {withIcons(BATTLECARD.companyLinkedInLink)}
+            </a>
+          ) : (
+            <Button
+              variant="secondary"
+              size="sm"
+              block
+              onClick={() => findCompanyLinkedIn.mutate()}
+              disabled={findCompanyLinkedIn.isPending || Boolean(lead.company_linkedin_checked_at)}
+              loading={findCompanyLinkedIn.isPending}
+              title={lead.company_linkedin_checked_at ? BATTLECARD.companyLinkedInNotFoundHelp : undefined}
+            >
+              {findCompanyLinkedIn.isPending
+                ? BATTLECARD.searchingCompanyLinkedIn
+                : lead.company_linkedin_checked_at
+                  ? withIcons(BATTLECARD.companyLinkedInNotFound)
+                  : withIcons(BATTLECARD.companyLinkedInSearchLink)}
+            </Button>
+          )}
           <EditContact lead={lead} />
 
           <h4 className="mt-2 text-[0.95rem] font-semibold">{withIcons(BATTLECARD.researchHeading)}</h4>
@@ -406,14 +450,6 @@ export function Battlecard({
                 {withIcons(markEmailSent.error instanceof Error ? markEmailSent.error.message : BATTLECARD.markEmailSentFailed)}
               </p>
             )}
-            <a
-              href={lead.contact_linkedin || linkedInXrayUrl(lead.contact_name, lead.company_name)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-accent underline"
-            >
-              {withIcons(lead.contact_linkedin ? BATTLECARD.linkedInLink : BATTLECARD.linkedInSearchLink)}
-            </a>
           </div>
 
           {contactsOpen ? (

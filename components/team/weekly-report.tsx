@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useState } from "react";
 import { TeamTable } from "@/components/team/team-table";
+import { LeadBreakdownCharts } from "@/components/terminal/lead-breakdown-charts";
 import { Field, Select } from "@/components/ui/input";
 import { metricsApi } from "@/lib/api";
 import { DISPOSITIONS, STAGE_LABELS, TEAM_ACTIVITY } from "@/lib/constants";
@@ -126,6 +127,7 @@ export function WeeklyReport({ initialData }: { initialData: TeamWeeks }) {
         <p className="rounded-[8px] px-3 py-2 text-[0.9rem]" style={{ background: "var(--info-tint)", color: "var(--info)" }}>
           {withIcons(TEAM_ACTIVITY.weekNotStarted(fmtRange(data.week1_start, data.week1_start).split(" to ")[0]))}
         </p>
+        <LeadBreakdownCharts />
         <ActivityFeed />
       </>
     );
@@ -233,6 +235,7 @@ export function WeeklyReport({ initialData }: { initialData: TeamWeeks }) {
         </p>
       )}
 
+      <LeadBreakdownCharts />
       <ActivityFeed />
     </>
   );

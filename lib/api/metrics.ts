@@ -3,6 +3,7 @@ import type {
   ActivityFeedItem,
   ActivityMetrics,
   CrmMetrics,
+  LeadBreakdown,
   SystemStatus,
   TeamMetrics,
   TeamToday,
@@ -11,6 +12,13 @@ import type {
 
 export const metricsApi = {
   crm: () => api.get<CrmMetrics>("/metrics"),
+  /** Sales Terminal's country/category charts. country/category (ISO2 / industry_tag) cross-filter
+   *  each breakdown by the OTHER dimension -- see crud.get_lead_breakdown()'s docstring. */
+  breakdown: (country?: string, category?: string) =>
+    api.get<LeadBreakdown>("/metrics/breakdown", {
+      country: country || undefined,
+      category: category || undefined,
+    }),
   status: () => api.get<SystemStatus>("/status"),
   team: (sheetUrl?: string) => api.get<TeamMetrics>("/team-metrics", { sheet_url: sheetUrl }),
   activity: () => api.get<ActivityMetrics>("/activity-metrics"),

@@ -5,10 +5,10 @@ import { useState } from "react";
 import { enrichmentApi } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
-import { linkedInXrayUrl, linkedInDirectSearchUrl } from "@/lib/format";
+import { linkedInXrayUrl } from "@/lib/format";
 import type { Lead } from "@/types";
-import { LINKEDIN_PANEL, TOASTS } from "@/lib/constants";
-import { Ico, withIcons } from "@/components/ui/emoji-icon";
+import { TOASTS } from "@/lib/constants";
+import { Ico } from "@/components/ui/emoji-icon";
 
 /** render_linkedin_research_and_reveal_ui — used on Today, Cold Call, Pipeline, Contacts. */
 export function LinkedInResearchPanel({ lead }: { lead: Lead }) {
@@ -68,26 +68,19 @@ export function LinkedInResearchPanel({ lead }: { lead: Lead }) {
           <Ico e="🔗" /> Open LinkedIn
         </a>
       ) : (
-        <>
-          <a
-            href={linkedInXrayUrl(lead.contact_name, lead.company_name)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="block rounded-[7px] border border-linkedin bg-xray-bg px-3 py-2 text-center text-[0.85rem] font-semibold text-xray-text no-underline"
-          >
-            {/* Was "🌐 Google X-Ray Search (Apollo Reveal)" in app.py -- this
-                is a manual Google search link, not an Apollo API call. */}
-            <Ico e="🌐" /> Google X-Ray Search
-          </a>
-          <a
-            href={linkedInDirectSearchUrl(lead.contact_name, lead.company_name)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-center text-[0.75rem] text-muted underline"
-          >
-            {withIcons(LINKEDIN_PANEL.directSearch)}
-          </a>
-        </>
+        // Was two manual fallback links (this Google X-Ray search + a separate "open in LinkedIn
+        // search bar" link) -- user, 2026-10-12: "itni sari LinkedIn search buttons ho gayi hain,
+        // extra wale hata do, bas 2 rakho jo kaam ke hain." One manual fallback is enough.
+        <a
+          href={linkedInXrayUrl(lead.contact_name, lead.company_name)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block rounded-[7px] border border-linkedin bg-xray-bg px-3 py-2 text-center text-[0.85rem] font-semibold text-xray-text no-underline"
+        >
+          {/* Was "🌐 Google X-Ray Search (Apollo Reveal)" in app.py -- this
+              is a manual Google search link, not an Apollo API call. */}
+          <Ico e="🌐" /> Google X-Ray Search
+        </a>
       )}
     </div>
   );
