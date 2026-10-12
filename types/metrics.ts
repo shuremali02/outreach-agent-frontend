@@ -83,6 +83,28 @@ export interface ActivityMetrics {
   this_week: ActivityWindow;
 }
 
+/** One country or one category's row in Sales Terminal's breakdown chart. See
+ *  outreach-backend/app/crud/leads.py's _breakdown_rows() for exactly what each count means:
+ *  connecting = a live person was reached (not voicemail/no_answer/hang_up/wrong_number/dead_number);
+ *  pipeline = currently in Pipeline (mirrors pipeline-view.tsx's own inScope); meetings = meeting_at
+ *  ever set (historical total, not just pending ones); projects = pipeline_stage "won". */
+export interface LeadBreakdownRow {
+  key: string;
+  label: string;
+  leads: number;
+  connecting: number;
+  pipeline: number;
+  meetings: number;
+  projects: number;
+  emails: number;
+}
+
+/** GET /metrics/breakdown — Sales Terminal's country/category charts. */
+export interface LeadBreakdown {
+  by_country: LeadBreakdownRow[];
+  by_category: LeadBreakdownRow[];
+}
+
 /** GET /status — drives the sidebar SYSTEM STATUS block. */
 export interface SystemStatus {
   gemini: boolean;

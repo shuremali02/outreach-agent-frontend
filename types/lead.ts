@@ -16,6 +16,12 @@ export interface Lead {
   contact_email: string;
   contact_phone: string;
   contact_linkedin: string;
+  /** The COMPANY's own LinkedIn page -- not a person's (that's contact_linkedin above). Found via the
+   *  "Search Company LinkedIn (free)" battlecard button, 2026-10-12. */
+  company_linkedin: string;
+  /** "" = never searched. Set the moment the search runs, hit or miss -- disables the search button
+   *  once empty is a confirmed miss, not "haven't tried yet". */
+  company_linkedin_checked_at: string;
   /** One of STANDARD_CATEGORIES — the emoji prefix is part of the stored key. */
   industry_tag: string;
   deal_value: number;
