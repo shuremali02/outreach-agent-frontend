@@ -114,6 +114,7 @@ function EditContact({ lead }: { lead: Lead }) {
 export function Battlecard({
   lead,
   onActionTaken,
+  defaultOpen = true,
 }: {
   lead: Lead;
   /** Called right after any disposition succeeds -- see ColdCallView's
@@ -121,6 +122,10 @@ export function Battlecard({
    * gets clear feedback the click registered instead of the card just
    * sitting there unchanged. */
   onActionTaken?: (leadId: number) => void;
+  /** Cold Call Desk's own cards stay open by default (unchanged). LinkedIn desk's don't (user, 2026-10-14:
+   * "linkedin tab wali sari leads k card by default band rkho... sab ko open rkhny ki need nhi hai") --
+   * see cold-call-view.tsx, which passes `channel !== "linkedin"`. */
+  defaultOpen?: boolean;
 }) {
   const qc = useQueryClient();
   const toast = useToast();
@@ -369,7 +374,7 @@ export function Battlecard({
     // toggle) so a rep can tuck away a lead they're not calling next without
     // losing their place in the queue -- previously this whole card had no
     // collapse at all.
-    <LeadCard lead={lead} summary={summary} defaultOpen>
+    <LeadCard lead={lead} summary={summary} defaultOpen={defaultOpen}>
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.2fr_2fr]">
         {/* Dialer column */}
         <div className="flex flex-col gap-3">

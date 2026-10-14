@@ -2,8 +2,12 @@ import { api } from "./client";
 import type { CreateCommentInput, CreateProblemInput, Problem, ProblemComment, ProblemStatus } from "@/types";
 
 export const problemsApi = {
-  list: (opts: { priority?: string; status?: string } = {}) =>
-    api.get<Problem[]>("/problems", { priority: opts.priority, status: opts.status }),
+  list: (opts: { priority?: string; status?: string; mentionedMe?: boolean } = {}) =>
+    api.get<Problem[]>("/problems", {
+      priority: opts.priority,
+      status: opts.status,
+      mentioned_me: opts.mentionedMe ? 1 : undefined,
+    }),
   create: (input: CreateProblemInput) => api.post<Problem>("/problems", input),
   setStatus: (id: number, status: ProblemStatus) => api.patch<Problem>(`/problems/${id}`, { status }),
   remove: (id: number) => api.delete<void>(`/problems/${id}`),

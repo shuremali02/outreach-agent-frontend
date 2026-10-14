@@ -14,9 +14,25 @@ import { Ico } from "@/components/ui/emoji-icon";
 
 const AUTHOR_KEY = "elipse-author-name";
 
-/** 💬 Team Discussion & Solutions — .comment-card list + a reply form. */
-export function CommentThread({ problemId, count }: { problemId: number; count: number }) {
-  const [open, setOpen] = useState(count > 0);
+/**
+ * 💬 Team Discussion & Solutions — .comment-card list + a reply form.
+ *
+ * `defaultOpen` (2026-10-14, user: "upar in ki bohut heavy ya mixup lag rha... isko manage kro") --
+ * normally auto-opens whenever a problem already has a comment (`count > 0`), which is fine on the full
+ * Priority Tracker page but made Today's new, compact per-person card feel heavy -- a whole discussion
+ * thread + reply form expanding under every mentioned task. Pass `false` to force it collapsed regardless
+ * of count (ProblemDesk does this when `mentionedMeOnly`); omit it to keep today's exact behavior.
+ */
+export function CommentThread({
+  problemId,
+  count,
+  defaultOpen,
+}: {
+  problemId: number;
+  count: number;
+  defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen ?? count > 0);
   const { data: comments = [] } = useComments(problemId, open);
   const add = useAddComment(problemId);
   const { data: users = [] } = useUsers();

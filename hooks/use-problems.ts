@@ -18,10 +18,27 @@ export function filterArgs(filter: ProblemFilter) {
   }
 }
 
-export function useProblems(filter: ProblemFilter) {
+export function useProblems(filter: ProblemFilter, enabled = true) {
   return useQuery({
     queryKey: ["problems", filter],
     queryFn: () => problemsApi.list(filterArgs(filter)),
+    enabled,
+  });
+}
+
+/**
+ * Today's embedded Priority Tracker card, personalized (2026-10-14, user relaying the boss: "jis ko
+ * mention kya jaye... usy show ho"). Only problems where the logged-in person themselves has a mention
+ * notification -- see api/problems.py's `mentioned_me` param / crud.list_problems_mentioning(). Open only,
+ * no priority/status filter tabs -- the full /problems page (useProblems above) is unaffected and still
+ * shows every problem to everyone. `enabled` lets ProblemDesk mount both hooks (React's rules of hooks)
+ * while only ever actually firing the one its `mentionedMeOnly` prop picked.
+ */
+export function useMentionedProblems(enabled = true) {
+  return useQuery({
+    queryKey: ["problems", "mentioned-me"],
+    queryFn: () => problemsApi.list({ status: "Open", mentionedMe: true }),
+    enabled,
   });
 }
 

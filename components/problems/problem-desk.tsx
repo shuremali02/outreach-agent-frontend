@@ -3,6 +3,7 @@
 import { useState } from "react";
 import {
   useProblems,
+  useMentionedProblems,
   useCreateProblem,
   useSetProblemStatus,
   useDeleteProblem,
@@ -19,7 +20,7 @@ import { isHighPriority, HIGH_PRIORITY, NORMAL_PRIORITY } from "@/types";
 import type { ProblemFilter } from "@/types";
 import { shortDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { EMPTY_STATES, PROBLEM_DESK_HEADER, PROBLEM_FORM } from "@/lib/constants";
+import { EMPTY_STATES, MENTIONED_TASKS_HEADER, PROBLEM_DESK_HEADER, PROBLEM_FORM } from "@/lib/constants";
 import { Ico, withIcons } from "@/components/ui/emoji-icon";
 
 const FILTERS: ProblemFilter[] = ["All Open", "High Priority", "Normal Priority", "Resolved"];
@@ -31,14 +32,28 @@ const FILTER_LABELS: Record<ProblemFilter, string> = {
 };
 
 /**
- * render_sales_problems_ui — rendered twice: embedded on Today (collapsed)
- * and full-page on the Problem Desk (expanded).
+ * render_sales_problems_ui — rendered twice: embedded on Today (collapsed) and full-page on the Problem
+ * Desk (expanded).
+ *
+ * `mentionedMeOnly` (2026-10-14, user relaying the boss: "jis ko mention kya jaye jis k woh task hon usy
+ * show hin... agr ilhan ko mention kya gaya to woh usi k pass us ka mention hoga") -- Today's instance
+ * only, personalized to just the problems where the logged-in person themselves was @mentioned (see
+ * useMentionedProblems()), instead of every open problem. The full /problems page keeps today's exact
+ * behaviour -- everyone still sees every problem there.
  */
-export function ProblemDesk({ defaultExpanded = false }: { defaultExpanded?: boolean }) {
+export function ProblemDesk({
+  defaultExpanded = false,
+  mentionedMeOnly = false,
+}: {
+  defaultExpanded?: boolean;
+  mentionedMeOnly?: boolean;
+}) {
   const [filter, setFilter] = useState<ProblemFilter>("All Open");
   const [formOpen, setFormOpen] = useState(defaultExpanded);
 
-  const { data: problems = [], isLoading } = useProblems(filter);
+  const allOpen = useProblems(filter, !mentionedMeOnly);
+  const mentionedMe = useMentionedProblems(mentionedMeOnly);
+  const { data: problems = [], isLoading } = mentionedMeOnly ? mentionedMe : allOpen;
   const create = useCreateProblem();
   const { data: users = [] } = useUsers();
   const setStatus = useSetProblemStatus();
@@ -51,17 +66,18 @@ export function ProblemDesk({ defaultExpanded = false }: { defaultExpanded?: boo
 
   const highCount = problems.filter((p) => isHighPriority(p.priority)).length;
   const normalCount = problems.length - highCount;
+  const header = mentionedMeOnly ? MENTIONED_TASKS_HEADER : PROBLEM_DESK_HEADER;
 
   return (
     <section>
       <Card accent="danger" className="mb-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-4">
           <div className="min-w-0 flex-1">
-            <p className="date-eyebrow">{PROBLEM_DESK_HEADER.eyebrow}</p>
+            <p className="date-eyebrow">{header.eyebrow}</p>
             <h2 className="serif-title text-[1.25rem] font-bold sm:text-[1.5rem]">
-              {PROBLEM_DESK_HEADER.title}
+              {header.title}
             </h2>
-            <p className="mt-1 text-[0.9rem] text-muted">{PROBLEM_DESK_HEADER.subtitle}</p>
+            <p className="mt-1 text-[0.9rem] text-muted">{header.subtitle}</p>
           </div>
           <div className="flex shrink-0 flex-wrap items-center gap-1.5 sm:flex-col sm:items-end">
             <span className="terminal-pill" style={{ background: "var(--danger-tint)", color: "var(--danger)" }}>
@@ -138,28 +154,34 @@ export function ProblemDesk({ defaultExpanded = false }: { defaultExpanded?: boo
         )}
       </div>
 
-      <div className="mb-3 flex flex-wrap gap-2">
-        {FILTERS.map((f) => (
-          <button
-            key={f}
-            type="button"
-            onClick={() => setFilter(f)}
-            aria-pressed={filter === f}
-            className={cn(
-              "cursor-pointer rounded-[8px] border px-3 py-1.5 text-[0.82rem] font-semibold transition-colors",
-              filter === f
-                ? "border-transparent bg-accent text-white"
-                : "border-border bg-card text-muted hover:border-accent hover:text-accent",
-            )}
-          >
-            {withIcons(FILTER_LABELS[f])}
-          </button>
-        ))}
-      </div>
+      {/* Filter tabs only make sense against "every problem" -- the mentioned-me view is already its own
+          narrow slice (open, assigned to you), so there's nothing here to filter further. */}
+      {!mentionedMeOnly && (
+        <div className="mb-3 flex flex-wrap gap-2">
+          {FILTERS.map((f) => (
+            <button
+              key={f}
+              type="button"
+              onClick={() => setFilter(f)}
+              aria-pressed={filter === f}
+              className={cn(
+                "cursor-pointer rounded-[8px] border px-3 py-1.5 text-[0.82rem] font-semibold transition-colors",
+                filter === f
+                  ? "border-transparent bg-accent text-white"
+                  : "border-border bg-card text-muted hover:border-accent hover:text-accent",
+              )}
+            >
+              {withIcons(FILTER_LABELS[f])}
+            </button>
+          ))}
+        </div>
+      )}
 
       {isLoading && <BarLoader label="Loading problems…" />}
       {!isLoading && problems.length === 0 && (
-        <p className="text-[0.9rem] text-muted">{withIcons(EMPTY_STATES.problems)}</p>
+        <p className="text-[0.9rem] text-muted">
+          {withIcons(mentionedMeOnly ? MENTIONED_TASKS_HEADER.empty : EMPTY_STATES.problems)}
+        </p>
       )}
 
       {problems.map((p) => {
@@ -217,7 +239,11 @@ export function ProblemDesk({ defaultExpanded = false }: { defaultExpanded?: boo
               </Button>
             </div>
 
-            <CommentThread problemId={p.id} count={p.comment_count ?? 0} />
+            <CommentThread
+              problemId={p.id}
+              count={p.comment_count ?? 0}
+              defaultOpen={mentionedMeOnly ? false : undefined}
+            />
           </Card>
         );
       })}

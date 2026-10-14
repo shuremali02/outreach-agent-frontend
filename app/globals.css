@@ -323,6 +323,99 @@
   }
 }
 
+/* components/ui/celebration.tsx -- "Client Closed" burst, 2026-10-14. --cx/--cy are per-particle, set
+   inline by the component (the angle/distance is randomized per mount, not something a single keyframe
+   can express on its own). */
+/* Three stops, not two (2026-10-14 polish pass) -- a straight 0%->100% lerp made every particle travel in
+   a dead-straight line and fade at a constant rate, reading as mechanical. The 55% stop overshoots past
+   its final resting spot and only starts fading late, so particles visibly "fly out then drop/settle",
+   closer to how actual confetti behaves under gravity. --rot is per-particle (random spin amount/direction
+   set inline), not fixed, so pieces don't all tumble identically. */
+@keyframes celebration-burst {
+  0% {
+    transform: translate(-50%, -50%) scale(0.4) rotate(0deg);
+    opacity: 1;
+  }
+  55% {
+    transform: translate(calc(-50% + var(--cx) * 1.15), calc(-50% + var(--cy) * 0.75)) scale(1) rotate(calc(var(--rot) * 0.6));
+    opacity: 1;
+  }
+  100% {
+    transform: translate(calc(-50% + var(--cx)), calc(-50% + var(--cy) + 60px)) scale(0.85) rotate(var(--rot));
+    opacity: 0;
+  }
+}
+
+.celebration-particle {
+  top: 0;
+  left: 0;
+  animation: celebration-burst 1.3s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+}
+
+/* The quick ring/flash at the burst's origin -- punctuates the moment the particles launch from,
+   otherwise the burst alone reads as a scatter with no clear "beat" to it. */
+@keyframes celebration-flash {
+  0% {
+    transform: translate(-50%, -50%) scale(0.3);
+    opacity: 0.55;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(4.5);
+    opacity: 0;
+  }
+}
+
+.celebration-flash {
+  top: 0;
+  left: 0;
+  animation: celebration-flash 0.5s ease-out forwards;
+}
+
+/* "Congratulations!" banner (user, 2026-10-14: "sath me congratulations ya kuch likha ajaye") -- pops in
+   just above the burst origin, holds, then fades with the rest of the burst. */
+@keyframes celebration-text {
+  0% {
+    transform: translate(-50%, -50%) translateY(-70px) scale(0.6);
+    opacity: 0;
+  }
+  18% {
+    transform: translate(-50%, -50%) translateY(-70px) scale(1.08);
+    opacity: 1;
+  }
+  28% {
+    transform: translate(-50%, -50%) translateY(-70px) scale(1);
+    opacity: 1;
+  }
+  80% {
+    transform: translate(-50%, -50%) translateY(-70px) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) translateY(-85px) scale(1);
+    opacity: 0;
+  }
+}
+
+.celebration-text {
+  top: 0;
+  left: 0;
+  animation: celebration-text 1.5s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .celebration-particle,
+  .celebration-flash {
+    display: none;
+  }
+  .celebration-text {
+    animation: none;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, calc(-50% - 70px));
+    opacity: 1;
+  }
+}
+
 /* components/ui/loader.tsx BarLoader -- indeterminate "moving line" loader for block/section-level loading
    (page transitions, Cold Call Desk's Already Tried dropdown, Edit Lead form, Problem Desk), 2026-10-01.
    CORRECTION (same day): a sweeping segment first, replaced with this -- user: "ai lead finder pr jis trhn

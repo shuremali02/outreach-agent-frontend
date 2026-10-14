@@ -29,16 +29,31 @@ export default async function TodayPage() {
 
   return (
     <div>
+      {/* The date/quote stayed first (2026-10-14 correction, user: "upar in ki bohut heavy ya mixup lag
+          rha... dates or woh line jo arahi likhi hoi hardcoded... isko manage kro") -- putting Priority
+          Tracker literally above even these made the one-line date + quote land in an orphaned spot
+          between it and the Meeting Reminder banner instead of framing the page. They're a one-line page
+          header, not competing content, so Priority Tracker below them is still the first REAL thing read
+          -- satisfies the boss's original "read this first" ask without the mid-page sandwich. */}
       <p className="date-eyebrow">{todayEyebrow()}</p>
       <QuoteStrip />
+
+      {/* Personalized to just this person's @mentions (user relaying the boss, 2026-10-14: "jis ko
+          mention kya jaye usy show hin... yeh sab sy pehle check krna hai") -- was 5th on this page,
+          after Team Today, showing every open problem to everyone.
+          mb-5 here (2026-10-14 follow-up, user: "yeh kuch zyada he ek sath bina gap k ho gaya hai") --
+          ProblemDesk's own <section> carries no bottom margin (shared with /problems, where nothing
+          follows it), so without this the Meeting Reminder banner right after it had zero breathing room.
+          Matches the mb-5/my-5 rhythm MeetingReminderBanner and the metrics grid below already use. */}
+      <div className="mb-5">
+        <ProblemDesk mentionedMeOnly />
+      </div>
 
       <MeetingReminderBanner leads={leads} />
 
       <ActivityScroller data={activity} />
 
       {teamToday && <TeamTodayTable data={teamToday} />}
-
-      <ProblemDesk />
 
       <div className="my-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard

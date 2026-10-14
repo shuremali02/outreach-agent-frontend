@@ -473,7 +473,7 @@ export function ColdCallView({
             {withIcons(COLD_CALL_QUEUE.newHeading(newLeads.length))}
           </h3>
           {newLeads.map((lead) => (
-            <Battlecard key={lead.id} lead={lead} onActionTaken={dismiss} />
+            <Battlecard key={lead.id} lead={lead} onActionTaken={dismiss} defaultOpen={channel !== "linkedin"} />
           ))}
         </div>
       )}
@@ -516,7 +516,7 @@ export function ColdCallView({
                 </p>
               )}
               {bucketLeads.map((lead) => (
-                <Battlecard key={lead.id} lead={lead} onActionTaken={dismiss} />
+                <Battlecard key={lead.id} lead={lead} onActionTaken={dismiss} defaultOpen={channel !== "linkedin"} />
               ))}
               {/* "Load More" (2026-10-13) -- not_interested's own list (bucketLeads for that bucket is
                   client-filtered straight off bucketResult.data, same underlying rows) also benefits:

@@ -8,6 +8,7 @@ import { LeadCard } from "@/components/leads/lead-card";
 import { LeadWho } from "@/components/leads/lead-who";
 import { NotesPanel } from "@/components/leads/notes-panel";
 import { PhoneNumberList } from "@/components/leads/phone-number-list";
+import { MetricCard } from "@/components/metrics/metric-card";
 import { Select, Field } from "@/components/ui/input";
 import {
   COUNTRIES,
@@ -67,8 +68,22 @@ export function ProjectsView({
     [inScope, source],
   );
 
+  // Projects' own identity (2026-10-14, user: "project tab ki apni pehchan honi chahiye") -- the same
+  // stat-tile row device Today/Pipeline already use, absent here until now. Scoped to whatever's
+  // currently filtered, so it moves with the Category/Country/Source selects below it.
+  const totalWon = leads.reduce((sum, l) => sum + l.deal_value, 0);
+  const avgDeal = leads.length > 0 ? totalWon / leads.length : 0;
+
   return (
     <>
+      {leads.length > 0 && (
+        <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <MetricCard accent="success" label={PROJECTS_VIEW.stats.totalWon} value={currency(totalWon)} />
+          <MetricCard accent="success" label={PROJECTS_VIEW.stats.dealsWon} value={String(leads.length)} />
+          <MetricCard accent="success" label={PROJECTS_VIEW.stats.avgDeal} value={currency(avgDeal)} />
+        </div>
+      )}
+
       <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Field label="Category Filter">
           <Select value={category} onChange={(e) => setParam("category", e.target.value)}>
@@ -109,6 +124,7 @@ export function ProjectsView({
         <LeadCard
           key={lead.id}
           lead={lead}
+          accent="success"
           summary={
             <span className="text-[0.95rem]">
               <strong>{lead.company_name}</strong>

@@ -6,6 +6,7 @@ import { useMeetingOutcome, useNeedsEmail } from "@/hooks/use-leads";
 import { NotesPanel } from "@/components/leads/notes-panel";
 import { PhoneNumberList } from "@/components/leads/phone-number-list";
 import { Button } from "@/components/ui/button";
+import { Celebration } from "@/components/ui/celebration";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { Field, Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
@@ -56,6 +57,9 @@ export function MeetingDetailDialog({
   const [callbackDate, setCallbackDate] = useState("");
   const [callbackTime, setCallbackTime] = useState("");
   const callbackOutcome = MEETING_OUTCOMES.find((o) => o.stage === "followup_due" && !o.noShow)!;
+  // "Client Closed" celebration (user, 2026-10-14) -- a sibling of <Dialog.Root>, not inside its Portal,
+  // so it keeps rendering even once setOpen(false) below unmounts the dialog's own content.
+  const [celebrate, setCelebrate] = useState(false);
 
   function confirmCallback() {
     if (!callbackDate || !callbackTime) return;
@@ -89,6 +93,7 @@ export function MeetingDetailDialog({
       {
         onSuccess: () => {
           toast.success(outcome.done(lead.company_name));
+          if (outcome.stage === "won") setCelebrate(true);
           setOpen(false);
         },
         onError: (e) => toast.error(e instanceof Error ? e.message : TOASTS.actionFailed),
@@ -97,8 +102,10 @@ export function MeetingDetailDialog({
   }
 
   return (
-    <Dialog.Root open={open} onOpenChange={setOpen}>
-      <Dialog.Trigger asChild>{trigger}</Dialog.Trigger>
+    <>
+      {celebrate && <Celebration onDone={() => setCelebrate(false)} />}
+      <Dialog.Root open={open} onOpenChange={setOpen}>
+        <Dialog.Trigger asChild>{trigger}</Dialog.Trigger>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/50" />
         <Dialog.Content className="fixed left-1/2 top-1/2 z-50 max-h-[85vh] w-[92vw] max-w-[440px] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-[12px] border border-border bg-card p-5 shadow-[var(--shadow-overlay)]">
@@ -265,6 +272,7 @@ export function MeetingDetailDialog({
           </div>
         </Dialog.Content>
       </Dialog.Portal>
-    </Dialog.Root>
+      </Dialog.Root>
+    </>
   );
 }

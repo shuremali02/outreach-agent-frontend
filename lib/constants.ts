@@ -265,7 +265,7 @@ export const NOTIFICATIONS = {
   markAll: "Mark all read",
   loadFailed: "Could not load notifications.",
   onLead: (company: string) => `on ${company}`,
-  onProblem: (title: string) => `in Problem Desk: ${title}`,
+  onProblem: (title: string) => `in Priority Tracker: ${title}`,
   mentionedYou: (who: string, where: string) => `${who} mentioned you ${where}`.trim(),
   manyNew: (n: number) => `You have ${n} unread notifications.`,
 } as const;
@@ -304,8 +304,12 @@ export const NAV_ITEMS = [
   // meeting-outcome confirm copy's temporary "find it in Contacts" note (Phase 5). Narrowed 2026-09-22
   // to Won only -- Proposal Sent moved back into Pipeline (see MEETING_OUTCOMES.proposal_sent).
   { name: "Projects", icon: "📁", href: "/projects", badge: null },
-  // Badge removed (user, 2026-09-29, Neon quota-reduction pass) -- Meetings is the only nav badge left.
-  { name: "Problem Desk", icon: "🎯", href: "/problems", badge: null },
+  // Renamed from "Problem Desk" (user, 2026-10-14: "let's rename this to Priority Tracker so we know we
+  // have to check this first and add number here so we know how many task are in progress") -- badge
+  // restored (removed 2026-09-29 in a Neon quota-reduction pass) using the backend's existing
+  // open_problems_count (crud/leads.py get_crm_metrics(), already wired end to end -- no backend change
+  // needed), same badgeFor() lookup sidebar.tsx already uses for Meetings' count.
+  { name: "Priority Tracker", icon: "🎯", href: "/problems", badge: "open_problems_count" },
   { name: "AI Lead Finder", icon: "🔍", href: "/lead-finder", badge: null },
   // New isolated desk (user, 2026-10-05): same structure/buttons as Cold Call Desk, but a completely
   // separate queue for leads added manually via Add a Lead's "This is a LinkedIn lead" checkbox -- never
@@ -519,7 +523,8 @@ export const PAGE_HEADERS = {
   },
   problems: {
     eyebrow: "SALES OPERATIONS & STRATEGY",
-    title: "Sales Problem Desk",
+    // Renamed from "Sales Problem Desk" (user, 2026-10-14) -- see NAV_ITEMS' matching comment.
+    title: "Priority Tracker",
     subtitle: "Prioritize and resolve the top blockers faced by your outreach team.",
   },
   pipeline: {
@@ -971,6 +976,13 @@ export const PIPELINE_CARD = {
  */
 export const PROJECTS_VIEW = {
   tag: { won: "🏆 Won" } as Record<string, string>,
+  // Stat-tile row (2026-10-14, Projects' own identity) -- same labels Today's MetricCard row uses
+  // elsewhere, scoped to whatever's currently filtered (category/country/source), not all-time.
+  stats: {
+    totalWon: "🏆 Total Won",
+    dealsWon: "🎉 Deals Won",
+    avgDeal: "📊 Avg Deal Size",
+  },
 } as const;
 
 /**
@@ -1266,12 +1278,25 @@ export const SEND_TO_DESK = {
   failed: "Could not send this lead to the Cold Call Desk. Try again.",
 } as const;
 
-/** app.py:1054-1059 — the Problem Desk card header (both instances). */
+/** app.py:1054-1059 — the Problem Desk card header (both instances). Renamed to just "Priority Tracker"
+ *  (user, 2026-10-14) -- the "Sales Problem Desk //" prefix was this card's own original app.py title,
+ *  now redundant since that's the whole section's name everywhere else too. */
 export const PROBLEM_DESK_HEADER = {
   eyebrow: "SALES TEAM BOTTLENECKS & CHALLENGES",
-  title: "Sales Problem Desk // Priority Tracker",
+  title: "Priority Tracker",
   subtitle:
     "Sales team logs top-priority roadblocks, objections, and process hurdles that need immediate solving.",
+} as const;
+
+/**
+ * Today's embedded Priority Tracker card, personalized (2026-10-14) -- swapped in for PROBLEM_DESK_HEADER
+ * above (unchanged, still used by the full /problems page) when ProblemDesk's `mentionedMeOnly` is set.
+ */
+export const MENTIONED_TASKS_HEADER = {
+  eyebrow: "ASSIGNED TO YOU",
+  title: "Priority Tracker",
+  subtitle: "Tasks where someone mentioned you -- check these first.",
+  empty: "Nothing assigned to you right now.",
 } as const;
 
 /** app.py:1599-1602 — the Weekly Velocity card on the Sales Terminal. */
