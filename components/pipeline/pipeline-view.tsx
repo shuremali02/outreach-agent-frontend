@@ -34,7 +34,7 @@ import {
 import { addedAt, currency, externalUrl, displayDomain, hasUsableEmail, leadSource, shortDate } from "@/lib/format";
 import type { Lead } from "@/types";
 import { EMPTY_STATES } from "@/lib/constants";
-import { CategoryLabel, Ico, stripEmoji, withIcons } from "@/components/ui/emoji-icon";
+import { CategoryLabel, CountryFlag, Ico, stripEmoji, withIcons } from "@/components/ui/emoji-icon";
 import { AttemptTracker } from "@/components/pipeline/attempt-tracker";
 
 /** Has a callback (a set time, or a Callback Scheduled disposition) AND is not already Won / Lost. */
@@ -522,7 +522,14 @@ export function PipelineView({
                 <strong>Category:</strong> <CategoryLabel value={lead.industry_tag} />
               </p>
               <p className="text-[0.82rem] text-muted">
-                <strong>Country:</strong> {lead.country ? countryLabel(lead.country) : "Not specified"}
+                <strong>Country:</strong>{" "}
+                {lead.country ? (
+                  <>
+                    <CountryFlag code={lead.country} /> {countryLabel(lead.country)}
+                  </>
+                ) : (
+                  "Not specified"
+                )}
               </p>
               {lead.reason && (
                 <p className="text-[0.82rem] text-muted">

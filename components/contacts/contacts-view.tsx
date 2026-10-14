@@ -41,7 +41,7 @@ import {
 } from "@/lib/format";
 import type { Lead } from "@/types";
 import { EMPTY_STATES } from "@/lib/constants";
-import { CategoryLabel, Ico, stripEmoji, withIcons } from "@/components/ui/emoji-icon";
+import { CategoryLabel, CountryFlag, Ico, stripEmoji, withIcons } from "@/components/ui/emoji-icon";
 
 /**
  * structure-plan.md Phase 2 -- Contacts is the only place a lead moves onto the Cold Call Desk from.
@@ -238,7 +238,15 @@ export function ContactsView({ initialLeads, q }: { initialLeads: Lead[]; q: str
               )}
               {lead.contact_phone && <PhoneNumberList phones={lead.contact_phone} />}
               <p className="text-[0.85rem] text-muted">
-                <Ico e="🌍" /> {lead.country ? countryLabel(lead.country) : "Not specified"}
+                {lead.country ? (
+                  <>
+                    <CountryFlag code={lead.country} /> {countryLabel(lead.country)}
+                  </>
+                ) : (
+                  <>
+                    <Ico e="🌍" /> Not specified
+                  </>
+                )}
               </p>
 
               <LinkedInResearchPanel lead={lead} />

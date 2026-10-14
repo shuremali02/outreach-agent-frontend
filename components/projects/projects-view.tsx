@@ -25,7 +25,7 @@ import {
 import { addedAt, currency, externalUrl, displayDomain, hasUsableEmail, leadSource } from "@/lib/format";
 import type { Lead } from "@/types";
 import { EMPTY_STATES } from "@/lib/constants";
-import { CategoryLabel, Ico, stripEmoji, withIcons } from "@/components/ui/emoji-icon";
+import { CategoryLabel, CountryFlag, Ico, stripEmoji, withIcons } from "@/components/ui/emoji-icon";
 
 /**
  * structure-plan.md Phase 7, narrowed 2026-09-22 (live-testing feedback -- "purposals sary hamary pass
@@ -149,7 +149,14 @@ export function ProjectsView({
               )}
               {lead.contact_phone && <PhoneNumberList phones={lead.contact_phone} />}
               <p className="text-[0.82rem] text-muted">
-                <strong>Country:</strong> {lead.country ? countryLabel(lead.country) : "Not specified"}
+                <strong>Country:</strong>{" "}
+                {lead.country ? (
+                  <>
+                    <CountryFlag code={lead.country} /> {countryLabel(lead.country)}
+                  </>
+                ) : (
+                  "Not specified"
+                )}
               </p>
               <EditLeadDialog
                 lead={lead}

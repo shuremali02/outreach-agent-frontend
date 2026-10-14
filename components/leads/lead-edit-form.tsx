@@ -241,6 +241,10 @@ function LeadEditFormFields({ lead, onDone }: { lead: Lead; onDone?: () => void 
   const remove = useDeleteLead();
   const toast = useToast();
   const confirm = useConfirm();
+  // User, 2026-10-13: "Find Website" (or AI Discovery) can bring back the wrong company's URL, and
+  // there was no way to correct it afterward -- the backend already accepts company_website on PATCH
+  // /leads/{id} (types/lead.ts UpdateLeadInput), this form just never exposed a field for it.
+  const [companyWebsite, setCompanyWebsite] = useState(lead.company_website);
   const [subject, setSubject] = useState(lead.subject);
   const [body, setBody] = useState(lead.body);
   const [category, setCategory] = useState(lead.industry_tag);
@@ -267,7 +271,16 @@ function LeadEditFormFields({ lead, onDone }: { lead: Lead; onDone?: () => void 
 
   return (
     <div className="flex flex-col gap-3">
-      <h4 className="text-[1rem] font-semibold"><Ico e="✉" /> Outreach Draft</h4>
+      <h4 className="text-[1rem] font-semibold"><Ico e="🌐" /> Company</h4>
+      <Field label="Company Website">
+        <Input
+          value={companyWebsite}
+          onChange={(e) => setCompanyWebsite(e.target.value)}
+          placeholder="example.com"
+        />
+      </Field>
+
+      <h4 className="mt-2 text-[1rem] font-semibold"><Ico e="✉" /> Outreach Draft</h4>
       <Field label="Subject">
         <Input value={subject} onChange={(e) => setSubject(e.target.value)} maxLength={500} />
       </Field>
@@ -375,6 +388,7 @@ function LeadEditFormFields({ lead, onDone }: { lead: Lead; onDone?: () => void 
             {
               id: lead.id,
               input: {
+                company_website: companyWebsite,
                 subject,
                 body,
                 industry_tag: category,

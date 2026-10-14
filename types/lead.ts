@@ -249,6 +249,10 @@ export interface LeadFilters {
   bucket?: "no_answer" | "not_interested";
   /** LinkedIn tab's own filter (2026-10-05): whose outreach a lead came from. See LINKEDIN_OWNERS. */
   linkedinOwner?: "maaz" | "bilal" | "asfand";
+  /** "Load More" pagination (2026-10-13): absent = the old unbounded fetch (every page except Cold
+   *  Call Desk's Already Tried buckets, which can be hundreds of rows). */
+  limit?: number;
+  offset?: number;
 }
 
 /** Payload for POST /leads — the Add a Lead form. */

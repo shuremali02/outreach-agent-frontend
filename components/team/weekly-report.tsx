@@ -8,7 +8,7 @@ import { LeadBreakdownCharts } from "@/components/terminal/lead-breakdown-charts
 import { Field, Select } from "@/components/ui/input";
 import { metricsApi } from "@/lib/api";
 import { DISPOSITIONS, STAGE_LABELS, TEAM_ACTIVITY } from "@/lib/constants";
-import { num } from "@/lib/format";
+import { activityTime, num } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useUsers } from "@/hooks/use-users";
 import type { ActivityFeedItem, PipelineStage, TeamWeeks } from "@/types";
@@ -89,7 +89,7 @@ function ActivityFeed() {
               {feed.map((i) => (
                 <li key={i.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 border-b border-border px-4 py-2.5 last:border-0">
                   <span className="w-auto shrink-0 text-[0.8rem] tabular-nums text-muted sm:w-[150px]">
-                    {new Date(i.at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                    {activityTime(i.at)}
                   </span>
                   <span className={cn("w-auto shrink-0 font-semibold sm:w-[140px]", i.user_id === null && "italic text-muted")}>
                     {i.user_name}

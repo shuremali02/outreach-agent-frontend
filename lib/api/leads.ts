@@ -16,11 +16,27 @@ export const leadsApi = {
       include_meeting_hidden: filters.includeMeetingHidden ? 1 : undefined,
       bucket: filters.bucket,
       linkedin_owner: filters.linkedinOwner,
+      limit: filters.limit,
+      offset: filters.offset,
     }),
   /** Size of a desk's Voicemail / Hang Up group, so the collapsed section can show it unloaded.
    * `desk` (2026-10-05): defaults to "cold_call" on the backend if omitted. */
   deskTriedCount: (q?: string, desk?: "cold_call" | "linkedin") =>
     api.get<{ count: number }>("/leads/desk-tried-count", { q, desk }),
+  /** True total for a given filter/bucket combination, independent of how many rows are actually
+   * loaded -- "Load More" pagination (2026-10-13) needs this since `limit` caps the rows themselves. */
+  filteredCount: (filters: LeadFilters = {}) =>
+    api.get<{ count: number }>("/leads/filtered-count", {
+      stage: filters.stage,
+      category: filters.category,
+      country: filters.country,
+      q: filters.q,
+      desk: filters.desk,
+      tried: filters.tried,
+      include_meeting_hidden: filters.includeMeetingHidden ? 1 : undefined,
+      bucket: filters.bucket,
+      linkedin_owner: filters.linkedinOwner,
+    }),
   /** Live-typing check on Add a Lead (2026-10-06) -- same check POST /leads enforces on submit (409),
    * surfaced earlier so a rep finds out before filling in the rest of the form. */
   checkDuplicate: (companyName: string, companyWebsite: string) =>

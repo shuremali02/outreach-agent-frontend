@@ -43,52 +43,58 @@ export const UNKNOWN_COUNTRY = "unknown";
  * Country Filter / Add a Lead's Country field. Same ~40-code set the backend
  * can produce (validation._TLD_REGION / services/countries.py), so every
  * country the app stores has a matching label here.
+ *
+ * Labels used to carry a leading flag emoji (2026-10-13: dropped -- "mobile par abhi bhi emojis dikh rhy
+ * thy flags k", broken/missing on some devices' fonts). A flag is still shown wherever it matters
+ * visually -- CountryFlag in components/ui/emoji-icon.tsx renders a real SVG from country-flag-icons,
+ * keyed off the `id` here -- just not baked into this plain-text label, which also reaches native
+ * <option> elements that can't hold an SVG anyway.
  */
 export const COUNTRIES: { id: string; label: string }[] = [
-  { id: "US", label: "🇺🇸 United States" },
-  { id: "GB", label: "🇬🇧 United Kingdom" },
+  { id: "US", label: "United States" },
+  { id: "GB", label: "United Kingdom" },
   // Relabelled 2026-10-05 (user asked for "Dubai UAE" again, having already asked once on 2026-09-24 --
   // the plain "United Arab Emirates" label apparently didn't read as "Dubai" when scanning the dropdown).
   // Same "AE" code as before, just a clearer label.
-  { id: "AE", label: "🇦🇪 UAE (Dubai)" },
-  { id: "SA", label: "🇸🇦 Saudi Arabia" },
-  { id: "QA", label: "🇶🇦 Qatar" },
-  { id: "KW", label: "🇰🇼 Kuwait" },
-  { id: "BH", label: "🇧🇭 Bahrain" },
-  { id: "OM", label: "🇴🇲 Oman" },
-  { id: "CA", label: "🇨🇦 Canada" },
-  { id: "AU", label: "🇦🇺 Australia" },
-  { id: "NZ", label: "🇳🇿 New Zealand" },
-  { id: "DE", label: "🇩🇪 Germany" },
-  { id: "FR", label: "🇫🇷 France" },
-  { id: "IT", label: "🇮🇹 Italy" },
-  { id: "ES", label: "🇪🇸 Spain" },
-  { id: "NL", label: "🇳🇱 Netherlands" },
-  { id: "BE", label: "🇧🇪 Belgium" },
-  { id: "CH", label: "🇨🇭 Switzerland" },
-  { id: "AT", label: "🇦🇹 Austria" },
-  { id: "SE", label: "🇸🇪 Sweden" },
-  { id: "NO", label: "🇳🇴 Norway" },
-  { id: "DK", label: "🇩🇰 Denmark" },
-  { id: "FI", label: "🇫🇮 Finland" },
-  { id: "IE", label: "🇮🇪 Ireland" },
-  { id: "PT", label: "🇵🇹 Portugal" },
-  { id: "PL", label: "🇵🇱 Poland" },
-  { id: "IN", label: "🇮🇳 India" },
-  { id: "PK", label: "🇵🇰 Pakistan" },
-  { id: "SG", label: "🇸🇬 Singapore" },
-  { id: "MY", label: "🇲🇾 Malaysia" },
-  { id: "ZA", label: "🇿🇦 South Africa" },
-  { id: "BR", label: "🇧🇷 Brazil" },
-  { id: "MX", label: "🇲🇽 Mexico" },
-  { id: "JP", label: "🇯🇵 Japan" },
-  { id: "CN", label: "🇨🇳 China" },
-  { id: "TR", label: "🇹🇷 Turkey" },
-  { id: "GR", label: "🇬🇷 Greece" },
-  { id: "CZ", label: "🇨🇿 Czech Republic" },
-  { id: "RO", label: "🇷🇴 Romania" },
-  { id: "HU", label: "🇭🇺 Hungary" },
-  { id: "EG", label: "🇪🇬 Egypt" },
+  { id: "AE", label: "UAE (Dubai)" },
+  { id: "SA", label: "Saudi Arabia" },
+  { id: "QA", label: "Qatar" },
+  { id: "KW", label: "Kuwait" },
+  { id: "BH", label: "Bahrain" },
+  { id: "OM", label: "Oman" },
+  { id: "CA", label: "Canada" },
+  { id: "AU", label: "Australia" },
+  { id: "NZ", label: "New Zealand" },
+  { id: "DE", label: "Germany" },
+  { id: "FR", label: "France" },
+  { id: "IT", label: "Italy" },
+  { id: "ES", label: "Spain" },
+  { id: "NL", label: "Netherlands" },
+  { id: "BE", label: "Belgium" },
+  { id: "CH", label: "Switzerland" },
+  { id: "AT", label: "Austria" },
+  { id: "SE", label: "Sweden" },
+  { id: "NO", label: "Norway" },
+  { id: "DK", label: "Denmark" },
+  { id: "FI", label: "Finland" },
+  { id: "IE", label: "Ireland" },
+  { id: "PT", label: "Portugal" },
+  { id: "PL", label: "Poland" },
+  { id: "IN", label: "India" },
+  { id: "PK", label: "Pakistan" },
+  { id: "SG", label: "Singapore" },
+  { id: "MY", label: "Malaysia" },
+  { id: "ZA", label: "South Africa" },
+  { id: "BR", label: "Brazil" },
+  { id: "MX", label: "Mexico" },
+  { id: "JP", label: "Japan" },
+  { id: "CN", label: "China" },
+  { id: "TR", label: "Turkey" },
+  { id: "GR", label: "Greece" },
+  { id: "CZ", label: "Czech Republic" },
+  { id: "RO", label: "Romania" },
+  { id: "HU", label: "Hungary" },
+  { id: "EG", label: "Egypt" },
 ];
 
 export function countryLabel(code: string): string {
@@ -1082,6 +1088,9 @@ export const ALREADY_TRIED_FILTER = {
   // next to a "(0)" heading, which read as "nothing here" before the real count had even arrived.
   loading: "Loading…",
   empty: "No leads in this group right now.",
+  // "Load More" pagination (2026-10-13): the button under the list, shown while more rows exist beyond
+  // the currently-loaded page.
+  loadMore: "Load 100 more",
 } as const;
 
 export const LOST_STAGE_CONFIRM = {

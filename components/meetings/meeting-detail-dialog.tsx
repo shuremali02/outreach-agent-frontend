@@ -12,7 +12,7 @@ import { useToast } from "@/components/ui/toast";
 import { CALLBACK_BOOKING, EMAIL_SEND, MEETING_OUTCOMES, STAGE_LABELS, TOASTS, countryLabel } from "@/lib/constants";
 import { currency, displayDomain, externalUrl, hasUsableEmail } from "@/lib/format";
 import type { Lead } from "@/types";
-import { CategoryLabel, Ico, withIcons } from "@/components/ui/emoji-icon";
+import { CategoryLabel, CountryFlag, Ico, withIcons } from "@/components/ui/emoji-icon";
 
 /**
  * Clicking a meeting on the calendar (components/meetings/meetings-calendar.tsx)
@@ -148,8 +148,16 @@ export function MeetingDetailDialog({
             )}
             {lead.contact_phone && <PhoneNumberList phones={lead.contact_phone} />}
             <p className="text-[0.85rem] text-muted">
-              <Ico e="🌍" /> {lead.country ? countryLabel(lead.country) : "Not specified"} · {currency(lead.deal_value)} ·{" "}
-              <CategoryLabel value={lead.industry_tag} />
+              {lead.country ? (
+                <>
+                  <CountryFlag code={lead.country} /> {countryLabel(lead.country)}
+                </>
+              ) : (
+                <>
+                  <Ico e="🌍" /> Not specified
+                </>
+              )}{" "}
+              · {currency(lead.deal_value)} · <CategoryLabel value={lead.industry_tag} />
             </p>
             {lead.reason && (
               <p className="text-[0.82rem] text-muted">

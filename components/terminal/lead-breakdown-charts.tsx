@@ -10,7 +10,7 @@ import { Field, Select } from "@/components/ui/input";
 import { metricsApi } from "@/lib/api";
 import { ALL_CATEGORIES, ALL_COUNTRIES, LEAD_BREAKDOWN } from "@/lib/constants";
 import { num } from "@/lib/format";
-import { stripEmoji, withIcons } from "@/components/ui/emoji-icon";
+import { CategoryLabel, stripEmoji, withIcons } from "@/components/ui/emoji-icon";
 import type { LeadBreakdownRow } from "@/types";
 
 // Confirmed live 2026-10-12: a single grouped-bar chart with both "Leads" (hundreds) and "Connecting"
@@ -148,7 +148,7 @@ function BreakdownCharts({ rows }: { rows: LeadBreakdownRow[] }) {
   );
 }
 
-function BreakdownTable({ rows }: { rows: LeadBreakdownRow[] }) {
+function BreakdownTable({ rows, view }: { rows: LeadBreakdownRow[]; view: "country" | "category" }) {
   if (rows.length === 0) return null;
   const cols: { key: keyof LeadBreakdownRow; label: string }[] = [
     { key: "leads", label: LEAD_BREAKDOWN.columns.leads },
@@ -175,7 +175,15 @@ function BreakdownTable({ rows }: { rows: LeadBreakdownRow[] }) {
         <tbody>
           {rows.map((r) => (
             <tr key={r.key} className="border-b border-border last:border-0">
-              <td className="px-3 py-2 font-medium">{r.key === UNKNOWN_KEY ? LEAD_BREAKDOWN.unknown : r.label}</td>
+              <td className="px-3 py-2 font-medium">
+                {r.key === UNKNOWN_KEY ? (
+                  LEAD_BREAKDOWN.unknown
+                ) : view === "category" ? (
+                  <CategoryLabel value={r.label} />
+                ) : (
+                  r.label
+                )}
+              </td>
               <td className="px-3 py-2 text-right tabular-nums text-muted">{rateOf(r)}%</td>
               {cols.map((c) => (
                 <td key={c.key} className="px-3 py-2 text-right tabular-nums">
@@ -283,7 +291,7 @@ export function LeadBreakdownCharts() {
           ) : (
             <>
               <BreakdownCharts rows={rows} />
-              <BreakdownTable rows={rows} />
+              <BreakdownTable rows={rows} view={view} />
             </>
           )}
         </Card>

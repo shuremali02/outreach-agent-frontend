@@ -24,6 +24,10 @@ export function leadsKey(filters: LeadFilters = {}) {
     filters.includeMeetingHidden ? "meeting-hidden" : null,
     filters.bucket ?? null,
     filters.linkedinOwner ?? null,
+    // "Load More" pagination (2026-10-13) -- a bigger limit must be its own cache entry, not reuse the
+    // smaller page's cached 100 rows.
+    filters.limit ?? null,
+    filters.offset ?? null,
   ] as const;
 }
 
@@ -34,6 +38,9 @@ export function useLeads(filters: LeadFilters = {}, initialData?: Lead[], enable
     queryFn: () => leadsApi.list(filters),
     initialData,
     enabled,
+    // Keeps the current rows on screen while a bigger "Load More" page fetches, instead of the list
+    // flashing empty for a moment (same pattern used elsewhere this session, e.g. lead-breakdown-charts.tsx).
+    placeholderData: keepPreviousData,
   });
 }
 

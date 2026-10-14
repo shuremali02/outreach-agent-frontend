@@ -40,7 +40,7 @@ import {
   linkedinOwnerLabel,
 } from "@/lib/constants";
 import type { CallOutcome, Lead } from "@/types";
-import { CategoryLabel, Ico, withIcons } from "@/components/ui/emoji-icon";
+import { CategoryLabel, CountryFlag, Ico, withIcons } from "@/components/ui/emoji-icon";
 
 /** app.py:1874-1881 — the template used when phone_script is missing or < 15 chars. */
 function scriptFor(lead: Lead): string {
@@ -341,7 +341,12 @@ export function Battlecard({
         <Ico e="🕒" /> {addedAt(lead.created_at)}
         {" · "}
         {withIcons(LEAD_SOURCE_LABELS[leadSource(lead.source_prompt)])}
-        {lead.country && ` · ${countryLabel(lead.country)}`}
+        {lead.country && (
+          <>
+            {" · "}
+            <CountryFlag code={lead.country} /> {countryLabel(lead.country)}
+          </>
+        )}
         <LeadWho lead={lead} />
       </p>
       {/* Voicemail/Hang Up/No Answer -- structure-plan.md Phase 3: the mark that makes it clear this

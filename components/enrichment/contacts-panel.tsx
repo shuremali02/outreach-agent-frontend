@@ -57,6 +57,22 @@ function looksLikePerson(name: string): boolean {
   return /^[A-Za-z][\p{L}'.-]*\s+[A-Za-z][\p{L}'.-]+/u.test(n);
 }
 
+/**
+ * Found live 2026-10-13 ("yeh number is tarah se kyun dikh rhy hein") -- a contact added via "+ Add
+ * Another Contact" / "Find decision makers" had their phone number typed into the Role field instead of
+ * Phone. Rendered inline right after the name (" — 06 17 38 48 62"), it wraps mid-number at the card's
+ * width with nothing to tell it apart from a real role, confusing rather than just wrong data. Detecting
+ * it here lets the role slot render it through PhoneNumberList instead -- a proper tel: link, on its own
+ * line, same as a correctly-filled phone field -- without needing a backend/data fix for every contact
+ * this has already happened to.
+ */
+function looksLikePhone(text: string): boolean {
+  const t = (text || "").trim();
+  if (!t) return false;
+  const digits = t.replace(/\D/g, "");
+  return digits.length >= 7 && digits.length / t.length > 0.6;
+}
+
 export function ContactsPanel({
   lead,
   autoSearchOnMount = false,
@@ -250,7 +266,7 @@ export function ContactsPanel({
                   <div className="min-w-0 flex-1">
                     <p className="text-[0.85rem]">
                       <strong><Ico e="👤" /> {c.name}</strong>
-                      {c.role && <em className="text-muted"> — {c.role}</em>}
+                      {c.role && !looksLikePhone(c.role) && <em className="text-muted"> — {c.role}</em>}
                       <span className="ml-2 text-[0.7rem] text-muted">
                         {withIcons(SOURCE_LABEL[c.source] ?? c.source)}
                         {c.confidence > 0 && ` · ${c.confidence}%`}
@@ -265,6 +281,11 @@ export function ContactsPanel({
                     {c.phone && (
                       <div className="mt-0.5">
                         <PhoneNumberList phones={c.phone} />
+                      </div>
+                    )}
+                    {!c.phone && c.role && looksLikePhone(c.role) && (
+                      <div className="mt-0.5">
+                        <PhoneNumberList phones={c.role} />
                       </div>
                     )}
                     {c.linkedin && (

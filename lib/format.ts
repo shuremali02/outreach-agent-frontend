@@ -91,6 +91,34 @@ export function addedAt(iso: string): string {
   return `${parts.date} · ${time}`;
 }
 
+/**
+ * "Oct 13, 2:30 PM" -- Weekly Report's Activity Feed (weekly-report.tsx). Found during the 2026-10-13
+ * timezone audit: that feed was formatting its (correctly "Z"-suffixed UTC) timestamps with plain
+ * `new Date(iso).toLocaleString(...)`, no `timeZone` override -- the one place in the app that let the
+ * VIEWER's own machine/browser timezone leak in, instead of the fixed PKT every other timestamp here
+ * uses (see localDateTimeParts() above, and meetings-calendar.tsx's todayKeyPKT() -- "a rep in a different
+ * timezone must still see Karachi's today, not their own"). `timeZone: "UTC"` below is deliberate: the
+ * Date object passed in has already been shifted +5h by localDateTimeParts()'s trick, so its UTC getters
+ * ARE the PKT wall-clock fields -- formatting with any other zone would shift it again.
+ */
+export function activityTime(iso: string): string {
+  const parts = localDateTimeParts(iso);
+  if (!parts) return "";
+  const shifted = new Date(Date.UTC(1970, 0, 1, parts.hour, parts.minute));
+  const [y, m, d] = parts.date.split("-").map(Number);
+  const dateLabel = new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+  const timeLabel = shifted.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "UTC",
+  });
+  return `${dateLabel}, ${timeLabel}`;
+}
+
 export function shortDate(iso: string): string {
   return localDateTimeParts(iso)?.date ?? "";
 }

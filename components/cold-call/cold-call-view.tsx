@@ -79,17 +79,31 @@ export function ColdCallView({
   // left the desk) but still scopes which channel's hidden leads come back, keeping the two desks' buckets
   // from leaking into each other.
   const [bucket, setBucket] = useState<"" | "tried" | "no_answer" | "not_interested">("");
+  // "Load More" pagination (user, 2026-10-13: "sirf 100 show karwao, baaki ke liye Load More button
+  // lagao, sari ek saath load na karwao" -- a bucket like Voicemail/Hang Up can be hundreds of rows).
+  // Reset to 100 every time a different bucket is picked, so switching dropdown options never starts
+  // from whatever page the previous bucket happened to be on.
+  const [bucketLimit, setBucketLimit] = useState(100);
+  const bucketFilters = {
+    q,
+    slim: false,
+    desk: channel,
+    tried: bucket === "tried" ? true : undefined,
+    bucket: bucket === "no_answer" || bucket === "not_interested" ? bucket : undefined,
+  };
   const bucketResult = useLeads(
-    {
-      q,
-      slim: false,
-      desk: channel,
-      tried: bucket === "tried" ? true : undefined,
-      bucket: bucket === "no_answer" || bucket === "not_interested" ? bucket : undefined,
-    },
+    { ...bucketFilters, limit: bucketLimit },
     undefined,
     bucket !== "",
   );
+  // The TRUE total for the current bucket, independent of bucketLimit -- bucketResult.data.length is
+  // only ever <=bucketLimit once pagination is in play, so "347 of 1,204" needs its own count query.
+  const bucketTotal = useQuery({
+    queryKey: ["leads-filtered-count", bucketFilters],
+    queryFn: () => leadsApi.filteredCount(bucketFilters),
+    enabled: bucket !== "",
+    staleTime: 30_000,
+  });
   // The ticker total still needs an accurate count even before anything is picked -- one lightweight COUNT
   // query (never the rows themselves), same pattern as before.
   const triedCount = useQuery({
@@ -154,7 +168,21 @@ export function ColdCallView({
   // Snapshot used ONLY for ordering. Re-sorting on a live clock would shuffle
   // cards under a rep mid-call; the order refreshes on mount, on a filter
   // change, or when the rep clicks "Re-sort by local time".
-  const [sortAt, setSortAt] = useState(() => Date.now());
+  //
+  // Starts null (not Date.now()) and is set in a useEffect below -- confirmed live 2026-10-13:
+  // Date.now() in the useState initializer ran once during SSR and again during client hydration,
+  // two different instants, so the server-rendered "Open Now" count and the client's immediately
+  // disagreed (a React hydration-mismatch error, visible as the ticker flashing 43 -> 100). null is
+  // the same value on both the server and the client's first paint -- new Date(sortAt ?? 0) resolves
+  // identically either way -- and the real clock reading only lands after hydration, client-only.
+  const [sortAt, setSortAt] = useState<number | null>(null);
+  useEffect(() => {
+    // setTimeout, not a direct synchronous setState call in the effect body -- react-hooks/set-state-
+    // in-effect (same fix pattern already used elsewhere this session, e.g. top-bar.tsx's mobile-
+    // search-reset effect, add-lead-popover.tsx's duplicate-check effect).
+    const id = setTimeout(() => setSortAt(Date.now()), 0);
+    return () => clearTimeout(id);
+  }, []);
   // Default order is NEWEST FIRST (user, 2026-09-22 and again 2026-09-25: the leads that just came in must
   // be on top). Sorting by who is at their desk right now used to be the default, which pushed every fresh
   // lead below older ones whose local time happened to be open -- e.g. a batch of US leads pulled in during
@@ -205,7 +233,7 @@ export function ColdCallView({
   // direct lines before switchboards before no-number. A stable tiebreak on
   // the old order (below) keeps everything else exactly as it was.
   const rank = useMemo(() => {
-    const at = new Date(sortAt);
+    const at = new Date(sortAt ?? 0);
     return (l: Lead) => {
       const clock = localClock(l.call_tz, at, CALL_WINDOW.startHour, CALL_WINDOW.endHour);
       const timeRank = clock === null ? 1 : clock.open ? 0 : 2;
@@ -225,14 +253,16 @@ export function ColdCallView({
   // the same client-side filters applied by hand instead.
   const bucketLeads = useMemo(() => {
     if (bucket === "tried") {
+      // Newest-activity-first (user, 2026-10-13: "yeh sab ulti aa rahi hain, newest sabse upar aani
+      // chahiye") -- was ascending (oldest first), the exact opposite of every other list in this app.
       return filtered
         .filter((l) => TRIED_OUTCOMES.has(l.last_call_outcome))
-        .sort((a, b) => a.updated_at.localeCompare(b.updated_at));
+        .sort((a, b) => b.updated_at.localeCompare(a.updated_at));
     }
     if (bucket === "no_answer") {
       return filtered
         .filter((l) => l.last_call_outcome === "no_answer")
-        .sort((a, b) => rank(a) - rank(b) || a.updated_at.localeCompare(b.updated_at));
+        .sort((a, b) => rank(a) - rank(b) || b.updated_at.localeCompare(a.updated_at));
     }
     if (bucket === "not_interested") {
       return (bucketResult.data ?? []).filter(
@@ -265,7 +295,7 @@ export function ColdCallView({
   ).length;
   const queueValue = queue.reduce((s, l) => s + l.deal_value, 0);
   const openNow = useMemo(() => {
-    const at = new Date(sortAt);
+    const at = new Date(sortAt ?? 0);
     // Only leads with a number to dial: a no-number lead can carry a timezone
     // (from its country) but is never "ready to call".
     return queue.filter(
@@ -360,7 +390,13 @@ export function ColdCallView({
         </Field>
         {/* Nothing in any of these 3 groups fetches until one is picked here -- user, 2026-10-01. */}
         <Field label={ALREADY_TRIED_FILTER.label}>
-          <Select value={bucket} onChange={(e) => setBucket(e.target.value as typeof bucket)}>
+          <Select
+            value={bucket}
+            onChange={(e) => {
+              setBucket(e.target.value as typeof bucket);
+              setBucketLimit(100);
+            }}
+          >
             <option value="">{ALREADY_TRIED_FILTER.placeholder}</option>
             {ALREADY_TRIED_FILTER.options.map((o) => (
               <option key={o.id} value={o.id}>
@@ -448,7 +484,12 @@ export function ColdCallView({
           bucket === "" check above) -- clearing it swaps straight back. */}
       {bucket !== "" && (
         <div className="mb-4">
-          {bucketResult.isFetching ? (
+          {bucketResult.isLoading ? (
+            // isLoading (not isFetching): "Load More" bumping bucketLimit also sets isFetching, and with
+            // placeholderData: keepPreviousData the old rows are still sitting in `data` while that refetch
+            // runs -- gating on isFetching here would blank the whole list on every "Load More" click, the
+            // exact flash keepPreviousData was added to prevent (see lead-breakdown-charts.tsx). isLoading
+            // is only true on the very first fetch, when there's nothing to keep showing yet.
             <BarLoader label={ALREADY_TRIED_FILTER.loading} />
           ) : bucketResult.isError ? (
             <p className="rounded-[8px] px-3 py-2 text-[0.9rem] text-danger" style={{ background: "var(--danger-tint)" }}>
@@ -460,7 +501,9 @@ export function ColdCallView({
                 {withIcons(
                   ALREADY_TRIED_FILTER.heading(
                     ALREADY_TRIED_FILTER.options.find((o) => o.id === bucket)?.label ?? "",
-                    bucketLeads.length,
+                    // The TRUE total once it's loaded (independent of bucketLimit), not just how many
+                    // rows are currently on screen -- "347" not "100" when 247 more exist beyond this page.
+                    bucketTotal.data?.count ?? bucketLeads.length,
                   ),
                 )}
               </h3>
@@ -475,6 +518,22 @@ export function ColdCallView({
               {bucketLeads.map((lead) => (
                 <Battlecard key={lead.id} lead={lead} onActionTaken={dismiss} />
               ))}
+              {/* "Load More" (2026-10-13) -- not_interested's own list (bucketLeads for that bucket is
+                  client-filtered straight off bucketResult.data, same underlying rows) also benefits:
+                  more rows load the same way once clicked. Shown only while the true total says there's
+                  more beyond the currently-loaded page. */}
+              {bucketResult.data && (bucketTotal.data?.count ?? 0) > bucketResult.data.length && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  block
+                  className="mt-2"
+                  loading={bucketResult.isFetching}
+                  onClick={() => setBucketLimit((n) => n + 100)}
+                >
+                  {ALREADY_TRIED_FILTER.loadMore}
+                </Button>
+              )}
             </>
           )}
         </div>

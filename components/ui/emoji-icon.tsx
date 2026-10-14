@@ -71,6 +71,7 @@ import {
   Zap,
   type LucideIcon,
 } from "lucide-react";
+import * as CountryFlags from "country-flag-icons/react/3x2";
 import { cn } from "@/lib/utils";
 
 /**
@@ -267,6 +268,28 @@ const CATEGORY_ICONS: Array<[RegExp, LucideIcon, string]> = [
   [/tech|commercial|product/i, Cpu, "var(--info)"],
   [/trailer|camper/i, Caravan, "var(--success)"],
 ];
+
+/**
+ * A country's flag, as a crisp SVG (user, 2026-10-13: "mobile par abhi bhi emojis dikh rhy thy flags k").
+ * Native regional-indicator flag emoji (🇵🇰 etc, previously baked straight into lib/constants.ts's
+ * COUNTRIES labels) depend on the OS/browser having real flag glyphs -- many Android phones and some
+ * browsers render them as two bare letters or a blank box instead of an actual flag, unlike every other
+ * emoji in this app (which were always just decorative and got converted to a lucide icon above; flags
+ * carry real information -- WHICH country -- so dropping them wasn't the fix, rendering them properly
+ * was). `code` is the lead's ISO 3166-1 alpha-2 country code, matching COUNTRIES[].id. An unset/unknown
+ * code (or one country-flag-icons doesn't have, e.g. lowercase or malformed) falls back to the plain
+ * Flag icon (🏳️'s lucide icon) rather than rendering nothing.
+ */
+export function CountryFlag({ code, className }: { code: string; className?: string }) {
+  const FlagSvg = CountryFlags[code as keyof typeof CountryFlags];
+  if (!FlagSvg) return <Flag aria-hidden className={cn(ICON_CLASS, className)} strokeWidth={2} />;
+  return (
+    <FlagSvg
+      aria-hidden
+      className={cn("inline-block h-[0.85em] w-[1.15em] shrink-0 rounded-[2px] align-[-0.1em]", className)}
+    />
+  );
+}
 
 export function CategoryLabel({ value }: { value: string }) {
   const hit = CATEGORY_ICONS.find(([re]) => re.test(value));

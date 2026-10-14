@@ -3,7 +3,7 @@
 import { ALL_COUNTRIES, UNKNOWN_COUNTRY, countryLabel } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import type { Lead } from "@/types";
-import { withIcons } from "@/components/ui/emoji-icon";
+import { CountryFlag, withIcons } from "@/components/ui/emoji-icon";
 
 /** Mirrors category-pills.tsx exactly, keyed on lead.country instead of industry_tag. */
 export function CountryPills({
@@ -29,11 +29,15 @@ export function CountryPills({
       {options.map((c) => {
         const active = selected === c;
         const label =
-          c === ALL_COUNTRIES
-            ? `🌍 ${ALL_COUNTRIES} (${leads.length})`
-            : c === UNKNOWN_COUNTRY
-              ? `🏳️ Unknown (${counts.get(c)})`
-              : `${countryLabel(c)} (${counts.get(c)})`;
+          c === ALL_COUNTRIES ? (
+            withIcons(`🌍 ${ALL_COUNTRIES} (${leads.length})`)
+          ) : c === UNKNOWN_COUNTRY ? (
+            withIcons(`🏳️ Unknown (${counts.get(c)})`)
+          ) : (
+            <>
+              <CountryFlag code={c} /> {countryLabel(c)} ({counts.get(c)})
+            </>
+          );
         return (
           <button
             key={c}
@@ -47,7 +51,7 @@ export function CountryPills({
                 : "border-border bg-card text-muted hover:border-accent hover:text-accent",
             )}
           >
-            {withIcons(label)}
+            {label}
           </button>
         );
       })}
