@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useMemo, useState } from "react";
-import { useLeads, useMeetingOutcome, useNeedsEmail, useUpdateLead } from "@/hooks/use-leads";
+import { useAddNote, useLeads, useMeetingOutcome, useNeedsEmail, useUpdateLead } from "@/hooks/use-leads";
 import { EditLeadDialog } from "@/components/leads/edit-lead-dialog";
 import { LeadCard } from "@/components/leads/lead-card";
 import { LeadWho } from "@/components/leads/lead-who";
@@ -13,7 +13,7 @@ import { MetricCard } from "@/components/metrics/metric-card";
 import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
-import { Select, Field, Input } from "@/components/ui/input";
+import { Select, Field, Input, Textarea } from "@/components/ui/input";
 import {
   COUNTRIES,
   LEAD_SOURCE_LABELS,
@@ -27,6 +27,7 @@ import {
   PIPELINE_CARD,
   MEETING_OUTCOMES,
   MEETING_BOOKING,
+  NOT_INTERESTED_NOTE,
   EMAIL_SEND,
   TOASTS,
   countryLabel,
@@ -36,6 +37,8 @@ import type { Lead } from "@/types";
 import { EMPTY_STATES } from "@/lib/constants";
 import { CategoryLabel, CountryFlag, Ico, stripEmoji, withIcons } from "@/components/ui/emoji-icon";
 import { AttemptTracker } from "@/components/pipeline/attempt-tracker";
+import { FollowupTracker, isFollowupEscalated } from "@/components/pipeline/followup-tracker";
+import { ProposalReminderPrompt } from "@/components/pipeline/proposal-reminder-prompt";
 
 /** Has a callback (a set time, or a Callback Scheduled disposition) AND is not already Won / Lost. */
 function hasOpenCallback(l: Lead): boolean {
@@ -44,6 +47,50 @@ function hasOpenCallback(l: Lead): boolean {
     l.pipeline_stage !== "won" &&
     l.pipeline_stage !== "lost"
   );
+}
+
+type AttemptContext = "callback" | "no_show" | "proposal";
+
+/**
+ * This card's attempt-tracker status, if it has recorded at least one attempt -- not just whether it's
+ * OVERDUE. User, 2026-10-15, after the overdue-only badge shipped: "agar mujhy callback wala filter
+ * select kr k dekhna hai k Second Attempt kis ko krna hai toh woh kese dekh skunga" -- selecting the
+ * existing "Callbacks" view and scanning for who's on attempt 2 vs. still on attempt 1 had no answer
+ * without opening every card. Returns null only when NO attempt has been checked yet for this lead's
+ * context (nothing to show -- same as before this request). `attempt` is always attempts.length + 1,
+ * i.e. the NEXT attempt still to do, 2 or 3 (next_attempt_due only exists once attempt 1 has happened;
+ * once all 3 are used, `due` is null and `attempt` reports 3 to mean "all attempts used").
+ */
+function attemptStatus(
+  lead: Lead,
+): { context: AttemptContext; attempt: number; due: string; overdue: boolean } | null {
+  let context: AttemptContext | null = null;
+  if (lead.pipeline_stage === "proposal_sent") context = "proposal";
+  else if (lead.pipeline_stage === "followup_due" && lead.no_show_at) context = "no_show";
+  else if (hasOpenCallback(lead)) context = "callback";
+  if (!context) return null;
+
+  const attempts =
+    context === "callback" ? lead.callback_attempts : context === "no_show" ? lead.no_show_attempts : lead.proposal_attempts;
+  if (attempts.length === 0) return null;
+  const due = context === "callback" ? lead.callback_next_attempt_due : context === "no_show" ? lead.no_show_next_attempt_due : lead.proposal_next_attempt_due;
+  const overdue = Boolean(due) && new Date(due).getTime() <= Date.now();
+  return { context, attempt: Math.min(attempts.length + 1, 3), due, overdue };
+}
+
+/** Mirrors the backend's own scope + due check (crud/attempt_reminders.py _scoped_leads /
+ * next_attempt_due) so the "Attempts Due" filter and the notification that already fired for the same
+ * lead never disagree about what's genuinely overdue. */
+function overdueAttemptContext(lead: Lead): AttemptContext | null {
+  const status = attemptStatus(lead);
+  return status?.overdue ? status.context : null;
+}
+
+/** The whole-card red state (user, 2026-10-16: "woh red ho jaye lead ... 1 ghnty bad") -- either Email
+ * or Call Attempt's due date passed an hour ago with nothing recorded since. Matches the backend's own
+ * escalation threshold exactly (crud/attempt_reminders.py check_and_fire_proposal_followups()). */
+function isProposalFollowupEscalated(lead: Lead): boolean {
+  return isFollowupEscalated(lead.email_followup_due_at) || isFollowupEscalated(lead.call_followup_due_at);
 }
 
 /**
@@ -60,11 +107,23 @@ function PipelineActions({ lead }: { lead: Lead }) {
   const outcome = useMeetingOutcome();
   const update = useUpdateLead();
   const needsEmail = useNeedsEmail();
+  const addNote = useAddNote();
   const confirm = useConfirm();
   const toast = useToast();
   const [bookingPrompt, setBookingPrompt] = useState(false);
   const [meetingDate, setMeetingDate] = useState("");
   const [meetingTime, setMeetingTime] = useState("");
+  // Not Interested's mandatory note (user, 2026-10-16: "jab woh not intrested mark kry tab woh neechy note
+  // puchy k ... tb tk agy na jany dya jaye jb tk woh note add na kr dy k kyun not intrested" -- e.g. Ali
+  // marking it after 6 followup attempts should have to say why). Only "lost" uses this prompt; Client
+  // Closed/Proposal Send keep the plain confirm() dialog below, unchanged.
+  const [notInterestedPrompt, setNotInterestedPrompt] = useState(false);
+  const [notInterestedNote, setNotInterestedNote] = useState("");
+  // Proposal Send's blocking reminder gate (user, 2026-10-16: "jese he purposal send button click hon
+  // whn pehle woh reminder set ka puche... jab tk banda set na kry time tb tk agy nhi jayegi lead
+  // pipeline me") -- see components/pipeline/proposal-reminder-prompt.tsx. The stage change itself
+  // happens in onProposalScheduled below, only once the reminder is saved.
+  const [proposalPrompt, setProposalPrompt] = useState(false);
 
   // Not Interested / Proposal Send / Client Closed -- the same 3 (of 4) MEETING_OUTCOMES entries the
   // Meetings detail popup uses, minus "Needs Follow-up" (a post-meeting-only concept that doesn't apply
@@ -72,17 +131,64 @@ function PipelineActions({ lead }: { lead: Lead }) {
   const actions = MEETING_OUTCOMES.filter((o) => o.stage !== "followup_due");
 
   async function setOutcome(o: (typeof actions)[number]) {
+    if (o.stage === "lost") {
+      setNotInterestedNote("");
+      setNotInterestedPrompt(true);
+      return;
+    }
+    if (o.stage === "proposal_sent") {
+      setProposalPrompt(true);
+      return;
+    }
     const ok = await confirm({
       title: o.confirmTitle(lead.company_name),
       description: o.confirmBody,
       confirmLabel: o.confirmLabel,
-      tone: o.stage === "lost" ? "danger" : "default",
+      tone: "default",
     });
     if (!ok) return;
     outcome.mutate(
       { id: lead.id, stage: o.stage },
       {
         onSuccess: () => toast.success(o.done(lead.company_name)),
+        onError: (e) => toast.error(e instanceof Error ? e.message : TOASTS.actionFailed),
+      },
+    );
+  }
+
+  function confirmNotInterested() {
+    const text = notInterestedNote.trim();
+    if (!text) return;
+    const lostOutcome = MEETING_OUTCOMES.find((o) => o.stage === "lost")!;
+    addNote.mutate(
+      { id: lead.id, text },
+      {
+        onSuccess: () =>
+          outcome.mutate(
+            { id: lead.id, stage: "lost" },
+            {
+              onSuccess: () => {
+                toast.success(lostOutcome.done(lead.company_name));
+                setNotInterestedPrompt(false);
+                setNotInterestedNote("");
+              },
+              onError: (e) => toast.error(e instanceof Error ? e.message : TOASTS.actionFailed),
+            },
+          ),
+        onError: (e) => toast.error(e instanceof Error ? e.message : TOASTS.actionFailed),
+      },
+    );
+  }
+
+  function onProposalScheduled() {
+    const proposalOutcome = MEETING_OUTCOMES.find((o) => o.stage === "proposal_sent")!;
+    outcome.mutate(
+      { id: lead.id, stage: "proposal_sent" },
+      {
+        onSuccess: () => {
+          toast.success(proposalOutcome.done(lead.company_name));
+          setProposalPrompt(false);
+        },
         onError: (e) => toast.error(e instanceof Error ? e.message : TOASTS.actionFailed),
       },
     );
@@ -104,6 +210,52 @@ function PipelineActions({ lead }: { lead: Lead }) {
         },
         onError: (e) => toast.error(e instanceof Error ? e.message : TOASTS.actionFailed),
       },
+    );
+  }
+
+  if (notInterestedPrompt) {
+    return (
+      <div className="flex flex-col gap-2 rounded-[8px] border border-danger bg-input px-3 py-3">
+        <p className="text-[0.85rem] font-semibold">{withIcons(NOT_INTERESTED_NOTE.prompt)}</p>
+        <Textarea
+          rows={3}
+          value={notInterestedNote}
+          onChange={(e) => setNotInterestedNote(e.target.value)}
+          placeholder={NOT_INTERESTED_NOTE.placeholder}
+        />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <Button variant="secondary" size="sm" onClick={() => setNotInterestedPrompt(false)}>
+            {withIcons(MEETING_BOOKING.cancel)}
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            loading={addNote.isPending || outcome.isPending}
+            disabled={!notInterestedNote.trim()}
+            onClick={confirmNotInterested}
+          >
+            {withIcons(NOT_INTERESTED_NOTE.confirm)}
+          </Button>
+        </div>
+        {(addNote.isError || outcome.isError) && (
+          <p className="text-[0.78rem] text-danger">
+            {(addNote.error || outcome.error) instanceof Error
+              ? ((addNote.error || outcome.error) as Error).message
+              : TOASTS.actionFailed}
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  if (proposalPrompt) {
+    return (
+      <ProposalReminderPrompt
+        lead={lead}
+        onConfirm={onProposalScheduled}
+        onCancel={() => setProposalPrompt(false)}
+        pending={outcome.isPending}
+      />
     );
   }
 
@@ -232,16 +384,18 @@ function PipelineSummary({ lead }: { lead: Lead }) {
       ) : (
         hasOpenCallback(lead) && <AttemptTracker lead={lead} context="callback" />
       )}
-      {lead.pipeline_stage === "proposal_sent" && <AttemptTracker lead={lead} context="proposal" />}
+      {lead.pipeline_stage === "proposal_sent" && (
+        <>
+          <AttemptTracker lead={lead} context="proposal" />
+          {/* ADDITIVE, not a replacement (user, 2026-10-16: "woh bhi rahega... yeh system us follow up
+              attempt k neechy he ayega") -- the generic tracker above stays exactly as it was. */}
+          <FollowupTracker lead={lead} context="email_followup" />
+          <FollowupTracker lead={lead} context="call_followup" />
+        </>
+      )}
       <PipelineActions lead={lead} />
-      <EditLeadDialog
-        lead={lead}
-        trigger={
-          <button type="button" className="cursor-pointer text-left text-[0.85rem] font-semibold text-accent underline">
-            {withIcons(PIPELINE_CARD.editInContacts)}
-          </button>
-        }
-      />
+      {/* "Edit in Leads" moved to the card's top-right header (user, 2026-10-16) -- see the <LeadCard>
+          summary below; this column no longer renders it. */}
       {/* The "Open in Mail App" button that used to end this column now comes with the Notes panel next to
           it (NotesPanel renders its own), so it isn't shown twice on one card. */}
     </div>
@@ -253,11 +407,18 @@ export function PipelineView({
   category,
   country,
   q,
+  scope = "pipeline",
 }: {
   initialLeads: Lead[];
   category: string;
   country: string;
   q: string;
+  /** "callbacks" (new page, user 2026-10-15: "callback ka ek apna alag seprate tab ho... Golden leads k
+   * sath mixup ho rha hai") scopes this SAME component to only callback-scheduled leads instead of
+   * Pipeline's usual Opportunity/Proposal Sent/Meeting Booked/Email Send -- the two scopes are mutually
+   * exclusive (a lead with an open callback no longer shows on Pipeline at all), reusing every other
+   * piece of this page (cards, filters, actions) rather than forking a near-duplicate file. */
+  scope?: "pipeline" | "callbacks";
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -270,7 +431,7 @@ export function PipelineView({
   // Source (leadSource(), derived from source_prompt) isn't a backend column, filtered client-side same
   // as before.
   const [source, setSource] = useState(ALL_SOURCES);
-  const [view, setView] = useState<"all" | "callback" | "meeting" | "email" | "proposal" | "starred">("all");
+  const [view, setView] = useState<"all" | "meeting" | "email" | "proposal" | "starred" | "attempts_due">("all");
   // Date filter (user, 2026-09-23) -- "pipeline me last touched wali lead dekhyngy". updated_at, not
   // created_at: a lead already in Pipeline moved there by being worked, so "last touched" (when a
   // disposition/edit last changed it) is what's meaningful here, not when it was originally created.
@@ -303,16 +464,19 @@ export function PipelineView({
   // A callback only counts while the lead is still open: a Won or Lost lead keeps its old callback_at /
   // last_call_outcome forever, and letting that pull it back in scope listed a closed deal on Pipeline and
   // counted it twice (Opportunity AND Client Closed). Mirrored in crud/leads.py get_crm_metrics pipeline_count.
+  //
+  // scope === "callbacks" (2026-10-15): the two scopes are mutually exclusive -- a lead with an open
+  // callback shows HERE ONLY, never mixed in with Pipeline's Opportunity/Proposal/Meeting/Email cards.
   const inScope = useMemo(
     () =>
-      fetchedLeads.filter(
-        (l) =>
-          hasOpenCallback(l) ||
-          l.pipeline_stage === "meeting_booked" ||
-          l.pipeline_stage === "contacted" ||
-          l.pipeline_stage === "proposal_sent",
+      fetchedLeads.filter((l) =>
+        scope === "callbacks"
+          ? hasOpenCallback(l)
+          : l.pipeline_stage === "meeting_booked" ||
+            l.pipeline_stage === "contacted" ||
+            l.pipeline_stage === "proposal_sent",
       ),
-    [fetchedLeads],
+    [fetchedLeads, scope],
   );
 
   const leads = useMemo(
@@ -321,11 +485,11 @@ export function PipelineView({
         (l) =>
           (source === ALL_SOURCES || leadSource(l.source_prompt) === source) &&
           (view === "all" ||
-            (view === "callback" && hasOpenCallback(l)) ||
             (view === "meeting" && l.pipeline_stage === "meeting_booked") ||
             (view === "email" && l.pipeline_stage === "contacted") ||
             (view === "proposal" && l.pipeline_stage === "proposal_sent") ||
-            (view === "starred" && Boolean(l.starred_at))) &&
+            (view === "starred" && Boolean(l.starred_at)) ||
+            (view === "attempts_due" && overdueAttemptContext(l) !== null)) &&
           (!lastTouched || shortDate(l.updated_at) === lastTouched),
       ),
     [inScope, source, view, lastTouched],
@@ -357,31 +521,55 @@ export function PipelineView({
   const proposalLeads = useMemo(() => inScope.filter((l) => l.pipeline_stage === "proposal_sent"), [inScope]);
   const proposalValue = proposalLeads.reduce((s, l) => s + l.deal_value, 0);
 
+  // Callbacks page's own stat row (2026-10-15) -- same "unfiltered by the page's own dropdowns"
+  // convention as the Pipeline tiles above. `inScope` here is already callback-only (see inScope above).
+  const callbackValue = useMemo(() => inScope.reduce((s, l) => s + l.deal_value, 0), [inScope]);
+  const overdueCallbacks = useMemo(() => inScope.filter((l) => overdueAttemptContext(l) !== null).length, [inScope]);
+
   return (
     <>
-      <div className="my-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <MetricCard
-          label="Opportunity"
-          value={currency(opportunityValue)}
-          sub={`${opportunityLeads.length} ${opportunityLeads.length === 1 ? "lead" : "leads"}`}
-        />
-        <MetricCard
-          label="Proposal Sent"
-          value={currency(proposalValue)}
-          sub={`${proposalLeads.length} ${proposalLeads.length === 1 ? "lead" : "leads"}`}
-        />
-        <MetricCard label="Client Closed" value={currency(wonValue)} />
-      </div>
+      {scope === "callbacks" ? (
+        <div className="my-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <MetricCard
+            label="Callbacks Scheduled"
+            value={currency(callbackValue)}
+            sub={`${inScope.length} ${inScope.length === 1 ? "lead" : "leads"}`}
+          />
+          <MetricCard
+            label="Overdue"
+            value={String(overdueCallbacks)}
+            accent={overdueCallbacks > 0 ? "danger" : undefined}
+          />
+        </div>
+      ) : (
+        <div className="my-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <MetricCard
+            label="Opportunity"
+            value={currency(opportunityValue)}
+            sub={`${opportunityLeads.length} ${opportunityLeads.length === 1 ? "lead" : "leads"}`}
+          />
+          <MetricCard
+            label="Proposal Sent"
+            value={currency(proposalValue)}
+            sub={`${proposalLeads.length} ${proposalLeads.length === 1 ? "lead" : "leads"}`}
+          />
+          <MetricCard label="Client Closed" value={currency(wonValue)} />
+        </div>
+      )}
 
       <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <Field label={PIPELINE_VIEW_FILTER.label}>
           <Select value={view} onChange={(e) => setView(e.target.value as typeof view)}>
             <option value="all">{stripEmoji(PIPELINE_VIEW_FILTER.all)}</option>
-            <option value="callback">{stripEmoji(PIPELINE_VIEW_FILTER.callback)}</option>
-            <option value="meeting">{stripEmoji(PIPELINE_VIEW_FILTER.meeting)}</option>
-            <option value="email">{stripEmoji(PIPELINE_VIEW_FILTER.email)}</option>
-            <option value="proposal">{stripEmoji(PIPELINE_VIEW_FILTER.proposal)}</option>
+            {scope === "pipeline" && (
+              <>
+                <option value="meeting">{stripEmoji(PIPELINE_VIEW_FILTER.meeting)}</option>
+                <option value="email">{stripEmoji(PIPELINE_VIEW_FILTER.email)}</option>
+                <option value="proposal">{stripEmoji(PIPELINE_VIEW_FILTER.proposal)}</option>
+              </>
+            )}
             <option value="starred">{stripEmoji(PIPELINE_VIEW_FILTER.starred)}</option>
+            <option value="attempts_due">{stripEmoji(PIPELINE_VIEW_FILTER.attemptsDue)}</option>
           </Select>
         </Field>
         <Field label="Category Filter">
@@ -420,12 +608,28 @@ export function PipelineView({
         </Field>
       </div>
 
-      {leads.length === 0 && <p className="text-muted">{withIcons(EMPTY_STATES.pipeline)}</p>}
+      {leads.length === 0 && (
+        <p className="text-muted">{withIcons(scope === "callbacks" ? EMPTY_STATES.callbacks : EMPTY_STATES.pipeline)}</p>
+      )}
 
       {leads.map((lead) => (
         <LeadCard
           key={lead.id}
           lead={lead}
+          accent={isProposalFollowupEscalated(lead) ? "danger" : undefined}
+          headerAction={
+            <EditLeadDialog
+              lead={lead}
+              trigger={
+                <button
+                  type="button"
+                  className="cursor-pointer text-[0.82rem] font-semibold text-accent underline"
+                >
+                  {withIcons(PIPELINE_CARD.editInContacts)}
+                </button>
+              }
+            />
+          }
           summary={
             <span className="text-[0.95rem]">
               <Ico e="💼" /> <strong>{lead.company_name}</strong>
@@ -483,6 +687,33 @@ export function PipelineView({
                     )}
                   </span>
                 )}
+                {/* At-a-glance attempt-stage badge (user, 2026-10-15: first "ek ek lead pr mark dekh kr
+                    pata lagana prhta ha", then after the overdue-only version shipped: "callback wala
+                    filter select kr k dekhna hai k Second Attempt kis ko krna hai toh woh kese dekh
+                    skunga" -- selecting the existing Callbacks/etc. view and scanning for who's on
+                    attempt 2 vs. still on 1 needs this to show even when NOT yet overdue, not only once
+                    it's late. Danger color once overdue (same as before), warn while still upcoming, so
+                    the one badge covers both questions -- "is this late" and "which attempt is next". */}
+                {(() => {
+                  const status = attemptStatus(lead);
+                  if (!status) return null;
+                  const label = status.overdue
+                    ? PIPELINE_CARD.attemptOverdueTag(status.attempt)
+                    : status.attempt >= 3 && !status.due
+                      ? PIPELINE_CARD.attemptAllUsedTag
+                      : PIPELINE_CARD.attemptUpcomingTag(status.attempt, addedAt(status.due));
+                  return (
+                    <span
+                      className="rounded-[6px] px-1.5 py-0.5 text-[0.75rem] font-semibold sm:ml-2"
+                      style={{
+                        background: status.overdue ? "var(--danger-tint)" : "var(--warn-tint)",
+                        color: status.overdue ? "var(--danger)" : "var(--warn)",
+                      }}
+                    >
+                      {withIcons(label)}
+                    </span>
+                  );
+                })()}
                 {/* Ali (Sales Rep, 2026-09-15): leads couldn't be verified
                     without knowing when/how they were added. */}
                 <span className="text-[0.75rem] text-muted sm:ml-2">

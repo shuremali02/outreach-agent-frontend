@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, CalendarClock } from "lucide-react";
+import { Bell, CalendarClock, Clock } from "lucide-react";
 import { CategoryLabel } from "@/components/ui/emoji-icon";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -49,12 +49,16 @@ function showDesktopNotification(n: AppNotification) {
 }
 
 /**
- * "kind" branch (2026-09-28): a meeting reminder is system-generated (no actor -- crud/notifications.py
- * notify_all_active), and the backend already writes the full sentence into excerpt (crud/meeting_reminders.py
- * _message()), so it is shown as-is instead of wrapped in the "X mentioned you" template.
+ * Both a meeting reminder and a Pipeline attempt-tracker reminder (2026-10-15, crud/attempt_reminders.py)
+ * are system-generated (no actor -- crud/notifications.py notify_all_active) with the full sentence
+ * already written into excerpt, so neither is wrapped in the "X mentioned you" template.
  */
+function isSystemReminder(n: AppNotification): boolean {
+  return n.kind === "meeting_reminder" || n.kind === "attempt_reminder";
+}
+
 function messageText(n: AppNotification): string {
-  return n.kind === "meeting_reminder" ? n.excerpt : NOTIFICATIONS.mentionedYou(n.actor_name, whereText(n));
+  return isSystemReminder(n) ? n.excerpt : NOTIFICATIONS.mentionedYou(n.actor_name, whereText(n));
 }
 
 /**
@@ -68,6 +72,25 @@ const STAGE_BADGE: Record<string, { label: string; color: string }> = {
   "6h": { label: "6h · Check Email", color: "var(--info)" },
   "2h": { label: "2h · Call", color: "var(--warn)" },
   "30m": { label: "30m · Get Ready", color: "var(--danger)" },
+  // Pipeline attempt-tracker reminders (2026-10-15, crud/attempt_reminders.py), stage = "<context>:<n>" --
+  // n is always 2 or 3 (next_attempt_due() only exists once attempt 1 has happened). Danger at 3 since
+  // that's the last try before the lead would be confirmed Not Interested.
+  "callback:2": { label: "Callback · Attempt 2 Due", color: "var(--warn)" },
+  "callback:3": { label: "Callback · Attempt 3 Due", color: "var(--danger)" },
+  "no_show:2": { label: "No Show · Attempt 2 Due", color: "var(--warn)" },
+  "no_show:3": { label: "No Show · Attempt 3 Due", color: "var(--danger)" },
+  "proposal:2": { label: "Proposal · Attempt 2 Due", color: "var(--warn)" },
+  "proposal:3": { label: "Proposal · Attempt 3 Due", color: "var(--danger)" },
+  // The scheduled callback_at itself arriving (crud/attempt_reminders.py check_and_fire_callback_due) --
+  // separate from the callback:2/3 escalation above, sent only to whoever booked it.
+  callback_due: { label: "Callback Due Now", color: "var(--danger)" },
+  // Proposal Sent's Email/Call Attempt trackers (2026-10-16, crud/attempt_reminders.py
+  // check_and_fire_proposal_followups()) -- two stages: a ping to whoever scheduled it, then (1h later,
+  // if still unactioned) an escalation to the whole team.
+  email_followup_due: { label: "Email Follow-up Due", color: "var(--warn)" },
+  email_followup_escalated: { label: "Email Follow-up Overdue", color: "var(--danger)" },
+  call_followup_due: { label: "Call Follow-up Due", color: "var(--warn)" },
+  call_followup_escalated: { label: "Call Follow-up Overdue", color: "var(--danger)" },
 };
 
 /**
@@ -134,7 +157,7 @@ export function NotificationBell() {
       const known = seen.current;
       const brandNew = fresh.filter((n) => !known.has(n.id));
       brandNew.slice(0, 3).forEach((n) =>
-        toast.info(messageText(n), n.kind === "meeting_reminder" ? undefined : n.excerpt),
+        toast.info(messageText(n), isSystemReminder(n) ? undefined : n.excerpt),
       );
       // Desktop toast for genuinely new ones -- deliberately NOT the seen.current===null branch above (that
       // is a backlog from before this tab was open, not something worth an OS popup the moment it loads).
@@ -171,6 +194,8 @@ export function NotificationBell() {
     setOpen(false);
     if (n.problem_id) router.push("/problems");
     else if (n.kind === "meeting_reminder") router.push("/meetings");
+    // attempt_reminder (crud/attempt_reminders.py) always carries a lead_id/company_name, so it already
+    // falls into the generic branch below -> Pipeline, which is exactly where its own AttemptTracker lives.
     else if (n.company_name) router.push(`/pipeline?q=${encodeURIComponent(n.company_name)}`);
   }
 
@@ -248,6 +273,8 @@ export function NotificationBell() {
                 >
                   {n.kind === "meeting_reminder" ? (
                     <CalendarClock className="mt-0.5 h-4 w-4 shrink-0" style={{ color: "var(--accent)" }} aria-hidden />
+                  ) : n.kind === "attempt_reminder" ? (
+                    <Clock className="mt-0.5 h-4 w-4 shrink-0" style={{ color: "var(--warn)" }} aria-hidden />
                   ) : (
                     <span
                       className="mt-1.5 h-2 w-2 shrink-0 rounded-full"
@@ -286,7 +313,7 @@ export function NotificationBell() {
                       </span>
                     )}
                     <span className={`block text-[0.88rem] ${n.read ? "" : "font-semibold"}`}>{messageText(n)}</span>
-                    {n.kind !== "meeting_reminder" && n.excerpt && (
+                    {!isSystemReminder(n) && n.excerpt && (
                       <span className="mt-0.5 block truncate text-[0.8rem] text-muted">{n.excerpt}</span>
                     )}
                     <span className="mt-0.5 block text-[0.72rem] text-muted">{notificationTime(n.created_at)}</span>

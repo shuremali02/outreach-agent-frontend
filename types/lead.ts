@@ -126,6 +126,16 @@ export interface Lead {
   proposal_attempts: string[];
   proposal_next_attempt_due: string;
   /**
+   * Proposal Sent's Email/Call Attempt trackers (2026-10-16) -- ADDITIVE to proposal_attempts above, not
+   * a replacement. Open-ended (no 3-cap). Unlike *_next_attempt_due above, *_due_at is REP-CHOSEN (set via
+   * the per-checkbox icon, see components/pipeline/followup-tracker.tsx), not server-computed -- "" once
+   * cleared (the attempt was recorded) until the rep sets a new one.
+   */
+  email_followup_attempts: string[];
+  email_followup_due_at: string;
+  call_followup_attempts: string[];
+  call_followup_due_at: string;
+  /**
    * true on a row from the slim list (GET /leads?slim=1, what every page but Cold Call Desk loads):
    * body, phone_script, objection_notes, product_description, qualification_notes and discovery_citations
    * are then empty, not missing. Anything that shows or edits those must go through useFullLead()

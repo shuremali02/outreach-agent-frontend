@@ -2,15 +2,26 @@
 
 import * as Dialog from "@radix-ui/react-dialog";
 import { useState } from "react";
-import { useMeetingOutcome, useNeedsEmail } from "@/hooks/use-leads";
+import { useAddNote, useMeetingOutcome, useNeedsEmail } from "@/hooks/use-leads";
+import { AttemptTracker } from "@/components/pipeline/attempt-tracker";
+import { FollowupTracker } from "@/components/pipeline/followup-tracker";
+import { ProposalReminderPrompt } from "@/components/pipeline/proposal-reminder-prompt";
 import { NotesPanel } from "@/components/leads/notes-panel";
 import { PhoneNumberList } from "@/components/leads/phone-number-list";
 import { Button } from "@/components/ui/button";
 import { Celebration } from "@/components/ui/celebration";
 import { useConfirm } from "@/components/ui/confirm-dialog";
-import { Field, Input } from "@/components/ui/input";
+import { Field, Input, Textarea } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
-import { CALLBACK_BOOKING, EMAIL_SEND, MEETING_OUTCOMES, STAGE_LABELS, TOASTS, countryLabel } from "@/lib/constants";
+import {
+  CALLBACK_BOOKING,
+  EMAIL_SEND,
+  MEETING_OUTCOMES,
+  NOT_INTERESTED_NOTE,
+  STAGE_LABELS,
+  TOASTS,
+  countryLabel,
+} from "@/lib/constants";
 import { currency, displayDomain, externalUrl, hasUsableEmail } from "@/lib/format";
 import type { Lead } from "@/types";
 import { CategoryLabel, CountryFlag, Ico, withIcons } from "@/components/ui/emoji-icon";
@@ -46,8 +57,19 @@ export function MeetingDetailDialog({
   // "Email Send" -- same flag as Cold Call Desk's button (structure-plan.md Phase 3/4), added here too
   // per the user ("whn pr yeh send email wala button bhi add krdo meetings form me").
   const needsEmail = useNeedsEmail();
+  const addNote = useAddNote();
   const confirm = useConfirm();
   const toast = useToast();
+
+  // Not Interested's mandatory note (user, 2026-10-16: "ese he not intrested pr hoga meeting tab me bhi"
+  // -- same requirement as Pipeline's PipelineActions, now here too for consistency). Only "lost" uses
+  // this; every other outcome keeps the plain confirm() dialog below.
+  const [notInterestedPrompt, setNotInterestedPrompt] = useState(false);
+  const [notInterestedNote, setNotInterestedNote] = useState("");
+  // Proposal Send's blocking reminder gate (user, 2026-10-16: "jese he purposal send button click hon
+  // whn pehle woh reminder set ka puche... jab tk banda set na kry time tb tk agy nhi jayegi lead
+  // pipeline me") -- same gate as PipelineActions, see onProposalScheduled below.
+  const [proposalPrompt, setProposalPrompt] = useState(false);
 
   // "Callback" (renamed from "Needs Follow-up", user 2026-10-01) -- same date/time prompt pattern as Cold
   // Call Desk's Callback Scheduled (components/cold-call/battlecard.tsx), instead of the generic confirm()
@@ -81,11 +103,20 @@ export function MeetingDetailDialog({
   }
 
   async function setOutcome(outcome: (typeof MEETING_OUTCOMES)[number]) {
+    if (outcome.stage === "lost") {
+      setNotInterestedNote("");
+      setNotInterestedPrompt(true);
+      return;
+    }
+    if (outcome.stage === "proposal_sent") {
+      setProposalPrompt(true);
+      return;
+    }
     const ok = await confirm({
       title: outcome.confirmTitle(lead.company_name),
       description: outcome.confirmBody,
       confirmLabel: outcome.confirmLabel,
-      tone: outcome.stage === "lost" ? "danger" : "default",
+      tone: "default",
     });
     if (!ok) return;
     update.mutate(
@@ -94,7 +125,51 @@ export function MeetingDetailDialog({
         onSuccess: () => {
           toast.success(outcome.done(lead.company_name));
           if (outcome.stage === "won") setCelebrate(true);
-          setOpen(false);
+          // Proposal Sent stays open (user, 2026-10-16: "humny dropdown show krna tha... taky me
+          // reminder set kr skun") -- the Email/Call Attempt trackers render inline below so a rep can
+          // schedule the first reminder right away, instead of having to re-open the lead on Pipeline.
+          if (outcome.stage !== "proposal_sent") setOpen(false);
+        },
+        onError: (e) => toast.error(e instanceof Error ? e.message : TOASTS.actionFailed),
+      },
+    );
+  }
+
+  function confirmNotInterested() {
+    const text = notInterestedNote.trim();
+    if (!text) return;
+    const lostOutcome = MEETING_OUTCOMES.find((o) => o.stage === "lost")!;
+    addNote.mutate(
+      { id: lead.id, text },
+      {
+        onSuccess: () =>
+          update.mutate(
+            { id: lead.id, stage: "lost" },
+            {
+              onSuccess: () => {
+                toast.success(lostOutcome.done(lead.company_name));
+                setNotInterestedPrompt(false);
+                setNotInterestedNote("");
+                setOpen(false);
+              },
+              onError: (e) => toast.error(e instanceof Error ? e.message : TOASTS.actionFailed),
+            },
+          ),
+        onError: (e) => toast.error(e instanceof Error ? e.message : TOASTS.actionFailed),
+      },
+    );
+  }
+
+  function onProposalScheduled() {
+    const proposalOutcome = MEETING_OUTCOMES.find((o) => o.stage === "proposal_sent")!;
+    update.mutate(
+      { id: lead.id, stage: "proposal_sent" },
+      {
+        onSuccess: () => {
+          toast.success(proposalOutcome.done(lead.company_name));
+          setProposalPrompt(false);
+          // Dialog stays open -- same reasoning as setOutcome() above: the Email/Call Attempt trackers
+          // render below now that pipeline_stage is proposal_sent, showing the reminder just scheduled.
         },
         onError: (e) => toast.error(e instanceof Error ? e.message : TOASTS.actionFailed),
       },
@@ -185,7 +260,45 @@ export function MeetingDetailDialog({
                   two distinct buttons. Same reason "No Show" is never disabled just because the lead is
                   ALREADY at followup_due (a plain reschedule) -- clicking it is still a meaningful, distinct
                   action (tags + counts a no-show) even from that stage. */}
-              {callbackPrompt ? (
+              {proposalPrompt ? (
+                <ProposalReminderPrompt
+                  lead={lead}
+                  onConfirm={onProposalScheduled}
+                  onCancel={() => setProposalPrompt(false)}
+                  pending={update.isPending}
+                />
+              ) : notInterestedPrompt ? (
+                <div className="flex flex-col gap-2 rounded-[8px] border border-danger bg-input px-3 py-3">
+                  <p className="text-[0.85rem] font-semibold">{withIcons(NOT_INTERESTED_NOTE.prompt)}</p>
+                  <Textarea
+                    rows={3}
+                    value={notInterestedNote}
+                    onChange={(e) => setNotInterestedNote(e.target.value)}
+                    placeholder={NOT_INTERESTED_NOTE.placeholder}
+                  />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <Button variant="secondary" size="sm" onClick={() => setNotInterestedPrompt(false)}>
+                      {withIcons(CALLBACK_BOOKING.cancel)}
+                    </Button>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      loading={addNote.isPending || update.isPending}
+                      disabled={!notInterestedNote.trim()}
+                      onClick={confirmNotInterested}
+                    >
+                      {withIcons(NOT_INTERESTED_NOTE.confirm)}
+                    </Button>
+                  </div>
+                  {(addNote.isError || update.isError) && (
+                    <p className="text-[0.78rem] text-danger">
+                      {(addNote.error || update.error) instanceof Error
+                        ? ((addNote.error || update.error) as Error).message
+                        : TOASTS.actionFailed}
+                    </p>
+                  )}
+                </div>
+              ) : callbackPrompt ? (
                 <div className="flex flex-col gap-2 rounded-[8px] border border-accent bg-input px-3 py-3">
                   <p className="text-[0.85rem] font-semibold">{withIcons(CALLBACK_BOOKING.prompt)}</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -237,6 +350,16 @@ export function MeetingDetailDialog({
                       {outcome.label}
                     </Button>
                   ))}
+                </div>
+              )}
+              {/* Email/Call Attempt trackers (user, 2026-10-16) -- same as Pipeline's PipelineSummary,
+                  shown here too once Proposal Send goes through (see setOutcome() above, which keeps the
+                  dialog open specifically for this) so a rep can schedule the first reminder immediately. */}
+              {!callbackPrompt && !notInterestedPrompt && !proposalPrompt && lead.pipeline_stage === "proposal_sent" && (
+                <div className="mt-2 flex flex-col gap-2">
+                  <AttemptTracker lead={lead} context="proposal" />
+                  <FollowupTracker lead={lead} context="email_followup" />
+                  <FollowupTracker lead={lead} context="call_followup" />
                 </div>
               )}
               {update.isError && (

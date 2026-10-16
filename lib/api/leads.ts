@@ -96,6 +96,17 @@ export const leadsApi = {
   uncheckAttempt: (id: number, context: "callback" | "no_show" | "proposal") =>
     api.delete<Lead>(`/leads/${id}/attempts/${context}`),
   /**
+   * Proposal Sent's Email/Call Attempt trackers (2026-10-16) -- see app/crud/proposal_followups.py and
+   * components/pipeline/followup-tracker.tsx. Open-ended (no 3-cap), and setFollowupDue is the
+   * per-checkbox icon's rep-chosen next-attempt date/time -- NOT auto-computed like checkAttempt above.
+   */
+  checkFollowupAttempt: (id: number, context: "email_followup" | "call_followup") =>
+    api.post<Lead>(`/leads/${id}/followups/${context}`),
+  uncheckFollowupAttempt: (id: number, context: "email_followup" | "call_followup") =>
+    api.delete<Lead>(`/leads/${id}/followups/${context}`),
+  setFollowupDue: (id: number, context: "email_followup" | "call_followup", dueAt: string) =>
+    api.post<Lead>(`/leads/${id}/followups/${context}/due`, { due_at: dueAt }),
+  /**
    * "➕ Add Note" -- always APPENDS server-side (see app/crud/leads.py
    * add_note()), never overwrites lead.notes wholesale. Replaces the old
    * "Save Notes" full-field PATCH, which silently lost a call-disposition

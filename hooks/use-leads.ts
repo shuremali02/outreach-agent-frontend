@@ -226,6 +226,34 @@ export function useUncheckAttempt() {
   });
 }
 
+/** Proposal Sent's Email/Call Attempt trackers (2026-10-16) -- see lib/api/leads.ts. */
+export function useCheckFollowupAttempt() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: ({ id, context }: { id: number; context: "email_followup" | "call_followup" }) =>
+      leadsApi.checkFollowupAttempt(id, context),
+    onSuccess: invalidate,
+  });
+}
+
+export function useUncheckFollowupAttempt() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: ({ id, context }: { id: number; context: "email_followup" | "call_followup" }) =>
+      leadsApi.uncheckFollowupAttempt(id, context),
+    onSuccess: invalidate,
+  });
+}
+
+export function useSetFollowupDue() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: ({ id, context, dueAt }: { id: number; context: "email_followup" | "call_followup"; dueAt: string }) =>
+      leadsApi.setFollowupDue(id, context, dueAt),
+    onSuccess: invalidate,
+  });
+}
+
 /** "Star" priority mark -- toggle, tag only, see lib/api/leads.ts toggleStar(). User request, 2026-09-23. */
 export function useToggleStar() {
   const invalidate = useInvalidate();

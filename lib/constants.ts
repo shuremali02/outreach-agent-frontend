@@ -297,6 +297,10 @@ export const NAV_ITEMS = [
   // back set badge to "pipeline_count" -- the backend still sends it (crud/leads.py get_crm_metrics).
   // { name: "Pipeline", icon: "💼", href: "/pipeline", badge: "pipeline_count" },
   { name: "Pipeline", icon: "💼", href: "/pipeline", badge: null },
+  // Split out of Pipeline (user, 2026-10-15): "callback ka ek apna alag seprate tab ho pipeline me na
+  // jayen... Golden leads k sath mixup ho rha hai" -- callback-scheduled leads used to show mixed in with
+  // Opportunity/Proposal Sent on the same page; they now live only here (see PipelineView's `scope` prop).
+  { name: "Callbacks", icon: "📞", href: "/callbacks", badge: null },
   // Retired by structure-plan.md Phase 6: the Follow-ups page is gone -- voicemail/callback chasing
   // moved to Cold Call Desk (Phase 3), post-meeting follow-up to Meetings (Phase 5).
   { name: "Meetings", icon: "🗓️", href: "/meetings", badge: "meetings_count" },
@@ -531,6 +535,12 @@ export const PAGE_HEADERS = {
     eyebrow: undefined,
     title: "Studio Pipeline",
     subtitle: "Track and progress accounts through your sales stages and industry sectors.",
+  },
+  // Split out of Pipeline (user, 2026-10-15) -- see NAV_ITEMS' matching comment.
+  callbacks: {
+    eyebrow: undefined,
+    title: "Callbacks",
+    subtitle: "Every lead with a callback scheduled -- its own queue, out of Pipeline's way.",
   },
   // No Streamlit analogue -- structure-plan.md Phase 7, narrowed 2026-09-22 (Proposal Sent moved to
   // Pipeline, so this is Won only now).
@@ -786,6 +796,18 @@ export const MEETING_BOOKING = {
   cancel: "Cancel",
 } as const;
 
+/**
+ * Pipeline's "Not Interested" mandatory note (user, 2026-10-16: "jab woh not intrested mark kry tab woh
+ * neechy note puchy k ... tb tk agy na jany dya jaye jb tk woh note add na kr dy k kyun" -- e.g. Ali
+ * marking it after 6 followup attempts should have to say why). Blocks the action until a note is typed --
+ * see PipelineActions' confirmNotInterested().
+ */
+export const NOT_INTERESTED_NOTE = {
+  prompt: "Why is this lead Not Interested?",
+  placeholder: "e.g. Tried 6 times, no response. Decided not to pursue further.",
+  confirm: "❌ Confirm Not Interested",
+} as const;
+
 /** components/meetings/meetings-calendar.tsx. No app.py analogue. */
 export const MEETINGS_CALENDAR = {
   prevMonth: "‹ Prev",
@@ -916,20 +938,26 @@ export const MEETING_OUTCOMES: {
 // PIPELINE_MEETING_FILTER = { label: "Meeting Filter", all: "All leads", met: "After a meeting" }
 
 /**
- * Pipeline (structure-plan.md Phase 4): the page itself now only ever holds four kinds of lead --
- * Callback Scheduled, Meeting Booked, Email Send, and (since 2026-09-22, reversing Phase 7 -- see
+ * Pipeline (structure-plan.md Phase 4): the page itself now only ever holds three kinds of lead --
+ * Meeting Booked, Email Send, and (since 2026-09-22, reversing Phase 7 -- see
  * MEETING_OUTCOMES.proposal_sent) Proposal Sent -- so this replaces the old Stage Filter (which
  * offered all 8 stages, most of which could never appear here any more) and the old Meeting Filter.
+ * Callback Scheduled split out into its own page (2026-10-15, user: "callback ka ek apna alag seprate
+ * tab ho pipeline me na jayen") -- PipelineView's `scope="callbacks"` reuses this same dropdown, just
+ * with the meeting/email/proposal options hidden (see pipeline-view.tsx).
  */
 export const PIPELINE_VIEW_FILTER = {
   label: "View",
   all: "All",
-  callback: "📞 Callbacks",
   meeting: "🎯 Meetings",
   email: "✉️ Email Send",
   proposal: "📄 Proposal Sent",
   // "Star" priority mark -- user request, 2026-09-23.
   starred: "⭐ Starred",
+  // User, 2026-10-15: "koi notification nhi ata date or time k hisab sy k check krna hai... ek ek lead
+  // pr mark dekh kr pata lagana prhta ha" -- every lead whose callback/no_show/proposal attempt tracker
+  // next_attempt_due has passed, across all three contexts, without opening each card.
+  attemptsDue: "⏰ Attempts Due",
 } as const;
 
 /**
@@ -953,6 +981,22 @@ export const ATTEMPT_TRACKER = {
   markedNotInterested: (company: string) => `${company} marked Not Interested`,
 } as const;
 
+/**
+ * Proposal Sent's Email/Call Attempt trackers (user, 2026-10-16) -- ADDITIVE to ATTEMPT_TRACKER's
+ * "proposal" context above, not a replacement. See components/pipeline/followup-tracker.tsx.
+ */
+export const FOLLOWUP_TRACKER = {
+  label: {
+    email_followup: "✉️ Email Attempt",
+    call_followup: "📞 Call Attempt",
+  } as Record<"email_followup" | "call_followup", string>,
+  attemptLabel: (n: number) => `${n}`,
+  dueLabel: (when: string) => `Next: ${when}`,
+  escalatedSuffix: "overdue, team notified",
+  scheduleTitle: "Schedule next attempt",
+  addMoreTitle: "Add another attempt",
+} as const;
+
 export const PIPELINE_CARD = {
   callbackTag: (when: string) => `📞 Callback ${when}`,
   meetingTag: (when: string) => `🎯 Meeting ${when}`,
@@ -966,6 +1010,14 @@ export const PIPELINE_CARD = {
   // Needs-Follow-up card while it's still at followup_due, so a No Show doesn't read the same as any other
   // reschedule. `when` is the missed meeting's date (lead.no_show_at, when the outcome was recorded).
   noShowTag: (when: string) => `🚫 No Show (${when})`,
+  // At-a-glance attempt-stage badges (user, 2026-10-15) -- see pipeline-view.tsx's attemptStatus().
+  attemptOverdueTag: (attempt: number) => `⏰ Attempt ${attempt} Overdue`,
+  // Not yet overdue -- user: "callback wala filter select kr k dekhna hai k Second Attempt kis ko krna
+  // hai" -- which attempt is next, and when, even before it's late.
+  attemptUpcomingTag: (attempt: number, when: string) => `⏰ Attempt ${attempt} Due ${when}`,
+  // All 3 attempts used but the lead wasn't resolved (rep declined the 3rd-attempt Not Interested
+  // confirm -- attempt-tracker.tsx: "no dabany pr lead wohin stuck ho jayegi").
+  attemptAllUsedTag: "⏰ All 3 Attempts Used",
 } as const;
 
 /**
@@ -1059,6 +1111,28 @@ export const CALLBACK_BOOKING = {
   dateLabel: "Date",
   timeLabel: "Time",
   confirm: "✅ Confirm callback",
+  cancel: "Cancel",
+} as const;
+
+/**
+ * Blocking gate on every "Proposal Send" trigger (user, 2026-10-16: "jese he purposal send button click
+ * hon whn pehle woh reminder set ka puche... jab tk banda set na kry time tb tk agy nhi jayegi lead
+ * pipeline me", confirmed: dono places pr [Cold Call/LinkedIn Desk's disposition AND Pipeline/Meeting's
+ * quick action], dono reminder me se koi ek kafi hai). See components/pipeline/proposal-reminder-prompt.tsx
+ * -- the stage change itself is deferred until the due date is saved, not just shown alongside it.
+ */
+/**
+ * See components/pipeline/proposal-reminder-prompt.tsx -- reuses FollowupTracker directly (the SAME
+ * checkbox+icon+"+" UI the user drew), fixed 2026-10-16 after two corrections: first a channel dropdown
+ * couldn't express "both" ("agar mujhy dono krna ho jese kal meeting me ek ny kaha tha 2 din bad email
+ * bhej dena or week bad call kr na"), then a simplified two-field form was replaced with the real
+ * tracker UI itself ("wese he rkhdo na jese mene dekhai thi... jese agar ek sy zyada lagana ho toh masla
+ * na ho") so "more than one" is never a special case.
+ */
+export const PROPOSAL_REMINDER_PROMPT = {
+  title: "Before marking Proposal Send: when's your next follow-up?",
+  hint: "Schedule at least one -- Email, Call, or both.",
+  confirm: "✅ Mark Proposal Send",
   cancel: "Cancel",
 } as const;
 
@@ -1206,11 +1280,13 @@ export const EMPTY_STATES = {
   // Finder (AI Search / Google Maps) instead, which is how leads are sourced now.
   coldCallQueue: "🎯 No leads in this queue! Use Lead Finder (AI Search or Google Maps) to find new leads.",
   // structure-plan.md Phase 4: Pipeline only ever holds a lead once it has actually progressed
-  // (Callback Scheduled, Meeting Booked, Email Send, or -- since 2026-09-22 -- Proposal Sent), so an
-  // empty Pipeline is normal, not a sign the filters are wrong -- unlike every other empty-state
-  // message on this page, which does mean "try different filters".
+  // (Meeting Booked, Email Send, or -- since 2026-09-22 -- Proposal Sent), so an empty Pipeline is
+  // normal, not a sign the filters are wrong -- unlike every other empty-state message on this page,
+  // which does mean "try different filters". Callback Scheduled moved to its own page (2026-10-15).
   pipeline:
-    "Nothing here yet. A lead shows up on Pipeline once it has a callback scheduled, a meeting booked, is marked Email Send, or Proposal Sent -- everything else lives in Leads.",
+    "Nothing here yet. A lead shows up on Pipeline once it has a meeting booked, is marked Email Send, or Proposal Sent -- a callback goes to the Callbacks tab instead, everything else lives in Leads.",
+  // Split out of Pipeline (2026-10-15) -- see NAV_ITEMS' matching comment.
+  callbacks: "No callbacks scheduled right now. A lead shows up here once a callback is booked for it.",
   // structure-plan.md Phase 7, narrowed 2026-09-22: Projects is Won only now (Proposal Sent moved to
   // Pipeline). No Streamlit analogue.
   projects: "No projects yet. A deal shows up here once it is marked Client Closed.",

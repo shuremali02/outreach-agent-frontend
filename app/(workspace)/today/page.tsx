@@ -55,6 +55,11 @@ export default async function TodayPage() {
 
       {teamToday && <TeamTodayTable data={teamToday} />}
 
+      {/* Stayed at 4 columns (not 5, despite 5 cards) -- user, 2026-10-15, screenshot: "data bahir ja rha
+          hai value k numbers card k" -- 5 narrower columns clipped a large value like "$29,590,500" past
+          the card's edge. .metric-val's 2.1rem bold font-size is shared by every MetricCard in the app, so
+          shrinking it site-wide to fit 5-up here risked breaking other pages; wrapping the 5th card
+          (Callbacks) onto its own row at this width keeps every card exactly as wide as before. */}
       <div className="my-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard
           label="Pipeline Value"
@@ -75,6 +80,14 @@ export default async function TodayPage() {
           label="Follow-ups Due"
           value={num(metrics.followups_due)}
           sub={metrics.followups_due > 0 ? "Ready for next touch" : "All caught up"}
+        />
+        {/* Split out of Pipeline Value/Active Opportunities above (user, 2026-10-15: "ab pipeline me nhi
+            count hon callbacks alag sy count hona chahiye ... ek diff card callbacks ka") -- same
+            hasOpenCallback() leads as the new Callbacks page, no longer folded into Pipeline's numbers. */}
+        <MetricCard
+          label="Callbacks"
+          value={currency(metrics.callback_value)}
+          sub={`${num(metrics.callback_count)} scheduled`}
         />
       </div>
 

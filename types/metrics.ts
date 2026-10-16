@@ -15,9 +15,13 @@ export interface CrmMetrics {
   /** Sidebar badge: pipeline_stage=meeting_booked AND meeting_at set --
    * matches meetings-calendar.tsx's own filter exactly. */
   meetings_count: number;
-  /** Sidebar badge (user request, 2026-09-23) -- matches pipeline-view.tsx's own inScope filter exactly:
-   * callback_at set, or stage in meeting_booked/contacted/proposal_sent. */
+  /** Sidebar badge (user request, 2026-09-23) -- matches pipeline-view.tsx's Pipeline-scope inScope
+   * filter exactly: stage in meeting_booked/contacted/proposal_sent. Callback leads split out below
+   * (2026-10-15) -- no longer included here. */
   pipeline_count: number;
+  /** Today's "Callbacks" card (2026-10-15) -- same hasOpenCallback() definition as the Callbacks page. */
+  callback_value: number;
+  callback_count: number;
 }
 
 /** Per-week / aggregate block from team_analytics.py. */

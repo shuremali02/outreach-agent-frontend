@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Loader } from "@/components/ui/loader";
 import { Input, Field } from "@/components/ui/input";
 import { EditLeadDialog } from "@/components/leads/edit-lead-dialog";
+import { ProposalReminderPrompt } from "@/components/pipeline/proposal-reminder-prompt";
 import { MentionField } from "@/components/common/mention-field";
 import { useUsers } from "@/hooks/use-users";
 import { extractMentions } from "@/lib/mentions";
@@ -210,6 +211,13 @@ export function Battlecard({
   const [callbackDate, setCallbackDate] = useState("");
   const [callbackTime, setCallbackTime] = useState("");
 
+  // Proposal Send's blocking reminder gate (user, 2026-10-16: "jese he purposal send button click hon
+  // whn pehle woh reminder set ka puche... jab tk banda set na kry time tb tk agy nhi jayegi lead
+  // pipeline me", confirmed for both Cold Call/LinkedIn Desk AND Pipeline/Meeting). See
+  // components/pipeline/proposal-reminder-prompt.tsx -- disposition() below only calls record.mutate()
+  // once the reminder is saved.
+  const [proposalPrompt, setProposalPrompt] = useState(false);
+
   // A "meeting_booked" outcome clears sent_to_desk_at (structure-plan.md Phase 3), so ColdCallView's
   // queue filter drops it and this component unmounts almost immediately -- well within the 4s window.
   // Clear the pending timer on unmount so it never calls setState after that.
@@ -226,6 +234,10 @@ export function Battlecard({
     }
     if (outcome === "callback_scheduled") {
       setCallbackPrompt(true);
+      return;
+    }
+    if (outcome === "closed") {
+      setProposalPrompt(true);
       return;
     }
     const closing = CLOSING_DISPOSITIONS[outcome];
@@ -309,6 +321,26 @@ export function Battlecard({
 
   function cancelCallback() {
     setCallbackPrompt(false);
+  }
+
+  function onProposalScheduled() {
+    const label = DISPOSITIONS.find((d) => d.outcome === "closed")?.label ?? "closed";
+    record.mutate(
+      { id: lead.id, outcome: "closed", notes: note, mention: extractMentions(note, users) },
+      {
+        onSuccess: () => {
+          toast.success(TOASTS.disposition(label, lead.company_name));
+          setNote("");
+          setProposalPrompt(false);
+          onActionTaken?.(lead.id);
+        },
+        onError: (e) => toast.error(e instanceof Error ? e.message : TOASTS.actionFailed),
+      },
+    );
+  }
+
+  function cancelProposal() {
+    setProposalPrompt(false);
   }
 
   // Voicemail/Hang Up/No Answer -- the mark + last-touch date shown in the summary (section 3 above).
@@ -648,7 +680,14 @@ export function Battlecard({
               {withIcons(record.error instanceof Error ? record.error.message : BATTLECARD.recordFailed)}
             </p>
           )}
-          {bookingPrompt ? (
+          {proposalPrompt ? (
+            <ProposalReminderPrompt
+              lead={lead}
+              onConfirm={onProposalScheduled}
+              onCancel={cancelProposal}
+              pending={record.isPending}
+            />
+          ) : bookingPrompt ? (
             <div className="flex flex-col gap-2 rounded-[8px] border border-accent bg-input px-3 py-3">
               <p className="text-[0.85rem] font-semibold">{withIcons(MEETING_BOOKING.prompt)}</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">

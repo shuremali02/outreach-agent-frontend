@@ -37,12 +37,18 @@ export function LeadCard({
   children,
   defaultOpen = false,
   accent,
+  headerAction,
 }: {
   lead: Lead;
   summary: React.ReactNode;
   children: React.ReactNode;
   defaultOpen?: boolean;
   accent?: "success" | "warn" | "info" | "danger" | "accent";
+  /** Rendered top-right of the header, OUTSIDE the Collapsible.Trigger so clicking it doesn't also
+   * open/close the card (user, 2026-10-16: moved "Edit in Leads" here off Pipeline's proposal_sent
+   * cards to make room for the new Email/Call Attempt trackers below). Optional -- every existing caller
+   * leaves it unset and renders exactly as before. */
+  headerAction?: React.ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const toggleStar = useToggleStar();
@@ -95,6 +101,7 @@ export function LeadCard({
           </span>
           <span className="min-w-0 flex-1">{summary}</span>
         </Collapsible.Trigger>
+        {headerAction && <div className="shrink-0">{headerAction}</div>}
       </div>
       <Collapsible.Content>
         <div className="border-t border-border px-4 py-4">{children}</div>
