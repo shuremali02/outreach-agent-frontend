@@ -9,6 +9,7 @@ import { notificationsApi } from "@/lib/api";
 import { useSessionUser } from "@/hooks/use-session-user";
 import { NOTIFICATIONS } from "@/lib/constants";
 import { notificationTime } from "@/lib/format";
+import { ensurePushSubscription } from "@/lib/push";
 import { useToast } from "@/components/ui/toast";
 import { Loader } from "@/components/ui/loader";
 import type { AppNotification } from "@/types";
@@ -112,6 +113,24 @@ export function NotificationBell() {
   const [open, setOpen] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
 
+  // User, 2026-10-18: "app pr aty he notification allow popup dy do ... agar koi bell icon na dabaye
+  // toh is sy notify nhi ayega" -- asks for permission as soon as a signed-in page loads, not only on
+  // the bell's first click (a rep who never opens the bell was never getting the prompt at all, so
+  // never got push). If permission is already decided (granted/denied from an earlier visit), this is a
+  // no-op; if already granted, it just makes sure this device has a push subscription on file.
+  useEffect(() => {
+    if (!signedIn || typeof window === "undefined" || !("Notification" in window)) return;
+    if (Notification.permission === "default") {
+      Notification.requestPermission()
+        .then((perm) => {
+          if (perm === "granted") ensurePushSubscription();
+        })
+        .catch(() => undefined);
+    } else if (Notification.permission === "granted") {
+      ensurePushSubscription();
+    }
+  }, [signedIn]);
+
   const count = useQuery({
     queryKey: ["notifications-count"],
     queryFn: notificationsApi.unreadCount,
@@ -214,7 +233,11 @@ export function NotificationBell() {
           // even show the permission prompt) -- "default" means never asked yet; "granted"/"denied" both
           // skip this, so a rep who dismissed it once is never re-prompted every time they open the bell.
           if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "default") {
-            Notification.requestPermission().catch(() => undefined);
+            Notification.requestPermission()
+              .then((perm) => {
+                if (perm === "granted") ensurePushSubscription();
+              })
+              .catch(() => undefined);
           }
         }}
         aria-label={unread ? `${NOTIFICATIONS.bell} (${unread} unread)` : NOTIFICATIONS.bell}

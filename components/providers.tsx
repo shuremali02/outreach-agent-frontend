@@ -1,11 +1,22 @@
 "use client";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ConfirmProvider } from "@/components/ui/confirm-dialog";
 import { ToastProvider } from "@/components/ui/toast";
 
 export function Providers({ children }: { children: React.ReactNode }) {
+  // Installable app (user, 2026-10-18: "hum apny web ko install krny k qabil bana dyn") -- registering
+  // public/sw.js is what makes the browser offer "Install app" at all; see that file's own doc comment
+  // for what it does once registered. Fails silently (older browsers, or serviceWorker unavailable e.g.
+  // non-HTTPS dev origins some browsers restrict it on) -- installability is a bonus, never a requirement
+  // to use the app.
+  useEffect(() => {
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").catch(() => undefined);
+    }
+  }, []);
+
   const [client] = useState(
     () =>
       new QueryClient({

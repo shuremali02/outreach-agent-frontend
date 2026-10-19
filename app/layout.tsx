@@ -27,6 +27,9 @@ export const metadata: Metadata = {
     ],
     apple: [{ url: "/apple-touch-icon.png", type: "image/png", sizes: "180x180" }],
   },
+  // Installable app (user, 2026-10-18) -- see public/manifest.json and public/sw.js (registered in
+  // providers.tsx).
+  manifest: "/manifest.json",
 };
 
 /**

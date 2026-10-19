@@ -5,3 +5,4 @@ export { metricsApi } from "./metrics";
 export { jobsApi } from "./jobs";
 export { authApi } from "./auth";
 export { notificationsApi } from "./notifications";
+export { pushApi } from "./push";
