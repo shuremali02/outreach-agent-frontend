@@ -4,7 +4,7 @@ import * as Popover from "@radix-ui/react-popover";
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { leadsApi } from "@/lib/api";
-import { ADD_LEAD_COUNTRIES, ADD_LEAD_TEAM, LINKEDIN_OWNERS, MEETING_BOOKING, MENTIONS, PIPELINE_STAGES, STANDARD_CATEGORIES, TOASTS } from "@/lib/constants";
+import { ADD_LEAD_COUNTRIES, ADD_LEAD_TEAM, LINKEDIN_OWNERS, MEETING_BOOKING, MENTIONS, PIPELINE_STAGES, STANDARD_CATEGORIES, TOASTS, UNKNOWN_COUNTRY } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { Input, Textarea, Select, Field } from "@/components/ui/input";
@@ -156,6 +156,10 @@ export function AddLeadPopover() {
               }
               create.mutate({
                 ...form,
+                // "Unknown" in the dropdown is the same client-side sentinel the filter dropdowns use
+                // for "no country on file" -- the DB's actual representation of that is "" (country is
+                // a 2-char ISO code column, "unknown" would fail that length check outright).
+                country: form.country === UNKNOWN_COUNTRY ? "" : form.country,
                 ...extractMentions(form.team_note ?? "", users),
                 ...(meetingDate && meetingTime
                   ? { meeting_at: `${meetingDate}T${meetingTime}:00` }

@@ -180,19 +180,18 @@ export function Battlecard({
   // doesn't get disposed with a note attached.
   const addNote = useAddNote();
   const [objectionsOpen, setObjectionsOpen] = useState(false);
-  // Every card in the Call Desk queue renders fully expanded (unlike the
-  // Contacts desk, where a card's contents only mount once expanded), so
-  // HunterDecisionMakers firing its GET /leads/{id}/contacts on mount meant
-  // one request per visible lead all at once -- 30 leads on screen, 30
-  // parallel calls. Gated behind a click, same progressive-disclosure
-  // pattern as objectionsOpen above.
-  const [contactsOpen, setContactsOpen] = useState(false);
-  // promote_primary() (backend) fills this from lead_contacts the moment any
-  // contact is known, so it's a free, already-available "has this lead been
-  // searched before" signal -- no separate request needed just to decide
-  // which entry point to show. "Decision Maker" is the pre-cleanup
-  // placeholder some older leads may still carry (see docs.md 2026-09-15).
-  const hasKnownContact = Boolean(lead.contact_name) && lead.contact_name !== "Decision Maker";
+  // Used to be gated behind a click (contactsOpen) -- every card in the Call Desk queue renders fully
+  // expanded, so HunterDecisionMakers firing its GET /leads/{id}/contacts on mount meant one request per
+  // visible lead all at once (30 leads on screen, 30 parallel calls), same reasoning objectionsOpen below
+  // still gates the objection script. REMOVED 2026-10-16 (user: "jese he me manual kisi lead pr decision
+  // makers dalta hun toh woh khud sy ... nhi dikh rhy ek ek ko manual dalny pr rha hai upar dekhny k lye...
+  // same step wahan upar he show krwa do jese hum Show Decision Maker click pr dekh rhy hain" -- a
+  // manually-added decision maker was already saved correctly and already showed up the moment this panel
+  // was opened (its GET has no gating of its own), but the rep had to click "Show/Find decision makers"
+  // on every card, every time, to see it -- removing the click-gate entirely was the explicit ask, even
+  // though it reintroduces the N-parallel-GETs tradeoff this gate existed to avoid. autoSearchOnMount
+  // stays false below (not `!hasKnownContact` any more) so this does NOT also fire a live Hunter/
+  // SignalHire search for every contact-less lead on screen -- only the existing read-only GET.
   const [booked, setBooked] = useState(false);
   const bookedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -494,21 +493,7 @@ export function Battlecard({
             )}
           </div>
 
-          {contactsOpen ? (
-            <HunterDecisionMakers lead={lead} autoSearchOnMount={!hasKnownContact} />
-          ) : hasKnownContact ? (
-            <button
-              type="button"
-              onClick={() => setContactsOpen(true)}
-              className="cursor-pointer text-left text-[0.85rem] font-semibold text-muted hover:text-accent"
-            >
-              {withIcons(BATTLECARD.showContacts)}
-            </button>
-          ) : (
-            <Button variant="secondary" size="sm" block onClick={() => setContactsOpen(true)}>
-              {withIcons(BATTLECARD.findContacts)}
-            </Button>
-          )}
+          <HunterDecisionMakers lead={lead} />
           <SiteScanPanel lead={lead} />
 
           <div

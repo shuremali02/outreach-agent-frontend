@@ -33,6 +33,8 @@ export interface TeamRow {
   emails: number;
   leads_added: number;
   followups: number;
+  /** Callback Scheduled dispositions -- split out of "followups"/Pipeline 2026-10-17. */
+  callbacks: number;
   meetings: number;
   disconnected: number;
   voicemail: number;

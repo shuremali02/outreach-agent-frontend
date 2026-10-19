@@ -75,23 +75,29 @@ const STAGE_BADGE: Record<string, { label: string; color: string }> = {
   "30m": { label: "30m · Get Ready", color: "var(--danger)" },
   // Pipeline attempt-tracker reminders (2026-10-15, crud/attempt_reminders.py), stage = "<context>:<n>" --
   // n is always 2 or 3 (next_attempt_due() only exists once attempt 1 has happened). Danger at 3 since
-  // that's the last try before the lead would be confirmed Not Interested.
-  "callback:2": { label: "Callback · Attempt 2 Due", color: "var(--warn)" },
-  "callback:3": { label: "Callback · Attempt 3 Due", color: "var(--danger)" },
+  // that's the last try before the lead would be confirmed Not Interested. "callback:2"/"callback:3"
+  // REMOVED 2026-10-16 -- "callback" moved to the per-slot system below.
   "no_show:2": { label: "No Show · Attempt 2 Due", color: "var(--warn)" },
   "no_show:3": { label: "No Show · Attempt 3 Due", color: "var(--danger)" },
   "proposal:2": { label: "Proposal · Attempt 2 Due", color: "var(--warn)" },
   "proposal:3": { label: "Proposal · Attempt 3 Due", color: "var(--danger)" },
   // The scheduled callback_at itself arriving (crud/attempt_reminders.py check_and_fire_callback_due) --
-  // separate from the callback:2/3 escalation above, sent only to whoever booked it.
+  // a SEPARATE thing from the callback attempt-tracker slots below, sent only to whoever booked it.
   callback_due: { label: "Callback Due Now", color: "var(--danger)" },
-  // Proposal Sent's Email/Call Attempt trackers (2026-10-16, crud/attempt_reminders.py
-  // check_and_fire_proposal_followups()) -- two stages: a ping to whoever scheduled it, then (1h later,
-  // if still unactioned) an escalation to the whole team.
-  email_followup_due: { label: "Email Follow-up Due", color: "var(--warn)" },
-  email_followup_escalated: { label: "Email Follow-up Overdue", color: "var(--danger)" },
-  call_followup_due: { label: "Call Follow-up Due", color: "var(--warn)" },
-  call_followup_escalated: { label: "Call Follow-up Overdue", color: "var(--danger)" },
+  // Per-slot trackers (REDESIGNED 2026-10-16, crud/attempt_reminders.py check_and_fire_slot_reminders()):
+  // Proposal Sent's Email/Call Attempt, and Pipeline's Callback attempt tracker -- two stages, a ping to
+  // whoever scheduled the slot, then (1h later, if still unactioned) an escalation to the whole team.
+  email_followup_slot_due: { label: "Email Follow-up Due", color: "var(--warn)" },
+  email_followup_slot_escalated: { label: "Email Follow-up Overdue", color: "var(--danger)" },
+  call_followup_slot_due: { label: "Call Follow-up Due", color: "var(--warn)" },
+  call_followup_slot_escalated: { label: "Call Follow-up Overdue", color: "var(--danger)" },
+  callback_slot_due: { label: "Callback Attempt Due", color: "var(--warn)" },
+  callback_slot_escalated: { label: "Callback Attempt Overdue", color: "var(--danger)" },
+  // No Show's own Email/Call Attempt trackers (2026-10-19), same per-slot shape as above.
+  no_show_email_followup_slot_due: { label: "No Show Email Follow-up Due", color: "var(--warn)" },
+  no_show_email_followup_slot_escalated: { label: "No Show Email Follow-up Overdue", color: "var(--danger)" },
+  no_show_call_followup_slot_due: { label: "No Show Call Follow-up Due", color: "var(--warn)" },
+  no_show_call_followup_slot_escalated: { label: "No Show Call Follow-up Overdue", color: "var(--danger)" },
 };
 
 /**
@@ -208,14 +214,46 @@ export function NotificationBell() {
   const markRead = useMutation({ mutationFn: notificationsApi.markRead, onSuccess: applyRead });
   const markAll = useMutation({ mutationFn: notificationsApi.markAllRead, onSuccess: applyRead });
 
+  /**
+   * Fixed 2026-10-16 (user: "me jab click kr rha hun toh woh pipeline pr ja kr lead dhund rha or usy mill
+   * nhi rhi kyun k woh lead callback tab me thi pipeline tab me nahi... ese he sari leads pr ho raha hai
+   * ... yeh galat hai") -- every lead-linked notification used to hardcode `/pipeline?q=...`, written back
+   * when callback-context leads still lived on Pipeline. Since the Callbacks tab split (2026-10-15),
+   * a callback/callback_due stage's lead no longer lives there at all, so that search came up empty no
+   * matter which page the rep was actually standing on when they clicked it.
+   *
+   * attempt_reminder's `stage` prefix already tells us exactly which context fired it (crud/
+   * attempt_reminders.py) -- route by that instead of guessing one page for everything:
+   *   - "callback..." (callback:2/3, callback_due) -> /callbacks, where that tracker/card actually is now.
+   *   - "proposal...", "email_followup...", "call_followup..." -> /pipeline (Proposal Sent leads only).
+   *   - "no_show..." (2026-10-19) -> /pipeline too, now that No Show leads live there (new "👻 No Show"
+   *     filter) -- used to fall through to the generic Contacts fallback, back when they weren't on
+   *     Pipeline at all.
+   * Anything else that just carries a company_name (an @mention, or a context this doesn't recognise) goes
+   * to /contacts?q=... instead of /pipeline -- Contacts is the one page that shows a lead regardless of
+   * which desk/stage it's currently sitting in (barring the rare case of a lead still untouched in a desk
+   * queue), so "I don't know exactly where this lead lives" now finds it instead of coming up empty.
+   */
   function go(n: AppNotification) {
     if (!n.read) markRead.mutate(n.id);
     setOpen(false);
+    const q = n.company_name ? encodeURIComponent(n.company_name) : "";
     if (n.problem_id) router.push("/problems");
     else if (n.kind === "meeting_reminder") router.push("/meetings");
-    // attempt_reminder (crud/attempt_reminders.py) always carries a lead_id/company_name, so it already
-    // falls into the generic branch below -> Pipeline, which is exactly where its own AttemptTracker lives.
-    else if (n.company_name) router.push(`/pipeline?q=${encodeURIComponent(n.company_name)}`);
+    else if (n.kind === "attempt_reminder" && n.stage?.startsWith("callback") && q) {
+      router.push(`/callbacks?q=${q}`);
+    } else if (
+      n.kind === "attempt_reminder" &&
+      (n.stage?.startsWith("proposal") ||
+        n.stage?.startsWith("email_followup") ||
+        n.stage?.startsWith("call_followup") ||
+        n.stage?.startsWith("no_show")) &&
+      q
+    ) {
+      router.push(`/pipeline?q=${q}`);
+    } else if (q) {
+      router.push(`/contacts?q=${q}`);
+    }
   }
 
   if (!signedIn) return null;

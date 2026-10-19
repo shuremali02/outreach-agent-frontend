@@ -9,10 +9,11 @@ import { addedAt } from "@/lib/format";
 import { ATTEMPT_TRACKER, TOASTS } from "@/lib/constants";
 import type { Lead } from "@/types";
 
-type Context = "callback" | "no_show" | "proposal";
+// "callback" REMOVED 2026-10-16 -- moved to the per-slot system, see followup-tracker.tsx FollowupTracker
+// (rendered with context="callback" wherever this component used to be).
+type Context = "no_show" | "proposal";
 
 function fields(lead: Lead, context: Context): { attempts: string[]; due: string } {
-  if (context === "callback") return { attempts: lead.callback_attempts, due: lead.callback_next_attempt_due };
   if (context === "no_show") return { attempts: lead.no_show_attempts, due: lead.no_show_next_attempt_due };
   return { attempts: lead.proposal_attempts, due: lead.proposal_next_attempt_due };
 }

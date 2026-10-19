@@ -1,4 +1,19 @@
 /**
+ * One numbered checkbox's state in the Email/Call Attempt or Callback trackers (2026-10-16, see
+ * components/pipeline/followup-tracker.tsx). "" = unset for either field. scheduled_at is a naive PKT
+ * wall-clock string (same convention as callback_at/meeting_at -- no "Z"); done_at is genuine UTC
+ * ("Z"-suffixed, same as every other server action-timestamp).
+ */
+export interface FollowupSlot {
+  scheduled_at: string;
+  done_at: string;
+  /** Assigning a reminder to a teammate (2026-10-19) -- an ADDITIONAL recipient on top of whoever
+   * scheduled it. Only one of the two is ever meaningfully set. */
+  assigned_to_user_id: number | null;
+  assigned_to_team: boolean;
+}
+
+/**
  * Lead — mirrors the `leads` table in db.py (base columns + runtime migrations).
  *
  * Two deliberate contract changes vs. the SQLite storage layer, per the migration plan:
@@ -112,29 +127,32 @@ export interface Lead {
    * User request, 2026-09-28. */
   no_show_at: string;
   /**
-   * 3-checkbox re-contact tracker (user request, 2026-09-29) -- one independent history + next-due-date
-   * pair per Pipeline context: callback = Callback Scheduled, no_show = Meeting No Show,
-   * proposal = Proposal Sent. Each *_attempts is the raw list of when a box was checked (oldest first,
-   * max 3 entries); each *_next_attempt_due is "" once 0 or 3 attempts are recorded, otherwise the
+   * 3-checkbox re-contact tracker (user request, 2026-09-29) -- no_show = Meeting No Show, proposal =
+   * Proposal Sent. Each *_attempts is the raw list of when a box was checked (oldest first, max 3
+   * entries); each *_next_attempt_due is "" once 0 or 3 attempts are recorded, otherwise the
    * escalating-gap due date (48h after the 1st, 72h after the 2nd, business days only) computed
-   * server-side -- see components/pipeline/attempt-tracker.tsx.
+   * server-side -- see components/pipeline/attempt-tracker.tsx. "callback" REMOVED from this shape
+   * 2026-10-16 -- see callback_slots below.
    */
-  callback_attempts: string[];
-  callback_next_attempt_due: string;
   no_show_attempts: string[];
   no_show_next_attempt_due: string;
   proposal_attempts: string[];
   proposal_next_attempt_due: string;
   /**
-   * Proposal Sent's Email/Call Attempt trackers (2026-10-16) -- ADDITIVE to proposal_attempts above, not
-   * a replacement. Open-ended (no 3-cap). Unlike *_next_attempt_due above, *_due_at is REP-CHOSEN (set via
-   * the per-checkbox icon, see components/pipeline/followup-tracker.tsx), not server-computed -- "" once
-   * cleared (the attempt was recorded) until the rep sets a new one.
+   * Proposal Sent's Email/Call Attempt trackers, and Pipeline's Callback attempt tracker (REDESIGNED
+   * 2026-10-16: the first version auto-cleared a shared "next due" date the moment any box was checked --
+   * confirmed broken live, "mene check mark kya toh woh time gayab ho gaya". User's correction: "hum ye
+   * mark kr dyn k is is date ko is bandy ko reminder kr wana hai" -- several INDEPENDENT, pre-plannable
+   * reminders, not one auto-clearing due date). Each context is now a list of independent SLOTS (one per
+   * numbered checkbox, open-ended via "+") -- see components/pipeline/followup-tracker.tsx. Marking a
+   * slot attempted never erases its scheduled_at.
    */
-  email_followup_attempts: string[];
-  email_followup_due_at: string;
-  call_followup_attempts: string[];
-  call_followup_due_at: string;
+  email_followup_slots: FollowupSlot[];
+  call_followup_slots: FollowupSlot[];
+  callback_slots: FollowupSlot[];
+  /** No Show's own Email/Call trackers (2026-10-19), same per-slot shape as above. */
+  no_show_email_followup_slots: FollowupSlot[];
+  no_show_call_followup_slots: FollowupSlot[];
   /**
    * true on a row from the slim list (GET /leads?slim=1, what every page but Cold Call Desk loads):
    * body, phone_script, objection_notes, product_description, qualification_notes and discovery_citations

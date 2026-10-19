@@ -110,7 +110,16 @@ export function countryLabel(code: string): string {
  * Pipeline/Contacts/Cold Call Desk's filter dropdowns keep the full COUNTRIES list above so leads already
  * in the CRM from any other country stay filterable regardless of what this popover offers.
  */
-export const ADD_LEAD_COUNTRIES = COUNTRIES.filter((c) => ["US", "GB", "CA", "FR", "SA", "AE", "QA", "EG", "PK"].includes(c.id));
+export const ADD_LEAD_COUNTRIES = [
+  ...COUNTRIES.filter((c) => ["US", "GB", "CA", "FR", "SA", "AE", "QA", "EG", "PK"].includes(c.id)),
+  // User, 2026-10-19: a rep adding a lead manually sometimes genuinely doesn't know the country yet --
+  // without this they were forced to guess a real one just to get past the required-field check.
+  // `id` is the same UNKNOWN_COUNTRY sentinel the filter dropdowns already use for "no country on
+  // file" -- add-lead-popover.tsx converts it to "" (the DB's actual empty-country representation)
+  // right before the create request, so it never reaches the backend as a literal "unknown" string
+  // (country is a 2-char ISO code column).
+  { id: UNKNOWN_COUNTRY, label: "Unknown" },
+];
 
 export const ALL_SOURCES = "All Sources";
 
@@ -145,8 +154,12 @@ export const TEAM_ACTIVITY = {
     decision_maker: "Decision Maker",
     meetings: "Meetings",
     // Key is still "followups" (wire compat) -- shows as "Pipeline", counting only what puts a lead into
-    // Pipeline (Callback/Meeting/Proposal/Email Send), not voicemail/no-answer/hang-up. User, 2026-09-24.
+    // Pipeline (Meeting/Proposal/Email Send), not voicemail/no-answer/hang-up. User, 2026-09-24.
+    // "Callback" split into its own column 2026-10-17, see TEAM_ACTIVITY.columns.callbacks below.
     followups: "Pipeline",
+    // Callback Scheduled dispositions -- split out of "followups"/Pipeline 2026-10-17 (user: "callbacks
+    // ab ek seprate tab hai uska seprate card hona chahiye count ka or list me bhi seprate numbers").
+    callbacks: "Callbacks",
     emails: "Emails",
     leads_added: "Leads Added",
     disconnected: "Dead Lines",
@@ -614,31 +627,21 @@ export const BATTLECARD = {
   companyLinkedInNotFound: "No company LinkedIn found",
   companyLinkedInNotFoundHelp: "Already searched -- no company LinkedIn page was found",
   editContact: "✏️ Edit Phone / LinkedIn",
-  // components/cold-call/battlecard.tsx -- click-to-reveal for
-  // HunterDecisionMakers, so a Call Desk page full of leads doesn't fire one
-  // GET /leads/{id}/contacts per visible card on load. No Streamlit analogue.
-  // Two different entry points into the same panel, chosen by whether this
-  // lead already has a known contact (lead.contact_name):
-  //  - known already -> this small text link, just to expand and view it.
-  //  - nothing known yet -> findContacts below, a full prominent button
-  //    shown directly (no hidden gate), identical label to the button one
-  //    level inside (contacts-panel.tsx) it stands in for.
-  showContacts: "👥 Show decision-maker contacts",
+  // showContacts/findContacts REMOVED 2026-10-16 -- battlecard.tsx no longer gates HunterDecisionMakers
+  // behind a click (user: manually-added decision makers were already saved correctly but invisible until
+  // that click, every time, on every card -- "same step wahan upar he show krwa do jese hum Show Decision
+  // Maker click pr dekh rhy hain"). The panel now always renders; see battlecard.tsx's own comment there.
+  //
   // Read-only reveal for lead.notes (user request, 2026-09-30: "cold call desk pr already likhy hue notes
   // dekh nhi sakty") -- Cold Call Desk's own note box is for typing a NEW note on this call's disposition,
   // not for reading past ones; nothing on this page showed lead.notes at all before this. Same
-  // click-to-reveal pattern as showContacts above, and same reason: a desk full of leads must not render
-  // every card's full notes history unconditionally. Adding a note stays possible only through the
+  // click-to-reveal pattern the old showContacts used to, and same reason: a desk full of leads must not
+  // render every card's full notes history unconditionally. Adding a note stays possible only through the
   // existing disposition flow -- reading past ones does NOT need its own edit/add UI (that's NotesPanel's
   // job on Pipeline/Projects/the Meeting popup), so this is read-only on purpose.
   showNotes: "📝 See Notes",
   hideNotes: "📝 Hide Notes",
   noNotesYet: "No notes yet.",
-  // Same literal text as contacts-panel.tsx's own internal button -- reusing
-  // it here means clicking this looks and reads exactly like that button,
-  // even though what it actually does is mount the panel with
-  // autoSearchOnMount so the search fires immediately, no second click.
-  findContacts: "🎯 Find decision makers",
   phoneLabel: "Direct Phone",
   phonePlaceholder: "+1 (555) 000-0000",
   linkedInLabel: "LinkedIn Profile URL",
@@ -949,9 +952,16 @@ export const MEETING_OUTCOMES: {
 export const PIPELINE_VIEW_FILTER = {
   label: "View",
   all: "All",
-  meeting: "🎯 Meetings",
+  // RENAMED from "🎯 Meetings" (user, 2026-10-19) -- this filter only ever shows leads with a booked
+  // meeting (pipeline_stage === "meeting_booked"), so the label now says that directly. ("Schedule
+  // Meeting" over "Meeting Scheduled" -- user's exact second-round wording.)
+  meeting: "🎯 Schedule Meeting",
   email: "✉️ Email Send",
   proposal: "📄 Proposal Sent",
+  // No Show leads (2026-10-19, user: "no show waly bhi pipeline me dekhyngy new dropdown filter k
+  // sath") -- previously these never reached Pipeline at all, only the Meetings page's own
+  // "Needs Follow-up" list; see pipeline-view.tsx's inScope.
+  noShow: "👻 No Show",
   // "Star" priority mark -- user request, 2026-09-23.
   starred: "⭐ Starred",
   // User, 2026-10-15: "koi notification nhi ata date or time k hisab sy k check krna hai... ek ek lead
@@ -966,11 +976,11 @@ export const PIPELINE_VIEW_FILTER = {
  * entry already uses elsewhere on this page, so a rep sees identical copy for the same real action.
  */
 export const ATTEMPT_TRACKER = {
+  // "callback" REMOVED 2026-10-16 -- moved to the per-slot system, see FOLLOWUP_TRACKER.label below.
   label: {
-    callback: "📞 Callback Attempts",
     no_show: "🚫 No Show Attempts",
     proposal: "📄 Follow-up Attempts",
-  } as Record<"callback" | "no_show" | "proposal", string>,
+  } as Record<"no_show" | "proposal", string>,
   attemptLabel: (n: number) => `Attempt ${n}`,
   dueLabel: (when: string) => `Next try: ${when}`,
   historyTitle: "Attempt history",
@@ -985,16 +995,37 @@ export const ATTEMPT_TRACKER = {
  * Proposal Sent's Email/Call Attempt trackers (user, 2026-10-16) -- ADDITIVE to ATTEMPT_TRACKER's
  * "proposal" context above, not a replacement. See components/pipeline/followup-tracker.tsx.
  */
+/**
+ * Proposal Sent's Email/Call Attempt trackers, and Pipeline's Callback attempt tracker (REDESIGNED
+ * 2026-10-16, see components/pipeline/followup-tracker.tsx) -- independent, pre-plannable slots, each
+ * with its own date. Marking one attempted never erases its date.
+ */
 export const FOLLOWUP_TRACKER = {
   label: {
     email_followup: "✉️ Email Attempt",
     call_followup: "📞 Call Attempt",
-  } as Record<"email_followup" | "call_followup", string>,
+    callback: "📞 Callback Attempt",
+    // No Show's own Email/Call trackers (2026-10-19, user: "humny jo system proposal button pr lgaya
+    // hai same woh no show pr bhi lagega... call attempts bhi or email attempts bhi").
+    no_show_email_followup: "✉️ No Show Email Attempt",
+    no_show_call_followup: "📞 No Show Call Attempt",
+  } as Record<
+    "email_followup" | "call_followup" | "callback" | "no_show_email_followup" | "no_show_call_followup",
+    string
+  >,
   attemptLabel: (n: number) => `${n}`,
-  dueLabel: (when: string) => `Next: ${when}`,
   escalatedSuffix: "overdue, team notified",
-  scheduleTitle: "Schedule next attempt",
+  scheduleTitle: "Schedule",
   addMoreTitle: "Add another attempt",
+  markAttempted: "Mark Attempted",
+  unmarkAttempted: "Undo",
+  // Assigning a reminder to a teammate (2026-10-19, user: "bilal bhai ali bhai ko assign bhi krdyn...
+  // woh reminder k mere sath sath ammar ko bhi woh remindr jaye") -- an ADDITIONAL recipient on top of
+  // whoever scheduled it, so both get pinged when it fires.
+  assignLabel: "Assign to",
+  assignJustMe: "Just me",
+  assignWholeTeam: "Whole team",
+  assignedTag: (who: string) => `→ ${who}`,
 } as const;
 
 export const PIPELINE_CARD = {
@@ -1136,6 +1167,17 @@ export const PROPOSAL_REMINDER_PROMPT = {
   cancel: "Cancel",
 } as const;
 
+/**
+ * No Show's own version of the gate above (user, 2026-10-19: "humny jo system proposal button pr lgaya
+ * hai same woh no show pr bhi lagega"), same mechanism, see components/pipeline/no-show-reminder-prompt.tsx.
+ */
+export const NO_SHOW_REMINDER_PROMPT = {
+  title: "Before marking No Show: when's your next re-attempt?",
+  hint: "Schedule at least one -- Email, Call, or both.",
+  confirm: "✅ Mark No Show",
+  cancel: "Cancel",
+} as const;
+
 /** "Email Send" button (Cold Call Desk) -- structure-plan.md Phase 3/4. See lib/constants.ts SEND_TO_DESK
  * for the similarly-named but separate "Send to Cold Call Desk" (Contacts). */
 export const EMAIL_SEND = {
@@ -1245,6 +1287,11 @@ export const ACTIVITY_SCROLLER = {
     // Maps/CSV-discovered ones, so the label says so.
     { key: "leads_added", label: "Sales Team Leads", color: "#8b5cf6" },
     { key: "followups", label: "Pipeline", color: "#f59e0b" },
+    // Split out of "followups"/Pipeline above (user, 2026-10-17, screenshot: "pipeline me 7 log show ho
+    // rhy jab k is me sy 5 6 callbacks waly hein... callbacks ab ek seprate tab hai uska seprate card
+    // hona chahiye count ka") -- Callback Scheduled dispositions, see crud/call_events.py
+    // _CALLBACK_OUTCOMES.
+    { key: "callbacks", label: "Callbacks", color: "#0ea5e9" },
     { key: "meetings", label: "Meetings", color: "#14b8a6" },
     { key: "disconnected", label: "Disconnected", color: "#ef4444" },
     { key: "voicemail", label: "Voicemail", color: "#ec4899" },

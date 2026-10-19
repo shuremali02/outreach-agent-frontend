@@ -89,23 +89,37 @@ export const leadsApi = {
   sendToDesk: (id: number) => api.post<Lead>(`/leads/${id}/send-to-desk`),
   /**
    * Pipeline's 3-checkbox re-contact tracker (user request, 2026-09-29) -- see
-   * app/crud/callback_attempts.py and components/pipeline/attempt-tracker.tsx.
+   * app/crud/callback_attempts.py and components/pipeline/attempt-tracker.tsx. "callback" REMOVED
+   * 2026-10-16 -- moved to the per-slot system below.
    */
-  checkAttempt: (id: number, context: "callback" | "no_show" | "proposal") =>
+  checkAttempt: (id: number, context: "no_show" | "proposal") =>
     api.post<Lead>(`/leads/${id}/attempts/${context}`),
-  uncheckAttempt: (id: number, context: "callback" | "no_show" | "proposal") =>
+  uncheckAttempt: (id: number, context: "no_show" | "proposal") =>
     api.delete<Lead>(`/leads/${id}/attempts/${context}`),
   /**
-   * Proposal Sent's Email/Call Attempt trackers (2026-10-16) -- see app/crud/proposal_followups.py and
-   * components/pipeline/followup-tracker.tsx. Open-ended (no 3-cap), and setFollowupDue is the
-   * per-checkbox icon's rep-chosen next-attempt date/time -- NOT auto-computed like checkAttempt above.
+   * Proposal Sent's Email/Call Attempt trackers, and Pipeline's Callback attempt tracker (REDESIGNED
+   * 2026-10-16 -- see app/crud/followup_slots.py and components/pipeline/followup-tracker.tsx). Each
+   * numbered checkbox is an independent, pre-plannable slot: scheduleSlot sets (or re-sets) that slot's
+   * date without touching any other slot; markSlotAttempted/unmarkSlotAttempted only ever touch that
+   * slot's done state, never its scheduled_at.
    */
-  checkFollowupAttempt: (id: number, context: "email_followup" | "call_followup") =>
-    api.post<Lead>(`/leads/${id}/followups/${context}`),
-  uncheckFollowupAttempt: (id: number, context: "email_followup" | "call_followup") =>
-    api.delete<Lead>(`/leads/${id}/followups/${context}`),
-  setFollowupDue: (id: number, context: "email_followup" | "call_followup", dueAt: string) =>
-    api.post<Lead>(`/leads/${id}/followups/${context}/due`, { due_at: dueAt }),
+  scheduleSlot: (
+    id: number,
+    context: "email_followup" | "call_followup" | "callback" | "no_show_email_followup" | "no_show_call_followup",
+    index: number,
+    scheduledAt: string,
+    assignedToUserId?: number | null,
+    assignedToTeam?: boolean,
+  ) =>
+    api.post<Lead>(`/leads/${id}/slots/${context}/${index}/schedule`, {
+      scheduled_at: scheduledAt,
+      assigned_to_user_id: assignedToUserId ?? null,
+      assigned_to_team: assignedToTeam ?? false,
+    }),
+  markSlotAttempted: (id: number, context: "email_followup" | "call_followup" | "callback" | "no_show_email_followup" | "no_show_call_followup", index: number) =>
+    api.post<Lead>(`/leads/${id}/slots/${context}/${index}/attempted`),
+  unmarkSlotAttempted: (id: number, context: "email_followup" | "call_followup" | "callback" | "no_show_email_followup" | "no_show_call_followup", index: number) =>
+    api.delete<Lead>(`/leads/${id}/slots/${context}/${index}/attempted`),
   /**
    * "➕ Add Note" -- always APPENDS server-side (see app/crud/leads.py
    * add_note()), never overwrites lead.notes wholesale. Replaces the old

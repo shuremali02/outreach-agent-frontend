@@ -39,6 +39,7 @@ import { CategoryLabel, CountryFlag, Ico, stripEmoji, withIcons } from "@/compon
 import { AttemptTracker } from "@/components/pipeline/attempt-tracker";
 import { FollowupTracker, isFollowupEscalated } from "@/components/pipeline/followup-tracker";
 import { ProposalReminderPrompt } from "@/components/pipeline/proposal-reminder-prompt";
+import { NoShowReminderPrompt } from "@/components/pipeline/no-show-reminder-prompt";
 
 /** Has a callback (a set time, or a Callback Scheduled disposition) AND is not already Won / Lost. */
 function hasOpenCallback(l: Lead): boolean {
@@ -49,7 +50,9 @@ function hasOpenCallback(l: Lead): boolean {
   );
 }
 
-type AttemptContext = "callback" | "no_show" | "proposal";
+// "callback" REMOVED 2026-10-16 -- moved to the per-slot system (callback_slots), see isAnySlotEscalated
+// below. no_show/proposal still use the old auto-computed-due escalation unchanged.
+type AttemptContext = "no_show" | "proposal";
 
 /**
  * This card's attempt-tracker status, if it has recorded at least one attempt -- not just whether it's
@@ -67,13 +70,11 @@ function attemptStatus(
   let context: AttemptContext | null = null;
   if (lead.pipeline_stage === "proposal_sent") context = "proposal";
   else if (lead.pipeline_stage === "followup_due" && lead.no_show_at) context = "no_show";
-  else if (hasOpenCallback(lead)) context = "callback";
   if (!context) return null;
 
-  const attempts =
-    context === "callback" ? lead.callback_attempts : context === "no_show" ? lead.no_show_attempts : lead.proposal_attempts;
+  const attempts = context === "no_show" ? lead.no_show_attempts : lead.proposal_attempts;
   if (attempts.length === 0) return null;
-  const due = context === "callback" ? lead.callback_next_attempt_due : context === "no_show" ? lead.no_show_next_attempt_due : lead.proposal_next_attempt_due;
+  const due = context === "no_show" ? lead.no_show_next_attempt_due : lead.proposal_next_attempt_due;
   const overdue = Boolean(due) && new Date(due).getTime() <= Date.now();
   return { context, attempt: Math.min(attempts.length + 1, 3), due, overdue };
 }
@@ -86,11 +87,19 @@ function overdueAttemptContext(lead: Lead): AttemptContext | null {
   return status?.overdue ? status.context : null;
 }
 
-/** The whole-card red state (user, 2026-10-16: "woh red ho jaye lead ... 1 ghnty bad") -- either Email
- * or Call Attempt's due date passed an hour ago with nothing recorded since. Matches the backend's own
- * escalation threshold exactly (crud/attempt_reminders.py check_and_fire_proposal_followups()). */
-function isProposalFollowupEscalated(lead: Lead): boolean {
-  return isFollowupEscalated(lead.email_followup_due_at) || isFollowupEscalated(lead.call_followup_due_at);
+/** Whether ANY of this lead's Email/Call Attempt or Callback slots is escalated (1h past its scheduled
+ * time, still not marked attempted) -- user, 2026-10-16: "woh red ho jaye lead ... 1 ghnty bad". Matches
+ * the backend's own escalation threshold exactly (crud/attempt_reminders.py
+ * check_and_fire_slot_reminders()). Drives the Pipeline card's red accent AND (for "callback" specifically)
+ * the Callbacks page's own "Overdue" stat tile. */
+function isAnySlotEscalated(lead: Lead): boolean {
+  return (
+    isFollowupEscalated(lead.email_followup_slots) ||
+    isFollowupEscalated(lead.call_followup_slots) ||
+    isFollowupEscalated(lead.callback_slots) ||
+    isFollowupEscalated(lead.no_show_email_followup_slots) ||
+    isFollowupEscalated(lead.no_show_call_followup_slots)
+  );
 }
 
 /**
@@ -124,10 +133,17 @@ function PipelineActions({ lead }: { lead: Lead }) {
   // pipeline me") -- see components/pipeline/proposal-reminder-prompt.tsx. The stage change itself
   // happens in onProposalScheduled below, only once the reminder is saved.
   const [proposalPrompt, setProposalPrompt] = useState(false);
+  // No Show's own blocking reminder gate (user, 2026-10-19: "humny jo system proposal button pr lgaya
+  // hai same woh no show pr bhi lagega") -- identical mechanism, see onNoShowScheduled below.
+  const [noShowPrompt, setNoShowPrompt] = useState(false);
+  const noShowOutcome = MEETING_OUTCOMES.find((o) => o.noShow)!;
 
   // Not Interested / Proposal Send / Client Closed -- the same 3 (of 4) MEETING_OUTCOMES entries the
   // Meetings detail popup uses, minus "Needs Follow-up" (a post-meeting-only concept that doesn't apply
-  // to a lead that may not have had a meeting yet).
+  // to a lead that may not have had a meeting yet). No Show (also stage "followup_due") gets its own
+  // dedicated button below instead of going through this generic confirm-dialog loop -- unlike the other
+  // three, it's never disabled just because the lead is already at followup_due (a plain reschedule is a
+  // different thing), and it needs the reminder gate, not a plain confirm().
   const actions = MEETING_OUTCOMES.filter((o) => o.stage !== "followup_due");
 
   async function setOutcome(o: (typeof actions)[number]) {
@@ -188,6 +204,19 @@ function PipelineActions({ lead }: { lead: Lead }) {
         onSuccess: () => {
           toast.success(proposalOutcome.done(lead.company_name));
           setProposalPrompt(false);
+        },
+        onError: (e) => toast.error(e instanceof Error ? e.message : TOASTS.actionFailed),
+      },
+    );
+  }
+
+  function onNoShowScheduled() {
+    outcome.mutate(
+      { id: lead.id, stage: "followup_due", noShow: true },
+      {
+        onSuccess: () => {
+          toast.success(noShowOutcome.done(lead.company_name));
+          setNoShowPrompt(false);
         },
         onError: (e) => toast.error(e instanceof Error ? e.message : TOASTS.actionFailed),
       },
@@ -259,6 +288,17 @@ function PipelineActions({ lead }: { lead: Lead }) {
     );
   }
 
+  if (noShowPrompt) {
+    return (
+      <NoShowReminderPrompt
+        lead={lead}
+        onConfirm={onNoShowScheduled}
+        onCancel={() => setNoShowPrompt(false)}
+        pending={outcome.isPending}
+      />
+    );
+  }
+
   if (bookingPrompt) {
     return (
       <div className="flex flex-col gap-2 rounded-[8px] border border-accent bg-input px-3 py-3">
@@ -320,6 +360,13 @@ function PipelineActions({ lead }: { lead: Lead }) {
       >
         <Ico e="🎯" /> Meeting Booked
       </Button>
+      {/* "No Show" (user, 2026-10-19: "yahan pr no show bhi add krdo jo mark hai 5 buttons k sath") --
+          its own button, not routed through the generic `actions.map()` loop above: unlike those three,
+          it's never disabled just for already being at followup_due (a plain reschedule is a different,
+          distinct action), and it needs the reminder gate instead of a plain confirm(). */}
+      <Button variant="secondary" size="sm" disabled={outcome.isPending} onClick={() => setNoShowPrompt(true)}>
+        {noShowOutcome.label}
+      </Button>
       {/* "Email Send" here too (user, 2026-09-29: "callback wali leads ka status email send bhi ho skta
           hai, yeh button bhi rakh do") -- same flag/endpoint Cold Call Desk and the Meetings popup already
           use (useNeedsEmail() -> pipeline_stage=contacted), no confirm dialog, matching those two. */}
@@ -377,12 +424,22 @@ function PipelineSummary({ lead }: { lead: Lead }) {
           <strong>Subject:</strong> {lead.subject}
         </p>
       )}
-      {/* 3-checkbox re-contact tracker (user request, 2026-09-29) -- exactly one of these three ever
-          matches a given card, same conditions the card's own header tag above already uses. */}
+      {/* Action buttons moved above the attempt/reminder trackers (user, 2026-10-19: "yeh action buttons
+          opr hon or is k neechy woh attempts wala seen show ho sara"). */}
+      <PipelineActions lead={lead} />
+      {/* 3-checkbox re-contact tracker (user request, 2026-09-29) -- exactly one of these two ever
+          matches a given card, same conditions the card's own header tag above already uses. "callback"
+          moved to FollowupTracker (per-slot, 2026-10-16) -- see the followup-tracker.tsx doc comment. */}
       {lead.pipeline_stage === "followup_due" && lead.no_show_at ? (
-        <AttemptTracker lead={lead} context="no_show" />
+        <>
+          <AttemptTracker lead={lead} context="no_show" />
+          {/* ADDITIVE, not a replacement (user, 2026-10-19: "humny jo system proposal button pr lgaya
+              hai same woh no show pr bhi lagega") -- same pattern as proposal_sent below. */}
+          <FollowupTracker lead={lead} context="no_show_email_followup" />
+          <FollowupTracker lead={lead} context="no_show_call_followup" />
+        </>
       ) : (
-        hasOpenCallback(lead) && <AttemptTracker lead={lead} context="callback" />
+        hasOpenCallback(lead) && <FollowupTracker lead={lead} context="callback" />
       )}
       {lead.pipeline_stage === "proposal_sent" && (
         <>
@@ -393,7 +450,6 @@ function PipelineSummary({ lead }: { lead: Lead }) {
           <FollowupTracker lead={lead} context="call_followup" />
         </>
       )}
-      <PipelineActions lead={lead} />
       {/* "Edit in Leads" moved to the card's top-right header (user, 2026-10-16) -- see the <LeadCard>
           summary below; this column no longer renders it. */}
       {/* The "Open in Mail App" button that used to end this column now comes with the Notes panel next to
@@ -431,7 +487,9 @@ export function PipelineView({
   // Source (leadSource(), derived from source_prompt) isn't a backend column, filtered client-side same
   // as before.
   const [source, setSource] = useState(ALL_SOURCES);
-  const [view, setView] = useState<"all" | "meeting" | "email" | "proposal" | "starred" | "attempts_due">("all");
+  const [view, setView] = useState<
+    "all" | "meeting" | "email" | "proposal" | "noShow" | "starred" | "attempts_due"
+  >("all");
   // Date filter (user, 2026-09-23) -- "pipeline me last touched wali lead dekhyngy". updated_at, not
   // created_at: a lead already in Pipeline moved there by being worked, so "last touched" (when a
   // disposition/edit last changed it) is what's meaningful here, not when it was originally created.
@@ -474,7 +532,10 @@ export function PipelineView({
           ? hasOpenCallback(l)
           : l.pipeline_stage === "meeting_booked" ||
             l.pipeline_stage === "contacted" ||
-            l.pipeline_stage === "proposal_sent",
+            l.pipeline_stage === "proposal_sent" ||
+            // No Show leads (2026-10-19, user: "no show waly bhi pipeline me dekhyngy") -- previously
+            // excluded, only ever shown on the Meetings page's "Needs Follow-up" list.
+            (l.pipeline_stage === "followup_due" && Boolean(l.no_show_at)),
       ),
     [fetchedLeads, scope],
   );
@@ -488,6 +549,7 @@ export function PipelineView({
             (view === "meeting" && l.pipeline_stage === "meeting_booked") ||
             (view === "email" && l.pipeline_stage === "contacted") ||
             (view === "proposal" && l.pipeline_stage === "proposal_sent") ||
+            (view === "noShow" && l.pipeline_stage === "followup_due" && Boolean(l.no_show_at)) ||
             (view === "starred" && Boolean(l.starred_at)) ||
             (view === "attempts_due" && overdueAttemptContext(l) !== null)) &&
           (!lastTouched || shortDate(l.updated_at) === lastTouched),
@@ -503,7 +565,15 @@ export function PipelineView({
   // "Opportunity" -- every lead currently active in Pipeline that has NOT reached Proposal Sent yet (open,
   // not yet won or lost). A lead moves Opportunity -> Proposal Sent -> Client Closed and is only ever in
   // one of the three cards (user, 2026-09-25).
-  const opportunityLeads = useMemo(() => inScope.filter((l) => l.pipeline_stage !== "proposal_sent"), [inScope]);
+  // No Show leads (2026-10-19) are excluded here too, same reasoning as Proposal Sent -- they're a
+  // distinct re-attempt bucket, not an open-in-progress opportunity, and get their own filter/count.
+  const opportunityLeads = useMemo(
+    () =>
+      inScope.filter(
+        (l) => l.pipeline_stage !== "proposal_sent" && !(l.pipeline_stage === "followup_due" && l.no_show_at),
+      ),
+    [inScope],
+  );
   const opportunityValue = opportunityLeads.reduce((s, l) => s + l.deal_value, 0);
   // "Client Closed" (was "Interested" until 2026-09-24, renamed on request -- it's exactly the leads at stage
   // won, the same label the Client Closed button and Projects use) -- stays 0 until a lead is actually
@@ -524,7 +594,12 @@ export function PipelineView({
   // Callbacks page's own stat row (2026-10-15) -- same "unfiltered by the page's own dropdowns"
   // convention as the Pipeline tiles above. `inScope` here is already callback-only (see inScope above).
   const callbackValue = useMemo(() => inScope.reduce((s, l) => s + l.deal_value, 0), [inScope]);
-  const overdueCallbacks = useMemo(() => inScope.filter((l) => overdueAttemptContext(l) !== null).length, [inScope]);
+  // 2026-10-16: was overdueAttemptContext() (the old callback escalation); "callback" moved to the
+  // per-slot system, so this now reads callback_slots directly.
+  const overdueCallbacks = useMemo(
+    () => inScope.filter((l) => isFollowupEscalated(l.callback_slots)).length,
+    [inScope],
+  );
 
   return (
     <>
@@ -566,6 +641,7 @@ export function PipelineView({
                 <option value="meeting">{stripEmoji(PIPELINE_VIEW_FILTER.meeting)}</option>
                 <option value="email">{stripEmoji(PIPELINE_VIEW_FILTER.email)}</option>
                 <option value="proposal">{stripEmoji(PIPELINE_VIEW_FILTER.proposal)}</option>
+                <option value="noShow">{stripEmoji(PIPELINE_VIEW_FILTER.noShow)}</option>
               </>
             )}
             <option value="starred">{stripEmoji(PIPELINE_VIEW_FILTER.starred)}</option>
@@ -616,7 +692,7 @@ export function PipelineView({
         <LeadCard
           key={lead.id}
           lead={lead}
-          accent={isProposalFollowupEscalated(lead) ? "danger" : undefined}
+          accent={isAnySlotEscalated(lead) ? "danger" : undefined}
           headerAction={
             <EditLeadDialog
               lead={lead}

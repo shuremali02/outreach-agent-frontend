@@ -32,7 +32,7 @@ interface Particle {
  */
 export function Celebration({
   onDone,
-  message = "🏆 Congratulations! Deal Closed.",
+  message = "🏆 ALHAMDULILLAH! Deal Closed.",
 }: {
   onDone?: () => void;
   /** User, 2026-10-14: "sath me congratulations ya kuch likha ajaye." Defaults to the "Client Closed"

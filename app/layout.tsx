@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
@@ -30,6 +30,13 @@ export const metadata: Metadata = {
   // Installable app (user, 2026-10-18) -- see public/manifest.json and public/sw.js (registered in
   // providers.tsx).
   manifest: "/manifest.json",
+};
+
+// themeColor lives here, not in `metadata` above -- Next.js 16 deprecated it there in favour of this
+// separate `viewport` export. "#0d0f12" is --bg's dark-theme value (styles/tokens.css) -- the app
+// defaults to dark.
+export const viewport: Viewport = {
+  themeColor: "#0d0f12",
 };
 
 /**

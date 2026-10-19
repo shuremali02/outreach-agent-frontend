@@ -6,6 +6,7 @@ import { useAddNote, useMeetingOutcome, useNeedsEmail } from "@/hooks/use-leads"
 import { AttemptTracker } from "@/components/pipeline/attempt-tracker";
 import { FollowupTracker } from "@/components/pipeline/followup-tracker";
 import { ProposalReminderPrompt } from "@/components/pipeline/proposal-reminder-prompt";
+import { NoShowReminderPrompt } from "@/components/pipeline/no-show-reminder-prompt";
 import { NotesPanel } from "@/components/leads/notes-panel";
 import { PhoneNumberList } from "@/components/leads/phone-number-list";
 import { Button } from "@/components/ui/button";
@@ -70,6 +71,9 @@ export function MeetingDetailDialog({
   // whn pehle woh reminder set ka puche... jab tk banda set na kry time tb tk agy nhi jayegi lead
   // pipeline me") -- same gate as PipelineActions, see onProposalScheduled below.
   const [proposalPrompt, setProposalPrompt] = useState(false);
+  // No Show's own blocking reminder gate (user, 2026-10-19: "humny jo system proposal button pr lgaya
+  // hai same woh no show pr bhi lagega") -- identical mechanism, see onNoShowScheduled below.
+  const [noShowPrompt, setNoShowPrompt] = useState(false);
 
   // "Callback" (renamed from "Needs Follow-up", user 2026-10-01) -- same date/time prompt pattern as Cold
   // Call Desk's Callback Scheduled (components/cold-call/battlecard.tsx), instead of the generic confirm()
@@ -110,6 +114,10 @@ export function MeetingDetailDialog({
     }
     if (outcome.stage === "proposal_sent") {
       setProposalPrompt(true);
+      return;
+    }
+    if (outcome.noShow) {
+      setNoShowPrompt(true);
       return;
     }
     const ok = await confirm({
@@ -170,6 +178,22 @@ export function MeetingDetailDialog({
           setProposalPrompt(false);
           // Dialog stays open -- same reasoning as setOutcome() above: the Email/Call Attempt trackers
           // render below now that pipeline_stage is proposal_sent, showing the reminder just scheduled.
+        },
+        onError: (e) => toast.error(e instanceof Error ? e.message : TOASTS.actionFailed),
+      },
+    );
+  }
+
+  function onNoShowScheduled() {
+    const noShowOutcome = MEETING_OUTCOMES.find((o) => o.noShow)!;
+    update.mutate(
+      { id: lead.id, stage: "followup_due", noShow: true },
+      {
+        onSuccess: () => {
+          toast.success(noShowOutcome.done(lead.company_name));
+          setNoShowPrompt(false);
+          // Dialog stays open -- same reasoning as onProposalScheduled() above: the Email/Call Attempt
+          // trackers render below now that no_show_at is set, showing the reminder just scheduled.
         },
         onError: (e) => toast.error(e instanceof Error ? e.message : TOASTS.actionFailed),
       },
@@ -267,6 +291,13 @@ export function MeetingDetailDialog({
                   onCancel={() => setProposalPrompt(false)}
                   pending={update.isPending}
                 />
+              ) : noShowPrompt ? (
+                <NoShowReminderPrompt
+                  lead={lead}
+                  onConfirm={onNoShowScheduled}
+                  onCancel={() => setNoShowPrompt(false)}
+                  pending={update.isPending}
+                />
               ) : notInterestedPrompt ? (
                 <div className="flex flex-col gap-2 rounded-[8px] border border-danger bg-input px-3 py-3">
                   <p className="text-[0.85rem] font-semibold">{withIcons(NOT_INTERESTED_NOTE.prompt)}</p>
@@ -355,11 +386,21 @@ export function MeetingDetailDialog({
               {/* Email/Call Attempt trackers (user, 2026-10-16) -- same as Pipeline's PipelineSummary,
                   shown here too once Proposal Send goes through (see setOutcome() above, which keeps the
                   dialog open specifically for this) so a rep can schedule the first reminder immediately. */}
-              {!callbackPrompt && !notInterestedPrompt && !proposalPrompt && lead.pipeline_stage === "proposal_sent" && (
+              {!callbackPrompt && !notInterestedPrompt && !proposalPrompt && !noShowPrompt && lead.pipeline_stage === "proposal_sent" && (
                 <div className="mt-2 flex flex-col gap-2">
                   <AttemptTracker lead={lead} context="proposal" />
                   <FollowupTracker lead={lead} context="email_followup" />
                   <FollowupTracker lead={lead} context="call_followup" />
+                </div>
+              )}
+              {/* No Show's own Email/Call Attempt trackers (user, 2026-10-19) -- same pattern as Proposal
+                  Sent above, shown once a No Show has actually been recorded (no_show_at set). */}
+              {!callbackPrompt && !notInterestedPrompt && !proposalPrompt && !noShowPrompt &&
+                lead.pipeline_stage === "followup_due" && lead.no_show_at && (
+                <div className="mt-2 flex flex-col gap-2">
+                  <AttemptTracker lead={lead} context="no_show" />
+                  <FollowupTracker lead={lead} context="no_show_email_followup" />
+                  <FollowupTracker lead={lead} context="no_show_call_followup" />
                 </div>
               )}
               {update.isError && (

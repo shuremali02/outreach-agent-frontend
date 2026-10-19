@@ -206,12 +206,13 @@ export function useMeetingOutcome() {
 
 /**
  * Pipeline's 3-checkbox re-contact tracker (user request, 2026-09-29) -- see lib/api/leads.ts
- * checkAttempt()/uncheckAttempt() and components/pipeline/attempt-tracker.tsx.
+ * checkAttempt()/uncheckAttempt() and components/pipeline/attempt-tracker.tsx. "callback" REMOVED
+ * 2026-10-16 -- moved to the per-slot hooks below.
  */
 export function useCheckAttempt() {
   const invalidate = useInvalidate();
   return useMutation({
-    mutationFn: ({ id, context }: { id: number; context: "callback" | "no_show" | "proposal" }) =>
+    mutationFn: ({ id, context }: { id: number; context: "no_show" | "proposal" }) =>
       leadsApi.checkAttempt(id, context),
     onSuccess: invalidate,
   });
@@ -220,36 +221,64 @@ export function useCheckAttempt() {
 export function useUncheckAttempt() {
   const invalidate = useInvalidate();
   return useMutation({
-    mutationFn: ({ id, context }: { id: number; context: "callback" | "no_show" | "proposal" }) =>
+    mutationFn: ({ id, context }: { id: number; context: "no_show" | "proposal" }) =>
       leadsApi.uncheckAttempt(id, context),
     onSuccess: invalidate,
   });
 }
 
-/** Proposal Sent's Email/Call Attempt trackers (2026-10-16) -- see lib/api/leads.ts. */
-export function useCheckFollowupAttempt() {
+/** Proposal Sent's Email/Call Attempt trackers, and Pipeline's Callback attempt tracker (REDESIGNED
+ * 2026-10-16) -- see lib/api/leads.ts and components/pipeline/followup-tracker.tsx. */
+export function useScheduleSlot() {
   const invalidate = useInvalidate();
   return useMutation({
-    mutationFn: ({ id, context }: { id: number; context: "email_followup" | "call_followup" }) =>
-      leadsApi.checkFollowupAttempt(id, context),
+    mutationFn: ({
+      id,
+      context,
+      index,
+      scheduledAt,
+      assignedToUserId,
+      assignedToTeam,
+    }: {
+      id: number;
+      context: "email_followup" | "call_followup" | "callback" | "no_show_email_followup" | "no_show_call_followup";
+      index: number;
+      scheduledAt: string;
+      assignedToUserId?: number | null;
+      assignedToTeam?: boolean;
+    }) => leadsApi.scheduleSlot(id, context, index, scheduledAt, assignedToUserId, assignedToTeam),
     onSuccess: invalidate,
   });
 }
 
-export function useUncheckFollowupAttempt() {
+export function useMarkSlotAttempted() {
   const invalidate = useInvalidate();
   return useMutation({
-    mutationFn: ({ id, context }: { id: number; context: "email_followup" | "call_followup" }) =>
-      leadsApi.uncheckFollowupAttempt(id, context),
+    mutationFn: ({
+      id,
+      context,
+      index,
+    }: {
+      id: number;
+      context: "email_followup" | "call_followup" | "callback" | "no_show_email_followup" | "no_show_call_followup";
+      index: number;
+    }) => leadsApi.markSlotAttempted(id, context, index),
     onSuccess: invalidate,
   });
 }
 
-export function useSetFollowupDue() {
+export function useUnmarkSlotAttempted() {
   const invalidate = useInvalidate();
   return useMutation({
-    mutationFn: ({ id, context, dueAt }: { id: number; context: "email_followup" | "call_followup"; dueAt: string }) =>
-      leadsApi.setFollowupDue(id, context, dueAt),
+    mutationFn: ({
+      id,
+      context,
+      index,
+    }: {
+      id: number;
+      context: "email_followup" | "call_followup" | "callback" | "no_show_email_followup" | "no_show_call_followup";
+      index: number;
+    }) => leadsApi.unmarkSlotAttempted(id, context, index),
     onSuccess: invalidate,
   });
 }
