@@ -93,9 +93,20 @@ export function ContactsPanel({
   const qc = useQueryClient();
   const toast = useToast();
 
+  // Click-gate, RESTORED 2026-10-19 (user: "isko wapsi usi tarha load krwa skty hein show decision
+  // maker button pr he"). This panel used to be behind a click in all three callers; it was removed
+  // 2026-10-16 so a manually-added contact would show immediately without a second click, but that meant
+  // the GET below fired unconditionally on mount for EVERY rendered lead card -- confirmed live as the
+  // cause of a production QueuePool-exhaustion crash once Pipeline/Contacts/Today rendered 50-100+ cards
+  // at once (each one its own concurrent request). Centralized here instead of in each of
+  // battlecard.tsx/pipeline-view.tsx/contacts-view.tsx (none had its own gate), so one change covers all
+  // three. See docs.md for the full incident writeup.
+  const [open, setOpen] = useState(false);
+
   const { data: contacts = [], isLoading } = useQuery({
     queryKey: ["lead-contacts", lead.id],
     queryFn: () => enrichmentApi.contacts(lead.id),
+    enabled: open,
   });
 
   const findPeople = useMutation({
@@ -110,7 +121,7 @@ export function ContactsPanel({
 
   const autoSearched = useRef(false);
   useEffect(() => {
-    if (!autoSearchOnMount || autoSearched.current || isLoading) return;
+    if (!open || !autoSearchOnMount || autoSearched.current || isLoading) return;
     autoSearched.current = true;
     // Only when nothing is already known -- a lead that already has contacts
     // from an earlier bulk enrichment shouldn't get re-searched just for
@@ -199,6 +210,14 @@ export function ContactsPanel({
   for (const c of contacts) {
     const b = BUCKET_ORDER.includes(c.role_bucket) ? c.role_bucket : "other";
     grouped.set(b, [...(grouped.get(b) ?? []), c]);
+  }
+
+  if (!open) {
+    return (
+      <Button variant="secondary" size="sm" block onClick={() => setOpen(true)}>
+        👤 Show decision makers
+      </Button>
+    );
   }
 
   return (

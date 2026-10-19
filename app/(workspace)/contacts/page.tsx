@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export default async function ContactsPage({ searchParams }: PageProps<"/contacts">) {
   const sp = await searchParams;
   const q = typeof sp.q === "string" ? sp.q : "";
-  const leads = await leadsApi.list({ q });
+  const leads = await leadsApi.list({ q, limit: 100 });
 
   return (
     <div>

@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useLeads, useSendToDesk } from "@/hooks/use-leads";
+import { leadsApi } from "@/lib/api";
 import { LeadCard } from "@/components/leads/lead-card";
 import { LeadEditForm } from "@/components/leads/lead-edit-form";
 import { LeadWho } from "@/components/leads/lead-who";
@@ -119,7 +121,21 @@ function CsvExportButton({ leads, category }: { leads: Lead[]; category: string 
 }
 
 export function ContactsView({ initialLeads, q }: { initialLeads: Lead[]; q: string }) {
-  const { data: allLeads = [] } = useLeads({ q }, initialLeads);
+  // Paginated, newest-first, same "Load More" shape as Cold Call Desk's already-tried buckets
+  // (2026-10-13) -- this page used to fetch every matching lead unconditionally, and every card's
+  // HunterDecisionMakers/ContactsPanel fires its own GET /leads/{id}/contacts on mount with no gate, so a
+  // page with 100+ leads could burst 100+ concurrent requests and exhaust the backend's connection pool
+  // (confirmed live, 2026-10-19). `q` already searches the backend (crud/leads.py _lead_filters()), so
+  // typing in the search box narrows the SQL query itself rather than filtering an already-fetched list.
+  const [limit, setLimit] = useState(100);
+  const { data: allLeads = [], isFetching } = useLeads({ q, limit }, initialLeads);
+  // The TRUE total for this search, independent of `limit` -- allLeads.length is only ever <=limit once
+  // pagination is in play, so the Load More button's visibility needs its own count query.
+  const total = useQuery({
+    queryKey: ["leads-filtered-count", { q }],
+    queryFn: () => leadsApi.filteredCount({ q }),
+    staleTime: 30_000,
+  });
   const [category, setCategory] = useState(ALL_CATEGORIES);
   const [country, setCountry] = useState(ALL_COUNTRIES);
   const [source, setSource] = useState(ALL_SOURCES);
@@ -265,6 +281,21 @@ export function ContactsView({ initialLeads, q }: { initialLeads: Lead[]; q: str
           </div>
         </LeadCard>
       ))}
+
+      {/* Shown only while the true total says there's more beyond the currently-loaded page -- same
+          pattern as Cold Call Desk's already-tried buckets. */}
+      {allLeads.length > 0 && (total.data?.count ?? 0) > allLeads.length && (
+        <Button
+          variant="secondary"
+          size="sm"
+          block
+          className="mt-2"
+          loading={isFetching}
+          onClick={() => setLimit((n) => n + 100)}
+        >
+          Load 100 more
+        </Button>
+      )}
     </>
   );
 }
