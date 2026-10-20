@@ -244,6 +244,9 @@ function LeadEditFormFields({ lead, onDone }: { lead: Lead; onDone?: () => void 
   // User, 2026-10-13: "Find Website" (or AI Discovery) can bring back the wrong company's URL, and
   // there was no way to correct it afterward -- the backend already accepts company_website on PATCH
   // /leads/{id} (types/lead.ts UpdateLeadInput), this form just never exposed a field for it.
+  // User, 2026-10-20: "edit form me hum lead ka name bhi edit kr skyn" -- this form had every detail
+  // except the company name itself editable.
+  const [companyName, setCompanyName] = useState(lead.company_name);
   const [companyWebsite, setCompanyWebsite] = useState(lead.company_website);
   const [subject, setSubject] = useState(lead.subject);
   const [body, setBody] = useState(lead.body);
@@ -272,6 +275,9 @@ function LeadEditFormFields({ lead, onDone }: { lead: Lead; onDone?: () => void 
   return (
     <div className="flex flex-col gap-3">
       <h4 className="text-[1rem] font-semibold"><Ico e="🌐" /> Company</h4>
+      <Field label="Company Name">
+        <Input value={companyName} onChange={(e) => setCompanyName(e.target.value)} />
+      </Field>
       <Field label="Company Website">
         <Input
           value={companyWebsite}
@@ -373,7 +379,7 @@ function LeadEditFormFields({ lead, onDone }: { lead: Lead; onDone?: () => void 
         variant="primary"
         size="sm"
         loading={update.isPending}
-        disabled={stage === "meeting_booked" && !(meetingDate && meetingTime)}
+        disabled={!companyName.trim() || (stage === "meeting_booked" && !(meetingDate && meetingTime))}
         onClick={async () => {
           if (stage === "lost" && lead.pipeline_stage !== "lost") {
             const ok = await confirm({
@@ -388,6 +394,7 @@ function LeadEditFormFields({ lead, onDone }: { lead: Lead; onDone?: () => void 
             {
               id: lead.id,
               input: {
+                company_name: companyName,
                 company_website: companyWebsite,
                 subject,
                 body,
