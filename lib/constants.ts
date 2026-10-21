@@ -94,6 +94,7 @@ export const COUNTRIES: { id: string; label: string }[] = [
   { id: "CZ", label: "Czech Republic" },
   { id: "RO", label: "Romania" },
   { id: "HU", label: "Hungary" },
+  { id: "SI", label: "Slovenia" },
   { id: "EG", label: "Egypt" },
 ];
 
@@ -111,7 +112,14 @@ export function countryLabel(code: string): string {
  * in the CRM from any other country stay filterable regardless of what this popover offers.
  */
 export const ADD_LEAD_COUNTRIES = [
-  ...COUNTRIES.filter((c) => ["US", "GB", "CA", "FR", "SA", "AE", "QA", "EG", "PK"].includes(c.id)),
+  // Germany/Australia/Slovenia added 2026-10-20 (user request) -- Germany/Australia were already in the
+  // full COUNTRIES list/filterable everywhere, just not offered here yet; Slovenia is brand new (also
+  // added to the full COUNTRIES list above). User explicitly asked to leave out ones that see no real
+  // use here (Spain, Turkey, China, etc.) -- those stay filterable on Pipeline/Contacts via COUNTRIES,
+  // just not offered on this popover.
+  ...COUNTRIES.filter((c) =>
+    ["US", "GB", "CA", "FR", "SA", "AE", "QA", "EG", "PK", "DE", "AU", "SI"].includes(c.id),
+  ),
   // User, 2026-10-19: a rep adding a lead manually sometimes genuinely doesn't know the country yet --
   // without this they were forced to guess a real one just to get past the required-field check.
   // `id` is the same UNKNOWN_COUNTRY sentinel the filter dropdowns already use for "no country on

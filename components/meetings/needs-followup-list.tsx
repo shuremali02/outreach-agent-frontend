@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { Field, Input, Select, Textarea } from "@/components/ui/input";
 import { MailtoButton } from "@/components/common/mailto-button";
-import { LEAD_CARD, NEEDS_FOLLOWUP, PIPELINE_CARD, STAGE_LABELS, TOASTS } from "@/lib/constants";
+import { LEAD_CARD, MEETING_BOOKING, NEEDS_FOLLOWUP, PIPELINE_CARD, STAGE_LABELS, TOASTS } from "@/lib/constants";
 import { addedAt, hasUsableEmail } from "@/lib/format";
 import type { Lead } from "@/types";
 import { Ico, stripEmoji, withIcons } from "@/components/ui/emoji-icon";
@@ -34,6 +34,33 @@ function NeedsFollowUpCard({ lead, calendarLink }: { lead: Lead; calendarLink: s
   const update = useUpdateLead();
   const toast = useToast();
   const [draft, setDraft] = useState(() => secondTouch(lead, calendarLink));
+  // "Mark as Meeting Booked" used to PATCH pipeline_stage straight to "meeting_booked" with no meeting_at
+  // at all -- confirmed live 2026-10-21 (user: "yahan usey mujhse time puchna tha k kab ki meeting booked
+  // hai, yeh glti ki waja sy stage miss ho gaya"), same date/time prompt every other "mark as booked" flow
+  // in the app already uses (pipeline-view.tsx/battlecard.tsx), so this button now matches them instead of
+  // silently leaving a booked-looking lead with no date, invisible on the Meetings calendar.
+  const [bookingPrompt, setBookingPrompt] = useState(false);
+  const [meetingDate, setMeetingDate] = useState("");
+  const [meetingTime, setMeetingTime] = useState("");
+
+  function confirmBooking() {
+    if (!meetingDate || !meetingTime) return;
+    update.mutate(
+      {
+        id: lead.id,
+        input: { pipeline_stage: "meeting_booked", meeting_at: `${meetingDate}T${meetingTime}:00` },
+      },
+      {
+        onSuccess: () => {
+          toast.success(TOASTS.meetingBooked(lead.company_name));
+          setBookingPrompt(false);
+          setMeetingDate("");
+          setMeetingTime("");
+        },
+        onError: (e) => toast.error(e instanceof Error ? e.message : TOASTS.actionFailed),
+      },
+    );
+  }
 
   return (
     <LeadCard
@@ -92,34 +119,50 @@ function NeedsFollowUpCard({ lead, calendarLink }: { lead: Lead; calendarLink: s
           <h4 className="mb-1 text-[1rem] font-semibold"><Ico e="⚡" /> Quick Follow-up Draft</h4>
           <Textarea rows={6} value={draft} onChange={(e) => setDraft(e.target.value)} />
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <MailtoButton
-            email={lead.contact_email}
-            subject={`Re: ${lead.subject}`}
-            body={draft}
-            label="📧 Send Follow-up (1-Click)"
-            block
-          />
-          {/* Only meaningful for a lead that is waiting at Needs Follow-up; one already at another stage
-              (Meeting Booked, Proposal Sent, ...) changes stage from Edit below or the calendar popup. */}
-          {lead.pipeline_stage === "followup_due" && (
-          <Button
-            variant="primary"
-            loading={update.isPending}
-            onClick={() =>
-              update.mutate(
-                { id: lead.id, input: { pipeline_stage: "meeting_booked" } },
-                {
-                  onSuccess: () => toast.success(TOASTS.stageChanged(lead.company_name, "Meeting Booked")),
-                  onError: (e) => toast.error(e instanceof Error ? e.message : TOASTS.actionFailed),
-                },
-              )
-            }
-          >
-            <Ico e="✅" /> Mark as Meeting Booked
-          </Button>
-          )}
-        </div>
+        {bookingPrompt ? (
+          <div className="flex flex-col gap-2 rounded-[8px] border border-accent bg-input px-3 py-3">
+            <p className="text-[0.85rem] font-semibold">{withIcons(MEETING_BOOKING.prompt)}</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <Field label={MEETING_BOOKING.dateLabel}>
+                <Input type="date" value={meetingDate} onChange={(e) => setMeetingDate(e.target.value)} />
+              </Field>
+              <Field label={MEETING_BOOKING.timeLabel}>
+                <Input type="time" value={meetingTime} onChange={(e) => setMeetingTime(e.target.value)} />
+              </Field>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <Button variant="secondary" size="sm" onClick={() => setBookingPrompt(false)}>
+                {withIcons(MEETING_BOOKING.cancel)}
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                loading={update.isPending}
+                disabled={!meetingDate || !meetingTime}
+                onClick={confirmBooking}
+              >
+                {withIcons(MEETING_BOOKING.confirm)}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MailtoButton
+              email={lead.contact_email}
+              subject={`Re: ${lead.subject}`}
+              body={draft}
+              label="📧 Send Follow-up (1-Click)"
+              block
+            />
+            {/* Only meaningful for a lead that is waiting at Needs Follow-up; one already at another stage
+                (Meeting Booked, Proposal Sent, ...) changes stage from Edit below or the calendar popup. */}
+            {lead.pipeline_stage === "followup_due" && (
+              <Button variant="primary" onClick={() => setBookingPrompt(true)}>
+                <Ico e="✅" /> Mark as Meeting Booked
+              </Button>
+            )}
+          </div>
+        )}
         {update.isError && (
           <p className="text-[0.8rem] text-danger">
             {update.error instanceof Error ? update.error.message : "Failed to update this lead. Try again."}

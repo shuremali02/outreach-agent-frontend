@@ -115,13 +115,17 @@ export function NotesPanel({ lead: listLead }: { lead: Lead }) {
       >
         {addNote.isPending ? "Adding…" : "➕ Add Note"}
       </Button>
+      {/* "Open in Email App" temporarily commented out, not removed (user, 2026-10-21: "abhi k lye
+          commentout krdo jab need ho gi tb dekh lyngy") -- a proper email feature is being built to
+          replace this mailto: shortcut. Shared component (Pipeline/Contacts/Meetings popup all render
+          this same NotesPanel), so this takes it out of all three at once.
       <MailtoButton
         email={lead.contact_email}
         subject={lead.subject}
         body={lead.body}
         label="📧 Open in Email App"
         block
-      />
+      /> */}
     </div>
   );
 }
