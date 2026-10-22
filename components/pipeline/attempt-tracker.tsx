@@ -33,7 +33,21 @@ function fields(lead: Lead, context: Context): { attempts: string[]; due: string
  * History (when each box was actually checked) is deliberately NOT shown inline -- only behind the clock
  * icon (user: "han mark karo lekin show jab karo jab history dekho").
  */
-export function AttemptTracker({ lead, context }: { lead: Lead; context: Context }) {
+export function AttemptTracker({
+  lead,
+  context,
+  disabled = false,
+}: {
+  lead: Lead;
+  context: Context;
+  /** Dims the whole tracker and blocks every action in it (checkboxes, history toggle) without
+   * hiding it -- user, 2026-10-21: proposal_sent leads now also get rep-scheduled Email/Call Attempt
+   * reminders (FollowupTracker), and this tracker's own auto-computed due date was firing a SECOND,
+   * separate notification for the same lead ("dono phr notify kr wa rhy mixup ho rha" -- backend side
+   * of this fix is app/crud/attempt_reminders.py's check_and_fire() skipping "proposal"). Checked
+   * history stays visible/readable -- only new actions are blocked -- so past attempts aren't lost. */
+  disabled?: boolean;
+}) {
   const check = useCheckAttempt();
   const uncheck = useUncheckAttempt();
   const outcome = useMeetingOutcome();
@@ -78,7 +92,11 @@ export function AttemptTracker({ lead, context }: { lead: Lead; context: Context
   }
 
   return (
-    <div className="flex flex-col gap-1.5 rounded-[8px] border border-border bg-input px-3 py-2">
+    <div
+      className={`flex flex-col gap-1.5 rounded-[8px] border border-border bg-input px-3 py-2 ${
+        disabled ? "opacity-40" : ""
+      }`}
+    >
       <div className="flex items-center justify-between">
         <p className="text-[0.8rem] font-semibold">{ATTEMPT_TRACKER.label[context]}</p>
         <button
@@ -101,13 +119,13 @@ export function AttemptTracker({ lead, context }: { lead: Lead; context: Context
             <label
               key={i}
               className={`flex items-center gap-1 text-[0.78rem] ${
-                canCheck || canUncheck ? "cursor-pointer" : "cursor-default text-muted"
+                !disabled && (canCheck || canUncheck) ? "cursor-pointer" : "cursor-default text-muted"
               }`}
             >
               <input
                 type="checkbox"
                 checked={checked}
-                disabled={pending || !(canCheck || canUncheck)}
+                disabled={disabled || pending || !(canCheck || canUncheck)}
                 onChange={() => (checked ? onUncheck() : onCheck(i))}
                 className="accent-[var(--accent)]"
               />
@@ -117,7 +135,7 @@ export function AttemptTracker({ lead, context }: { lead: Lead; context: Context
         })}
       </div>
 
-      {due && attempts.length < 3 && (
+      {due && attempts.length < 3 && !disabled && (
         <p className="text-[0.75rem] text-muted">{ATTEMPT_TRACKER.dueLabel(addedAt(due))}</p>
       )}
 

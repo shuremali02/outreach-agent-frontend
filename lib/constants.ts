@@ -570,11 +570,12 @@ export const PAGE_HEADERS = {
     title: "Projects",
     subtitle: "Deals that have been won -- Client Closed.",
   },
-  // Placeholder tab (user, 2026-09-22) -- reserved for a future dedicated Email view, nothing built yet.
+  // Real page since 2026-10-21 -- leads sent here via "Email Send", tracked manually until an SMTP
+  // service is picked (see email-plan.md for the future automated version).
   email: {
-    eyebrow: undefined,
+    eyebrow: "MANUAL OUTREACH",
     title: "Email",
-    subtitle: "Coming soon.",
+    subtitle: "Leads waiting on a manual email -- pick an address, send it yourself, track each step here.",
   },
   contacts: {
     eyebrow: "DIRECTORY & SEGMENTATION",
@@ -1186,13 +1187,37 @@ export const NO_SHOW_REMINDER_PROMPT = {
   cancel: "Cancel",
 } as const;
 
-/** "Email Send" button (Cold Call Desk) -- structure-plan.md Phase 3/4. See lib/constants.ts SEND_TO_DESK
- * for the similarly-named but separate "Send to Cold Call Desk" (Contacts). */
+/** "Email Send" button (REPURPOSED 2026-10-21 -- see EmailPickerDialog). See lib/constants.ts
+ * SEND_TO_DESK for the similarly-named but separate "Send to Cold Call Desk" (Contacts). */
 export const EMAIL_SEND = {
   button: "✉️ Email Send",
-  help: "Marks this lead as needing an email and moves it to Pipeline. It does not send anything -- use Mark Email Sent once you actually have.",
-  sent: (company: string) => `${company} marked for email and moved to Pipeline`,
-  failed: "Could not mark this lead for email. Try again.",
+  help: "Pick (or type) an email address and move this lead to the Email desk -- you send it yourself, the app just tracks it.",
+  sent: (company: string) => `${company} moved to the Email desk`,
+  failed: "Could not move this lead to the Email desk. Try again.",
+  disabledHelp: "Already in the Email desk.",
+} as const;
+
+/** The address-picker dialog opened by the "Email Send" button -- components/leads/email-picker-dialog.tsx. */
+export const EMAIL_PICKER = {
+  title: "Send to Email",
+  intro: "Which address should this go to?",
+  selectLabel: "Email address",
+  otherOption: "Other / type a new address…",
+  noneOption: "No existing address -- type one below",
+  customLabel: "Email address",
+  customPlaceholder: "name@company.com",
+  cancel: "Cancel",
+  confirm: "Confirm & Start",
+  loadingContacts: "Loading contacts…",
+} as const;
+
+/** Email desk page -- components/email/email-desk-view.tsx. */
+export const EMAIL_DESK = {
+  markSent: "✅ Mark Sent",
+  unmarkSent: "↩ Unmark",
+  sentTag: (when: string) => `📧 Sent · ${when}`,
+  markSentFailed: "Failed to mark as sent. Try again.",
+  empty: "Nothing in the Email desk right now. Press \"Email Send\" on a lead to add one.",
 } as const;
 
 /** Last-touch mark on Cold Call Desk cards (Phase 3). The old "already tried" collapsible section's two

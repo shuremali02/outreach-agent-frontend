@@ -94,6 +94,9 @@ export interface AppNotification {
   last_activity_by_name: string;
   /** "24h" | "6h" | "2h" | "30m" for a meeting reminder (2026-09-28), "" for every other kind. */
   stage: string;
+  /** Whether this notification's lead is currently in the manual Email desk (hidden from Contacts/
+   * Pipeline/etc while queued there), 2026-10-22 -- see components/layout/notification-bell.tsx go(). */
+  lead_in_email_desk: boolean;
   problem_id: number | null;
   problem_title: string;
   excerpt: string;

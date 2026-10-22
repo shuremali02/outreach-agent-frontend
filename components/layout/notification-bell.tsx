@@ -231,14 +231,20 @@ export function NotificationBell() {
    *     Pipeline at all.
    * Anything else that just carries a company_name (an @mention, or a context this doesn't recognise) goes
    * to /contacts?q=... instead of /pipeline -- Contacts is the one page that shows a lead regardless of
-   * which desk/stage it's currently sitting in (barring the rare case of a lead still untouched in a desk
-   * queue), so "I don't know exactly where this lead lives" now finds it instead of coming up empty.
+   * which desk/stage it's currently sitting in, EXCEPT the Email desk (see lead_in_email_desk below),
+   * so "I don't know exactly where this lead lives" now finds it instead of coming up empty.
+   *
+   * lead_in_email_desk (2026-10-22, user: "woh email tab me he ja kr khuly esa na ho k woh pipeline me
+   * search ho rhi ho") -- checked FIRST, ahead of every other branch: a lead sitting in the Email desk is
+   * hidden from Contacts/Pipeline/Callbacks/Today while queued there (crud/leads.py _lead_filters()), so
+   * none of the branches below would ever actually find it. Mirrors crud/notifications.py _push_route().
    */
   function go(n: AppNotification) {
     if (!n.read) markRead.mutate(n.id);
     setOpen(false);
     const q = n.company_name ? encodeURIComponent(n.company_name) : "";
-    if (n.problem_id) router.push("/problems");
+    if (n.lead_in_email_desk && q) router.push(`/email?q=${q}`);
+    else if (n.problem_id) router.push("/problems");
     else if (n.kind === "meeting_reminder") router.push("/meetings");
     else if (n.kind === "attempt_reminder" && n.stage?.startsWith("callback") && q) {
       router.push(`/callbacks?q=${q}`);

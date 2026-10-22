@@ -111,6 +111,15 @@ export interface Lead {
   /** "" = not set, "maaz" | "bilal" | "asfand" -- whose LinkedIn outreach this lead came from. Only meaningful
    * alongside lead_channel=="linkedin". See lib/constants.ts LINKEDIN_OWNERS. User request, 2026-10-05. */
   linkedin_owner: string;
+  /** ISO datetime, "" = not currently in the manual Email desk. Its own field (not sent_to_desk_at/
+   * lead_channel, both already spoken for) -- see outreach-backend/app/models.py Lead.email_desk_sent_at.
+   * User request, 2026-10-21. */
+  email_desk_sent_at: string;
+  /** "" = no address chosen yet. Set by the Email Send picker dialog. */
+  outreach_email: string;
+  /** ISO datetime, "" = not marked sent. The Email desk's "✅ Mark Sent" toggle -- persisted (unlike the
+   * older, ephemeral Cold Call Desk "Mark Email Sent" button). */
+  email_sent_at: string;
   /** "receptionist" | "decision_maker" | "team_member" | "" -- tag only from the "Call picked by" row,
    * never changes pipeline_stage. */
   call_picked_by: string;
@@ -260,10 +269,10 @@ export interface LeadFilters {
   q?: string;
   /** Default true: the list omits the long text columns (see Lead.slim). Cold Call Desk passes false. */
   slim?: boolean;
-  /** Cold Call Desk / LinkedIn desk only (2026-10-05: a second, isolated desk -- see
-   * components/cold-call/cold-call-view.tsx's `channel` prop): just the leads sent to that one desk
-   * (server-side, not filtered in the browser). */
-  desk?: "cold_call" | "linkedin";
+  /** Cold Call Desk / LinkedIn desk / Email desk only (2026-10-05 / 2026-10-21: isolated desks -- see
+   * components/cold-call/cold-call-view.tsx's `channel` prop for the first two): just the leads sent to
+   * that one desk (server-side, not filtered in the browser). */
+  desk?: "cold_call" | "linkedin" | "email";
   /** With desk set: tried=false leaves out the Voicemail / Hang Up group, true = only that group. */
   tried?: boolean;
   /** Meetings page only: also return a lead the meeting popup's "Not Interested" hid, if it has a

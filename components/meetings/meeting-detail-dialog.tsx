@@ -2,7 +2,8 @@
 
 import * as Dialog from "@radix-ui/react-dialog";
 import { useState } from "react";
-import { useAddNote, useMeetingOutcome, useNeedsEmail } from "@/hooks/use-leads";
+import { useAddNote, useMeetingOutcome } from "@/hooks/use-leads";
+import { EmailPickerDialog } from "@/components/leads/email-picker-dialog";
 import { AttemptTracker } from "@/components/pipeline/attempt-tracker";
 import { FollowupTracker } from "@/components/pipeline/followup-tracker";
 import { ProposalReminderPrompt } from "@/components/pipeline/proposal-reminder-prompt";
@@ -55,9 +56,8 @@ export function MeetingDetailDialog({
   // A dedicated endpoint, not a plain PATCH (structure-plan.md Phase 5) -- "lost" (Not Interested) must
   // ALSO hide the lead everywhere, which UpdateLeadInput deliberately cannot do.
   const update = useMeetingOutcome();
-  // "Email Send" -- same flag as Cold Call Desk's button (structure-plan.md Phase 3/4), added here too
-  // per the user ("whn pr yeh send email wala button bhi add krdo meetings form me").
-  const needsEmail = useNeedsEmail();
+  // "Email Send" -- same picker dialog as Cold Call Desk's button, added here too per the user ("whn pr
+  // yeh send email wala button bhi add krdo meetings form me").
   const addNote = useAddNote();
   const confirm = useConfirm();
   const toast = useToast();
@@ -408,30 +408,22 @@ export function MeetingDetailDialog({
                   {update.error instanceof Error ? update.error.message : "Failed to save this outcome. Try again."}
                 </p>
               )}
-              <Button
-                variant="secondary"
-                size="sm"
-                block
-                className="mt-2"
-                title={EMAIL_SEND.help}
-                loading={needsEmail.isPending}
-                onClick={() =>
-                  needsEmail.mutate(lead.id, {
-                    onSuccess: () => {
-                      toast.success(EMAIL_SEND.sent(lead.company_name));
-                      setOpen(false);
-                    },
-                    onError: (e) => toast.error(e instanceof Error ? e.message : EMAIL_SEND.failed),
-                  })
+              <EmailPickerDialog
+                lead={lead}
+                onSent={() => setOpen(false)}
+                trigger={
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    block
+                    className="mt-2"
+                    title={lead.email_desk_sent_at ? EMAIL_SEND.disabledHelp : EMAIL_SEND.help}
+                    disabled={Boolean(lead.email_desk_sent_at)}
+                  >
+                    {withIcons(EMAIL_SEND.button)}
+                  </Button>
                 }
-              >
-                {withIcons(EMAIL_SEND.button)}
-              </Button>
-              {needsEmail.isError && (
-                <p className="mt-2 text-[0.78rem] text-danger">
-                  {withIcons(needsEmail.error instanceof Error ? needsEmail.error.message : EMAIL_SEND.failed)}
-                </p>
-              )}
+              />
             </div>
           </div>
         </Dialog.Content>

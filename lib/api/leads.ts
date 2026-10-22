@@ -67,8 +67,13 @@ export const leadsApi = {
   /** "Call picked by" row -- tag only, see app/api/leads.py call_picked_by(). structure-plan.md Phase 3. */
   callPickedBy: (id: number, value: "receptionist" | "decision_maker" | "team_member") =>
     api.post<Lead>(`/leads/${id}/call-picked-by`, { value }),
-  /** "Email Send" button -- see app/api/leads.py needs_email(). structure-plan.md Phase 3/4. */
-  markNeedsEmail: (id: number) => api.post<Lead>(`/leads/${id}/needs-email`),
+  /** "Email Send" button (REPURPOSED 2026-10-21) -- opens the address-picker dialog, then moves the
+   * lead into the manual Email desk. See app/api/leads.py send_to_email(). */
+  sendToEmailDesk: (id: number, email: string) => api.post<Lead>(`/leads/${id}/send-to-email`, { email }),
+  /** Email desk's "✅ Mark Sent" toggle -- persisted on the lead (unlike markEmailSent above). See
+   * app/api/leads.py mark_email_desk_sent()/unmark_email_desk_sent(). */
+  markEmailDeskSent: (id: number) => api.post<Lead>(`/leads/${id}/email-desk/sent`, {}),
+  unmarkEmailDeskSent: (id: number) => api.delete<Lead>(`/leads/${id}/email-desk/sent`),
   /** "Star" priority mark -- toggle, tag only, see app/api/leads.py star(). User request, 2026-09-23. */
   toggleStar: (id: number) => api.post<Lead>(`/leads/${id}/star`, {}),
   /**

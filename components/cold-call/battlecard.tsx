@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useUpdateLead, useCallOutcome, useAddNote, useCallPickedBy, useNeedsEmail } from "@/hooks/use-leads";
+import { useUpdateLead, useCallOutcome, useAddNote, useCallPickedBy } from "@/hooks/use-leads";
+import { EmailPickerDialog } from "@/components/leads/email-picker-dialog";
 import { LinkedInResearchPanel, HunterDecisionMakers, SiteScanPanel } from "@/components/enrichment";
 import { LeadCard } from "@/components/leads/lead-card";
 import { LeadWho } from "@/components/leads/lead-who";
@@ -133,7 +134,6 @@ export function Battlecard({
   const confirm = useConfirm();
   const record = useCallOutcome();
   const callPickedBy = useCallPickedBy();
-  const needsEmail = useNeedsEmail();
   const generate = useMutation({
     mutationFn: () => enrichmentApi.generateBattlecard(lead.id),
     onSuccess: () => {
@@ -762,31 +762,23 @@ export function Battlecard({
               </div>
               {/* "Email Send" sits with the other disposition buttons now, not off in the research column
                   -- moved here per the user ("yeh voicemails deadline in sab buttons k sath he ayega").
-                  A flag ("this lead needs an email"), NOT a record that one went out (Mark Email Sent,
-                  in the research column above, is that). Moves the lead to Pipeline. */}
-              <Button
-                variant="secondary"
-                size="sm"
-                block
-                title={EMAIL_SEND.help}
-                loading={needsEmail.isPending}
-                onClick={() =>
-                  needsEmail.mutate(lead.id, {
-                    onSuccess: () => {
-                      toast.success(EMAIL_SEND.sent(lead.company_name));
-                      onActionTaken?.(lead.id);
-                    },
-                    onError: (e) => toast.error(e instanceof Error ? e.message : EMAIL_SEND.failed),
-                  })
+                  REPURPOSED 2026-10-21: opens an address-picker and moves the lead to the manual Email
+                  desk (not Pipeline anymore) -- see components/leads/email-picker-dialog.tsx. */}
+              <EmailPickerDialog
+                lead={lead}
+                onSent={() => onActionTaken?.(lead.id)}
+                trigger={
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    block
+                    title={lead.email_desk_sent_at ? EMAIL_SEND.disabledHelp : EMAIL_SEND.help}
+                    disabled={Boolean(lead.email_desk_sent_at)}
+                  >
+                    {withIcons(EMAIL_SEND.button)}
+                  </Button>
                 }
-              >
-                {withIcons(EMAIL_SEND.button)}
-              </Button>
-              {needsEmail.isError && (
-                <p className="text-[0.8rem] text-danger">
-                  {withIcons(needsEmail.error instanceof Error ? needsEmail.error.message : EMAIL_SEND.failed)}
-                </p>
-              )}
+              />
             </>
           )}
         </div>

@@ -230,21 +230,20 @@ export function MeetingsCalendar({ initialLeads }: { initialLeads: Lead[] }) {
                   className="min-h-[80px] border-b border-r border-border p-1 last:border-r-0 sm:min-h-[100px] sm:p-1.5"
                   style={{
                     opacity: inMonth ? 1 : 0.45,
-                    backgroundColor: dayMeetings.length > 0 ? "var(--warn-tint)" : undefined,
+                    // Today's whole card gets a light green highlight instead of just a small dot (user,
+                    // 2026-10-21: "us card ko pura he highlight kr dya jaye toh zyada behtr hai light
+                    // color sy") -- takes priority over the "has meetings" tint below, so today is always
+                    // the most visible cell on the calendar regardless of whether it has meetings yet.
+                    backgroundColor: isToday
+                      ? "var(--success-tint)"
+                      : dayMeetings.length > 0
+                        ? "var(--warn-tint)"
+                        : undefined,
+                    boxShadow: isToday ? "inset 0 0 0 1px var(--success)" : undefined,
                   }}
+                  title={isToday ? "Today (PKT)" : undefined}
                 >
-                  <p className="mb-1 flex items-center gap-1 text-[0.75rem] text-muted">
-                    {d.getDate()}
-                    {isToday && (
-                      <span
-                        className="inline-block h-1.5 w-1.5 shrink-0 rounded-full"
-                        style={{ background: "var(--success)" }}
-                        role="img"
-                        aria-label="Today"
-                        title="Today (PKT)"
-                      />
-                    )}
-                  </p>
+                  <p className="mb-1 text-[0.75rem] text-muted">{d.getDate()}</p>
                   <div className="flex flex-col gap-0.5">
                     {visible.map((lead) => (
                       <MeetingEntry key={lead.id} lead={lead} />

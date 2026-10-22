@@ -2,7 +2,8 @@
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useMemo, useState } from "react";
-import { useAddNote, useLeads, useMeetingOutcome, useNeedsEmail, useUpdateLead } from "@/hooks/use-leads";
+import { useAddNote, useLeads, useMeetingOutcome, useUpdateLead } from "@/hooks/use-leads";
+import { EmailPickerDialog } from "@/components/leads/email-picker-dialog";
 import { EditLeadDialog } from "@/components/leads/edit-lead-dialog";
 import { LeadCard } from "@/components/leads/lead-card";
 import { LeadWho } from "@/components/leads/lead-who";
@@ -115,7 +116,6 @@ function isAnySlotEscalated(lead: Lead): boolean {
 function PipelineActions({ lead }: { lead: Lead }) {
   const outcome = useMeetingOutcome();
   const update = useUpdateLead();
-  const needsEmail = useNeedsEmail();
   const addNote = useAddNote();
   const confirm = useConfirm();
   const toast = useToast();
@@ -368,23 +368,23 @@ function PipelineActions({ lead }: { lead: Lead }) {
         {noShowOutcome.label}
       </Button>
       {/* "Email Send" here too (user, 2026-09-29: "callback wali leads ka status email send bhi ho skta
-          hai, yeh button bhi rakh do") -- same flag/endpoint Cold Call Desk and the Meetings popup already
-          use (useNeedsEmail() -> pipeline_stage=contacted), no confirm dialog, matching those two. */}
-      <Button
-        variant="secondary"
-        size="sm"
-        title={EMAIL_SEND.help}
-        loading={needsEmail.isPending}
-        disabled={lead.pipeline_stage === "contacted" || needsEmail.isPending}
-        onClick={() =>
-          needsEmail.mutate(lead.id, {
-            onSuccess: () => toast.success(EMAIL_SEND.sent(lead.company_name)),
-            onError: (e) => toast.error(e instanceof Error ? e.message : EMAIL_SEND.failed),
-          })
+          hai, yeh button bhi rakh do") -- same picker dialog Cold Call Desk and the Meetings popup use.
+          REPURPOSED 2026-10-21: opens an address-picker, moves the lead to the manual Email desk --
+          see components/leads/email-picker-dialog.tsx. Disabled once already active there instead of the
+          old `pipeline_stage === "contacted"` check (that stage is no longer touched by this button). */}
+      <EmailPickerDialog
+        lead={lead}
+        trigger={
+          <Button
+            variant="secondary"
+            size="sm"
+            title={lead.email_desk_sent_at ? EMAIL_SEND.disabledHelp : EMAIL_SEND.help}
+            disabled={Boolean(lead.email_desk_sent_at)}
+          >
+            {withIcons(EMAIL_SEND.button)}
+          </Button>
         }
-      >
-        {withIcons(EMAIL_SEND.button)}
-      </Button>
+      />
       {outcome.isError && (
         <p className="col-span-2 text-[0.78rem] text-danger">
           {outcome.error instanceof Error ? outcome.error.message : TOASTS.actionFailed}
@@ -399,7 +399,7 @@ function PipelineActions({ lead }: { lead: Lead }) {
  * this page's old ManageDeal editor did), so a card here is read-only plus a link to go edit it. Kept
  * intentionally light -- this is a progress view, not a workbench.
  */
-function PipelineSummary({ lead }: { lead: Lead }) {
+export function PipelineSummary({ lead }: { lead: Lead }) {
   return (
     <div className="flex flex-col gap-3">
       <h4 className="text-[1rem] font-semibold"><Ico e="⚙" /> Deal</h4>
@@ -443,9 +443,12 @@ function PipelineSummary({ lead }: { lead: Lead }) {
       )}
       {lead.pipeline_stage === "proposal_sent" && (
         <>
-          <AttemptTracker lead={lead} context="proposal" />
-          {/* ADDITIVE, not a replacement (user, 2026-10-16: "woh bhi rahega... yeh system us follow up
-              attempt k neechy he ayega") -- the generic tracker above stays exactly as it was. */}
+          {/* Dimmed + locked (user, 2026-10-21): this tracker's own auto-computed due date was firing a
+              SEPARATE notification on top of the Email/Call Attempt reminders below, which the rep sets
+              manually ("mixup ho rha... humyn woh reminders miss nhi krny jo manual lagaye ja rhy
+              hein") -- see attempt-tracker.tsx's `disabled` prop doc for the full reasoning. History
+              stays visible; nothing here is actionable or notifies anymore for Proposal Sent leads. */}
+          <AttemptTracker lead={lead} context="proposal" disabled />
           <FollowupTracker lead={lead} context="email_followup" />
           <FollowupTracker lead={lead} context="call_followup" />
         </>
@@ -778,13 +781,24 @@ export function PipelineView({
                     : status.attempt >= 3 && !status.due
                       ? PIPELINE_CARD.attemptAllUsedTag
                       : PIPELINE_CARD.attemptUpcomingTag(status.attempt, addedAt(status.due));
+                  // Dimmed to neutral/muted for "proposal" (user, 2026-10-21, same request as the
+                  // AttemptTracker `disabled` prop above): this badge is the same auto-tracker, now
+                  // superseded by the rep's own manually-scheduled Email/Call Attempt reminders for
+                  // Proposal Sent leads -- kept visible as a quiet at-a-glance marker, no longer colored
+                  // as an alert so it can't be mistaken for one of the manual reminders. "no_show" is
+                  // untouched (not part of this request).
+                  const muted = status.context === "proposal";
                   return (
                     <span
                       className="rounded-[6px] px-1.5 py-0.5 text-[0.75rem] font-semibold sm:ml-2"
-                      style={{
-                        background: status.overdue ? "var(--danger-tint)" : "var(--warn-tint)",
-                        color: status.overdue ? "var(--danger)" : "var(--warn)",
-                      }}
+                      style={
+                        muted
+                          ? { background: "var(--input)", color: "var(--muted)" }
+                          : {
+                              background: status.overdue ? "var(--danger-tint)" : "var(--warn-tint)",
+                              color: status.overdue ? "var(--danger)" : "var(--warn)",
+                            }
+                      }
                     >
                       {withIcons(label)}
                     </span>

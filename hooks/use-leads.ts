@@ -176,11 +176,29 @@ export function useCallPickedBy() {
   });
 }
 
-/** "Email Send" -- structure-plan.md Phase 3/4. See lib/api/leads.ts markNeedsEmail(). */
-export function useNeedsEmail() {
+/** "Email Send" (REPURPOSED 2026-10-21) -- opens the address picker, moves the lead into the manual
+ * Email desk. See lib/api/leads.ts sendToEmailDesk(). */
+export function useSendToEmailDesk() {
   const invalidate = useInvalidate();
   return useMutation({
-    mutationFn: (id: number) => leadsApi.markNeedsEmail(id),
+    mutationFn: ({ id, email }: { id: number; email: string }) => leadsApi.sendToEmailDesk(id, email),
+    onSuccess: invalidate,
+  });
+}
+
+/** Email desk's "✅ Mark Sent" toggle. See lib/api/leads.ts markEmailDeskSent()/unmarkEmailDeskSent(). */
+export function useMarkEmailDeskSent() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (id: number) => leadsApi.markEmailDeskSent(id),
+    onSuccess: invalidate,
+  });
+}
+
+export function useUnmarkEmailDeskSent() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (id: number) => leadsApi.unmarkEmailDeskSent(id),
     onSuccess: invalidate,
   });
 }
