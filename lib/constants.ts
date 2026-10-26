@@ -808,6 +808,20 @@ export const MEETING_BOOKING = {
   cancel: "Cancel",
 } as const;
 
+/** "Book Another Meeting" on a Pipeline card (2026-10-23) -- user: a lead already at Proposal
+ * Sent/Follow-up Due needed a SECOND meeting before the deal closed (client had questions). Reuses the
+ * exact same date/time prompt as the first "🎯 Meeting Booked" button (pipeline-view.tsx
+ * PipelineActions) -- just a different label/toast/endpoint once the lead is already past its first
+ * meeting, see hooks/use-leads.ts useBookFollowupMeeting(). */
+export const FOLLOWUP_MEETING = {
+  buttonLabel: "Book Another Meeting",
+  booked: (company: string) => `Follow-up meeting booked for ${company}.`,
+} as const;
+
+/** Stages where a lead already had its first meeting but might need another before the deal is decided
+ * -- mirrors app/crud/leads.py FOLLOWUP_MEETING_STAGES exactly, keep in sync. */
+export const FOLLOWUP_MEETING_STAGES = ["proposal_sent", "followup_due"] as const;
+
 /**
  * Pipeline's "Not Interested" mandatory note (user, 2026-10-16: "jab woh not intrested mark kry tab woh
  * neechy note puchy k ... tb tk agy na jany dya jaye jb tk woh note add na kr dy k kyun" -- e.g. Ali
@@ -1249,9 +1263,20 @@ export const ALREADY_TRIED_FILTER = {
   // next to a "(0)" heading, which read as "nothing here" before the real count had even arrived.
   loading: "Loading…",
   empty: "No leads in this group right now.",
+  // Shown instead of `empty` while the auto-paging effect (2026-10-26) is still searching further pages
+  // for a narrowed category/country/source/line/owner filter that hasn't matched anything yet -- so an
+  // empty-looking list doesn't read as "nothing exists" while it's actually still looking.
+  searching: "Searching further pages for a match…",
+  // Replaces the "Load More" button once BUCKET_LIMIT_MAX is hit (2026-10-26) -- GET /leads caps `limit`
+  // at the same number server-side, so there is genuinely nothing more this page can fetch.
+  capReached: (max: number) => `Showing the first ${max} -- narrow your filters to see more.`,
   // "Load More" pagination (2026-10-13): the button under the list, shown while more rows exist beyond
   // the currently-loaded page.
   loadMore: "Load 100 more",
+  // Voicemail/Hang Up sort toggle (2026-10-26) -- label shows the state a click switches TO, same
+  // convention as COLD_CALL_QUEUE.resort/newestFirst's local-time toggle.
+  sortOldestFirst: "Oldest first",
+  sortNewestFirst: "Newest first",
 } as const;
 
 export const LOST_STAGE_CONFIRM = {

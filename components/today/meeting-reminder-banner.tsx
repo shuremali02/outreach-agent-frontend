@@ -53,7 +53,13 @@ export function MeetingReminderBanner({ leads }: { leads: Lead[] }) {
   const rows = useMemo(() => {
     if (now === null) return [];
     return leads
-      .filter((l) => l.pipeline_stage === "meeting_booked" && l.meeting_at)
+      .filter(
+        (l) =>
+          (l.pipeline_stage === "meeting_booked" ||
+            l.pipeline_stage === "proposal_sent" ||
+            l.pipeline_stage === "followup_due") &&
+          l.meeting_at,
+      )
       .map((l) => {
         // meeting_at is a naive wall-clock string (schemas/lead.py _dt) -- new Date() reads it as local
         // time, exactly the time the rep typed, same as every other meeting_at read in the app.

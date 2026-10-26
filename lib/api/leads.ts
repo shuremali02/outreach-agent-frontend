@@ -74,6 +74,11 @@ export const leadsApi = {
    * app/api/leads.py mark_email_desk_sent()/unmark_email_desk_sent(). */
   markEmailDeskSent: (id: number) => api.post<Lead>(`/leads/${id}/email-desk/sent`, {}),
   unmarkEmailDeskSent: (id: number) => api.delete<Lead>(`/leads/${id}/email-desk/sent`),
+  /** "Book Another Meeting" on a Pipeline card (2026-10-23) -- a lead already at Proposal Sent/Follow-up
+   * Due gets a SECOND meeting_at without its pipeline_stage reverting. See app/api/leads.py
+   * book_followup_meeting(). */
+  bookFollowupMeeting: (id: number, meeting_at: string, rep_notes = "") =>
+    api.post<Lead>(`/leads/${id}/book-followup-meeting`, { meeting_at, rep_notes }),
   /** "Star" priority mark -- toggle, tag only, see app/api/leads.py star(). User request, 2026-09-23. */
   toggleStar: (id: number) => api.post<Lead>(`/leads/${id}/star`, {}),
   /**

@@ -40,6 +40,10 @@ import { cn } from "@/lib/utils";
 // would have defeated the memo (it "changes" every render). The set of outcomes itself never changes.
 const TRIED_OUTCOMES = new Set(["voicemail", "hang_up"]);
 
+// GET /leads caps `limit` at 500 (app/api/leads.py) -- "Load More" must never request past this, or the
+// request 422s (found live, 2026-10-26: repeated clicks past 500 silently broke pagination).
+const BUCKET_LIMIT_MAX = 500;
+
 // Stages that belong to Pipeline / Projects / closed, never to this desk -- mirrors DESK_EXCLUDED_STAGES in
 // the backend (crud/leads.py). Also applied here because a lead edited to one of them stays in the cached
 // desk list until the next refetch.
@@ -79,6 +83,14 @@ export function ColdCallView({
   // left the desk) but still scopes which channel's hidden leads come back, keeping the two desks' buckets
   // from leaking into each other.
   const [bucket, setBucket] = useState<"" | "tried" | "no_answer" | "not_interested">("");
+  // category/country/linkedinOwner declared here (moved up from where they used to sit, below the search
+  // debounce effect) so bucketFilters right below can pass them straight to the server -- see that
+  // object's own comment. source/line stay declared further down, unchanged: GET /leads has no server
+  // equivalent for either (both are client-derived, not plain columns), so they're still client-only.
+  const [category, setCategory] = useState(ALL_CATEGORIES);
+  const [country, setCountry] = useState(ALL_COUNTRIES);
+  // LinkedIn tab's own filter (user, 2026-10-05): whose outreach a lead came from.
+  const [linkedinOwner, setLinkedinOwner] = useState("all");
   // "Load More" pagination (user, 2026-10-13: "sirf 100 show karwao, baaki ke liye Load More button
   // lagao, sari ek saath load na karwao" -- a bucket like Voicemail/Hang Up can be hundreds of rows).
   // Reset to 100 every time a different bucket is picked, so switching dropdown options never starts
@@ -90,6 +102,17 @@ export function ColdCallView({
     desk: channel,
     tried: bucket === "tried" ? true : undefined,
     bucket: bucket === "no_answer" || bucket === "not_interested" ? bucket : undefined,
+    // category/country/linkedin_owner sent to the SERVER now (2026-10-26) -- found live: this bucket can
+    // run into the hundreds of rows (891 seen for Cold Call Desk's Voicemail/Hang Up on 2026-10-26), and
+    // GET /leads caps `limit` at 500, so a narrow category whose matches happen to sort past position 500
+    // (sorted newest-activity-first) was NEVER reachable through client-side filtering alone, no matter
+    // how many "Load More" pages got fetched -- user: "jitni leads hain us category ki utni hi uth kr aani
+    // chahiye". Filtering at the DB level first means the 500-row cap applies to the ALREADY-NARROWED set
+    // instead. source/line have no server equivalent (see the state declarations above), so those two
+    // still rely on the client-side `filtered`/`bucketLeads` pass + the auto-paging effect further down.
+    category: category === ALL_CATEGORIES ? undefined : category,
+    country: country === ALL_COUNTRIES ? undefined : country,
+    linkedinOwner: linkedinOwner === "all" ? undefined : (linkedinOwner as "maaz" | "bilal" | "asfand"),
   };
   const bucketResult = useLeads(
     { ...bucketFilters, limit: bucketLimit },
@@ -152,8 +175,6 @@ export function ColdCallView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, pathname]);
 
-  const [category, setCategory] = useState(ALL_CATEGORIES);
-  const [country, setCountry] = useState(ALL_COUNTRIES);
   // Derived from source_prompt (leadSource()), not a real backend filter --
   // filtered client-side same as category/country here.
   const [source, setSource] = useState(ALL_SOURCES);
@@ -161,10 +182,6 @@ export function ColdCallView({
   // (backend): verified_direct = a person's line, switchboard = a business
   // line that reaches a receptionist, anything else = no usable number.
   const [line, setLine] = useState("all");
-  // LinkedIn tab's own filter (user, 2026-10-05): whose outreach a lead came from -- client-side, same as
-  // category/country/source/line above. Only rendered (see the filter grid below) when channel ===
-  // "linkedin"; stays "all" and inert on Cold Call Desk.
-  const [linkedinOwner, setLinkedinOwner] = useState("all");
   // Snapshot used ONLY for ordering. Re-sorting on a live clock would shuffle
   // cards under a rep mid-call; the order refreshes on mount, on a filter
   // change, or when the rep clicks "Re-sort by local time".
@@ -188,6 +205,11 @@ export function ColdCallView({
   // lead below older ones whose local time happened to be open -- e.g. a batch of US leads pulled in during
   // Pakistan's afternoon (US night) sank under the whole UK/Gulf list. Local-time order is now opt-in via the button.
   const [byLocalTime, setByLocalTime] = useState(false);
+
+  // "Already Tried -> Voicemail/Hang Up" sort toggle (2026-10-26, user asked for a latest/oldest switch
+  // after checking September's voicemail/hang-up counts). Default stays newest-activity-first, unchanged
+  // from the 2026-10-13 fix below -- this only lets a rep flip it, doesn't change the default.
+  const [triedSortOldest, setTriedSortOldest] = useState(false);
 
   // Confirmed live 2026-09-18: a disposition on a lead already in the
   // Follow-up section (e.g. a 2nd Voicemail) keeps it at followup_due --
@@ -253,11 +275,17 @@ export function ColdCallView({
   // the same client-side filters applied by hand instead.
   const bucketLeads = useMemo(() => {
     if (bucket === "tried") {
-      // Newest-activity-first (user, 2026-10-13: "yeh sab ulti aa rahi hain, newest sabse upar aani
-      // chahiye") -- was ascending (oldest first), the exact opposite of every other list in this app.
+      // Newest-activity-first by default (user, 2026-10-13: "yeh sab ulti aa rahi hain, newest sabse upar
+      // aani chahiye") -- was ascending (oldest first), the exact opposite of every other list in this
+      // app. triedSortOldest (2026-10-26) lets a rep flip to oldest-first, e.g. to work through the
+      // leads that have been sitting the longest since their last voicemail/hang-up attempt.
       return filtered
         .filter((l) => TRIED_OUTCOMES.has(l.last_call_outcome))
-        .sort((a, b) => b.updated_at.localeCompare(a.updated_at));
+        .sort((a, b) =>
+          triedSortOldest
+            ? a.updated_at.localeCompare(b.updated_at)
+            : b.updated_at.localeCompare(a.updated_at),
+        );
     }
     if (bucket === "no_answer") {
       return filtered
@@ -276,7 +304,42 @@ export function ColdCallView({
       );
     }
     return [];
-  }, [bucket, filtered, rank, bucketResult.data, dismissed, category, country, source, line, linkedinOwner]);
+  }, [bucket, filtered, rank, bucketResult.data, dismissed, category, country, source, line, linkedinOwner, triedSortOldest]);
+
+  // Auto-keep-paging the "tried" bucket while a source/line filter is narrowing it and the page(s)
+  // fetched so far turned up nothing for it (user, 2026-10-26: "100 100 karke load hue ja raha hai jab k
+  // leads ho ya na ho ... jitni leads hain us category ki utni hi uth kr aani chahiye"). category/
+  // country/linkedinOwner are now sent to the SERVER instead (see bucketFilters above), so the backend
+  // itself returns only matching rows and this effect no longer needs to cover those three -- source/line
+  // still have no server equivalent, so a narrow one of those can still sit empty for several raw pages
+  // in a row; this does the repeated "Load More" clicking automatically instead of making the rep do it
+  // by hand. Stops the moment a match is found, the true total is exhausted, or BUCKET_LIMIT_MAX is hit --
+  // never fetches past what GET /leads actually allows (see that constant, and the separate 422 fix on
+  // the manual button below).
+  useEffect(() => {
+    if (bucket !== "tried") return;
+    const hasNarrowingFilter = source !== ALL_SOURCES || line !== "all";
+    if (!hasNarrowingFilter) return;
+    if (!bucketResult.data || bucketResult.isFetching) return;
+    const moreRowsExist = (bucketTotal.data?.count ?? 0) > bucketResult.data.length;
+    if (bucketLeads.length === 0 && moreRowsExist && bucketLimit < BUCKET_LIMIT_MAX) {
+      // setTimeout, not a direct synchronous setState call in the effect body -- react-hooks/set-state-
+      // in-effect, same fix pattern already used elsewhere in this file (sortAt above).
+      const id = setTimeout(() => setBucketLimit((n) => Math.min(n + 100, BUCKET_LIMIT_MAX)), 0);
+      return () => clearTimeout(id);
+    }
+  }, [bucket, source, line, bucketResult.data, bucketResult.isFetching, bucketTotal.data, bucketLeads.length, bucketLimit]);
+
+  // Same trigger condition as the auto-paging effect above, read in the render so the empty-state
+  // message can say "still searching" instead of implying nothing exists while a further page is
+  // actually still being fetched in the background.
+  const triedStillAutoSearching =
+    bucket === "tried" &&
+    bucketLeads.length === 0 &&
+    (source !== ALL_SOURCES || line !== "all") &&
+    (bucketTotal.data?.count ?? 0) > (bucketResult.data?.length ?? 0) &&
+    bucketLimit < BUCKET_LIMIT_MAX;
+
   const newLeads = useMemo(
     () =>
       filtered
@@ -395,6 +458,7 @@ export function ColdCallView({
             onChange={(e) => {
               setBucket(e.target.value as typeof bucket);
               setBucketLimit(100);
+              setTriedSortOldest(false);
             }}
           >
             <option value="">{ALREADY_TRIED_FILTER.placeholder}</option>
@@ -497,22 +561,31 @@ export function ColdCallView({
             </p>
           ) : (
             <>
-              <h3 className="mb-2 text-[1.05rem] font-semibold">
-                {withIcons(
-                  ALREADY_TRIED_FILTER.heading(
-                    ALREADY_TRIED_FILTER.options.find((o) => o.id === bucket)?.label ?? "",
-                    // The TRUE total once it's loaded (independent of bucketLimit), not just how many
-                    // rows are currently on screen -- "347" not "100" when 247 more exist beyond this page.
-                    bucketTotal.data?.count ?? bucketLeads.length,
-                  ),
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <h3 className="text-[1.05rem] font-semibold">
+                  {withIcons(
+                    ALREADY_TRIED_FILTER.heading(
+                      ALREADY_TRIED_FILTER.options.find((o) => o.id === bucket)?.label ?? "",
+                      // The TRUE total once it's loaded (independent of bucketLimit), not just how many
+                      // rows are currently on screen -- "347" not "100" when 247 more exist beyond this page.
+                      bucketTotal.data?.count ?? bucketLeads.length,
+                    ),
+                  )}
+                </h3>
+                {/* Latest/oldest toggle, Voicemail/Hang Up only (2026-10-26, user request) -- label shows
+                    the state a click switches TO, same convention as the local-time toggle above. */}
+                {bucket === "tried" && (
+                  <Button variant="secondary" size="sm" onClick={() => setTriedSortOldest((v) => !v)}>
+                    {triedSortOldest ? ALREADY_TRIED_FILTER.sortNewestFirst : ALREADY_TRIED_FILTER.sortOldestFirst}
+                  </Button>
                 )}
-              </h3>
+              </div>
               {bucketLeads.length === 0 && (
                 <p
                   className="rounded-[8px] px-3 py-2 text-[0.9rem]"
                   style={{ background: "var(--info-tint)", color: "var(--info)" }}
                 >
-                  {ALREADY_TRIED_FILTER.empty}
+                  {triedStillAutoSearching ? ALREADY_TRIED_FILTER.searching : ALREADY_TRIED_FILTER.empty}
                 </p>
               )}
               {bucketLeads.map((lead) => (
@@ -521,19 +594,27 @@ export function ColdCallView({
               {/* "Load More" (2026-10-13) -- not_interested's own list (bucketLeads for that bucket is
                   client-filtered straight off bucketResult.data, same underlying rows) also benefits:
                   more rows load the same way once clicked. Shown only while the true total says there's
-                  more beyond the currently-loaded page. */}
-              {bucketResult.data && (bucketTotal.data?.count ?? 0) > bucketResult.data.length && (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  block
-                  className="mt-2"
-                  loading={bucketResult.isFetching}
-                  onClick={() => setBucketLimit((n) => n + 100)}
-                >
-                  {ALREADY_TRIED_FILTER.loadMore}
-                </Button>
-              )}
+                  more beyond the currently-loaded page AND that's actually fetchable -- capped at
+                  BUCKET_LIMIT_MAX (2026-10-26) to match GET /leads's own `limit<=500`, which used to 422
+                  once repeated clicks pushed bucketLimit past it. */}
+              {bucketResult.data &&
+                (bucketTotal.data?.count ?? 0) > bucketResult.data.length &&
+                (bucketLimit < BUCKET_LIMIT_MAX ? (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    block
+                    className="mt-2"
+                    loading={bucketResult.isFetching}
+                    onClick={() => setBucketLimit((n) => Math.min(n + 100, BUCKET_LIMIT_MAX))}
+                  >
+                    {ALREADY_TRIED_FILTER.loadMore}
+                  </Button>
+                ) : (
+                  <p className="mt-2 text-[0.78rem] text-muted">
+                    {ALREADY_TRIED_FILTER.capReached(BUCKET_LIMIT_MAX)}
+                  </p>
+                ))}
             </>
           )}
         </div>

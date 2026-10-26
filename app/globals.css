@@ -19,6 +19,7 @@
   --color-warn: var(--warn);
   --color-info: var(--info);
   --color-danger: var(--danger);
+  --color-followup: var(--followup);
   --color-linkedin: var(--linkedin);
   --color-xray-bg: var(--xray-bg);
   --color-xray-text: var(--xray-text);
@@ -447,6 +448,35 @@
   .bar-loader-grow {
     animation: none;
     width: 100%;
+  }
+}
+
+/* components/meetings/meetings-calendar.tsx MeetingEntry -- today's meeting(s) need to be instantly
+   eye-catching, not just read as plain text inside the already-green "today" cell (user, 2026-10-23).
+   CORRECTION (same day): a static accent-orange border/background clashed against the green cell
+   ("green phr us k andar red orange sa ajeeb"), replaced with this -- a soft pulsing ring in the SAME
+   green family the cell itself already uses, so it stays cohesive and just adds motion for attention.
+   rgba values are --success (#10b981) spelled out, same convention as --success-tint in tokens.css. */
+@keyframes meeting-entry-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.55);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
+.meeting-entry-pulse {
+  animation: meeting-entry-pulse 1.8s ease-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .meeting-entry-pulse {
+    animation: none;
+    box-shadow: 0 0 0 2px var(--success);
   }
 }
 

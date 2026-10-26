@@ -2,11 +2,13 @@
 
 import { useMemo, useState } from "react";
 import { useLeads } from "@/hooks/use-leads";
+import { useNow } from "@/hooks/use-now";
 import { Button } from "@/components/ui/button";
 import { MeetingDetailDialog } from "./meeting-detail-dialog";
 import { EMPTY_STATES, MEETINGS_CALENDAR, STAGE_LABELS } from "@/lib/constants";
 import type { Lead } from "@/types";
-import { withIcons } from "@/components/ui/emoji-icon";
+import { Ico, withIcons } from "@/components/ui/emoji-icon";
+import { cn } from "@/lib/utils";
 
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -44,12 +46,15 @@ function todayInPKT(): { year: number; month: number } {
  *  (still awaiting an outcome) deliberately reuses the same amber the day cell
  *  itself already uses, so "not yet decided" reads consistently; the other four
  *  are the same win/loss/followup/proposal colors used elsewhere in the app
- *  (Button's !text-success/!text-danger, follow-up list, etc). */
+ *  (Button's !text-success/!text-danger, follow-up list, etc).
+ *  followup_due got its OWN violet (2026-10-23, user: "follow up or purposal sent in dono stages ka
+ *  color same dikhta hai ... ek ek ko prhna prhta hai") -- it used to share --info with proposal_sent,
+ *  which read as identical at this pill's small size; see styles/tokens.css --followup. */
 const _STAGE_PILL: Record<Lead["pipeline_stage"], { bg: string; fg: string }> = {
   new_lead: { bg: "var(--tag)", fg: "var(--muted)" },
   draft_ready: { bg: "var(--tag)", fg: "var(--muted)" },
   contacted: { bg: "var(--tag)", fg: "var(--muted)" },
-  followup_due: { bg: "var(--info-tint)", fg: "var(--info)" },
+  followup_due: { bg: "var(--followup-tint)", fg: "var(--followup)" },
   meeting_booked: { bg: "var(--warn-tint)", fg: "var(--warn)" },
   proposal_sent: { bg: "var(--info-tint)", fg: "var(--info)" },
   won: { bg: "var(--success-tint)", fg: "var(--success)" },
@@ -66,18 +71,43 @@ const _STAGE_PILL: Record<Lead["pipeline_stage"], { bg: string; fg: string }> = 
  * wants the stage visible on the card itself, not just discoverable by
  * opening the popup.
  */
-function MeetingEntry({ lead }: { lead: Lead }) {
+function MeetingEntry({ lead, isToday }: { lead: Lead; isToday?: boolean }) {
   const pill = _STAGE_PILL[lead.pipeline_stage];
+  const now = useNow();
+  // "Proposal Sent" leads whose meeting_at is still in the FUTURE only (2026-10-26, user correction: the
+  // clock icon below was showing on every Proposal Sent entry, including old/past ones whose meeting_at
+  // is just a stale leftover from the FIRST meeting that already happened -- "yeh to sab pr he dekhny ko
+  // mil raha hai ... humein sirf un pr dekhna hai jin se dubara meeting schedule or active hain". A
+  // Proposal Sent lead only has a meeting_at still ahead of "now" when a follow-up was actually booked
+  // (see crud.book_followup_meeting()) -- the original meeting, once it happened, always has a
+  // meeting_at in the past by the time the lead reaches this stage. `now === null` during SSR/hydration
+  // (useNow()) deliberately keeps this false then, same safe pattern meeting-reminder-banner.tsx uses.
+  const hasActiveFollowup =
+    lead.pipeline_stage === "proposal_sent" && now !== null && new Date(lead.meeting_at).getTime() > now;
   return (
     <MeetingDetailDialog
       lead={lead}
       trigger={
         <button
           type="button"
-          className="flex w-full min-w-0 flex-col items-start gap-0.5 text-left text-[0.72rem] hover:underline"
+          className={cn(
+            "flex w-full min-w-0 flex-col items-start gap-0.5 text-left text-[0.72rem] hover:underline",
+            // Today's own meeting(s) need to pop immediately, not just rely on the day cell's own light
+            // tint (user, 2026-10-23: "card green hota hai but meeting pr koi effect nhi jis sy foran
+            // eye catching ho"). A soft pulsing ring in the SAME green the cell already uses -- a static
+            // accent-orange border/background was tried first and looked clashing against the green
+            // ("ajeeb"), see the meeting-entry-pulse keyframes in globals.css for that correction.
+            isToday && "meeting-entry-pulse rounded-[6px] px-1.5 py-1 font-semibold no-underline",
+          )}
+          style={isToday ? { background: "var(--success-tint)" } : undefined}
           title={lead.company_name}
         >
           <span className="min-w-0 max-w-full truncate">
+            {hasActiveFollowup && (
+              <>
+                <Ico e="🕐" />{" "}
+              </>
+            )}
             <span className="font-medium">{lead.company_name}</span>
             {" · "}
             {new Date(lead.meeting_at).toLocaleTimeString("en-US", {
@@ -246,7 +276,7 @@ export function MeetingsCalendar({ initialLeads }: { initialLeads: Lead[] }) {
                   <p className="mb-1 text-[0.75rem] text-muted">{d.getDate()}</p>
                   <div className="flex flex-col gap-0.5">
                     {visible.map((lead) => (
-                      <MeetingEntry key={lead.id} lead={lead} />
+                      <MeetingEntry key={lead.id} lead={lead} isToday={isToday} />
                     ))}
                     {hiddenCount > 0 && (
                       <button

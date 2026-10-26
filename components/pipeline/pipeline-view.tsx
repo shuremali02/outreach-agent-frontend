@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useMemo, useState } from "react";
-import { useAddNote, useLeads, useMeetingOutcome, useUpdateLead } from "@/hooks/use-leads";
+import { useAddNote, useBookFollowupMeeting, useLeads, useMeetingOutcome, useUpdateLead } from "@/hooks/use-leads";
 import { EmailPickerDialog } from "@/components/leads/email-picker-dialog";
 import { EditLeadDialog } from "@/components/leads/edit-lead-dialog";
 import { LeadCard } from "@/components/leads/lead-card";
@@ -30,6 +30,8 @@ import {
   MEETING_BOOKING,
   NOT_INTERESTED_NOTE,
   EMAIL_SEND,
+  FOLLOWUP_MEETING,
+  FOLLOWUP_MEETING_STAGES,
   TOASTS,
   countryLabel,
 } from "@/lib/constants";
@@ -116,7 +118,13 @@ function isAnySlotEscalated(lead: Lead): boolean {
 function PipelineActions({ lead }: { lead: Lead }) {
   const outcome = useMeetingOutcome();
   const update = useUpdateLead();
+  const bookFollowup = useBookFollowupMeeting();
   const addNote = useAddNote();
+  // A lead already past its first meeting (user, 2026-10-23: client wanted another meeting before the
+  // deal closed, after an earlier one already moved the lead to Proposal Sent) -- the "🎯 Meeting
+  // Booked" button below becomes "Book Another Meeting" for these and keeps pipeline_stage as-is
+  // instead of reverting it to "meeting_booked". See app/crud/leads.py book_followup_meeting().
+  const isFollowupMeeting = (FOLLOWUP_MEETING_STAGES as readonly string[]).includes(lead.pipeline_stage);
   const confirm = useConfirm();
   const toast = useToast();
   const [bookingPrompt, setBookingPrompt] = useState(false);
@@ -225,10 +233,26 @@ function PipelineActions({ lead }: { lead: Lead }) {
 
   function confirmBooking() {
     if (!meetingDate || !meetingTime) return;
+    const meetingAt = `${meetingDate}T${meetingTime}:00`;
+    if (isFollowupMeeting) {
+      bookFollowup.mutate(
+        { id: lead.id, meetingAt },
+        {
+          onSuccess: () => {
+            toast.success(FOLLOWUP_MEETING.booked(lead.company_name));
+            setBookingPrompt(false);
+            setMeetingDate("");
+            setMeetingTime("");
+          },
+          onError: (e) => toast.error(e instanceof Error ? e.message : TOASTS.actionFailed),
+        },
+      );
+      return;
+    }
     update.mutate(
       {
         id: lead.id,
-        input: { pipeline_stage: "meeting_booked", meeting_at: `${meetingDate}T${meetingTime}:00` },
+        input: { pipeline_stage: "meeting_booked", meeting_at: meetingAt },
       },
       {
         onSuccess: () => {
@@ -318,16 +342,18 @@ function PipelineActions({ lead }: { lead: Lead }) {
           <Button
             variant="primary"
             size="sm"
-            loading={update.isPending}
+            loading={update.isPending || bookFollowup.isPending}
             disabled={!meetingDate || !meetingTime}
             onClick={confirmBooking}
           >
             {withIcons(MEETING_BOOKING.confirm)}
           </Button>
         </div>
-        {update.isError && (
+        {(update.isError || bookFollowup.isError) && (
           <p className="text-[0.78rem] text-danger">
-            {update.error instanceof Error ? update.error.message : TOASTS.actionFailed}
+            {(update.error || bookFollowup.error) instanceof Error
+              ? ((update.error || bookFollowup.error) as Error).message
+              : TOASTS.actionFailed}
           </p>
         )}
       </div>
@@ -358,7 +384,11 @@ function PipelineActions({ lead }: { lead: Lead }) {
         disabled={lead.pipeline_stage === "meeting_booked" || outcome.isPending}
         onClick={() => setBookingPrompt(true)}
       >
-        <Ico e="🎯" /> Meeting Booked
+        {isFollowupMeeting ? (
+          <><Ico e="📅" /> {FOLLOWUP_MEETING.buttonLabel}</>
+        ) : (
+          <><Ico e="🎯" /> Meeting Booked</>
+        )}
       </Button>
       {/* "No Show" (user, 2026-10-19: "yahan pr no show bhi add krdo jo mark hai 5 buttons k sath") --
           its own button, not routed through the generic `actions.map()` loop above: unlike those three,

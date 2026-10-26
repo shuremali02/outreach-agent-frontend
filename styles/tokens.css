@@ -26,12 +26,18 @@
   --linkedin: #0a66c2;
   --xray-bg: #1e293b;
   --xray-text: #38bdf8;
+  /* Violet, distinct from --info -- added 2026-10-23 so "Follow-up Due" no longer shares --info with
+     "Proposal Sent" on the Meetings calendar pill (user: "in dono stages ka color same dikhta hai
+     differentiate krny k lye ek ek ko prhna prhta hai"). See components/meetings/meetings-calendar.tsx
+     _STAGE_PILL. */
+  --followup: #8b5cf6;
 
   /* Tinted pill backgrounds (rgba(<hue>, .12-.15) in app.py) */
   --success-tint: rgba(16, 185, 129, 0.14);
   --warn-tint: rgba(245, 158, 11, 0.14);
   --info-tint: rgba(59, 130, 246, 0.14);
   --danger-tint: rgba(239, 68, 68, 0.15);
+  --followup-tint: rgba(139, 92, 246, 0.14);
 
   /* Radii — 12 cards / 10 expanders / 8 buttons+inputs / 6 tags / 4 pills */
   --radius-card: 12px;

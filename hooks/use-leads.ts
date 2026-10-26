@@ -203,6 +203,16 @@ export function useUnmarkEmailDeskSent() {
   });
 }
 
+/** "Book Another Meeting" on a Pipeline card (2026-10-23). See lib/api/leads.ts bookFollowupMeeting(). */
+export function useBookFollowupMeeting() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: ({ id, meetingAt, notes }: { id: number; meetingAt: string; notes?: string }) =>
+      leadsApi.bookFollowupMeeting(id, meetingAt, notes ?? ""),
+    onSuccess: invalidate,
+  });
+}
+
 /** Meetings detail popup's picker -- structure-plan.md Phase 5. See lib/api/leads.ts meetingOutcome(). */
 export function useMeetingOutcome() {
   const invalidate = useInvalidate();
