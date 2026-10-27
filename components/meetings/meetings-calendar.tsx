@@ -91,7 +91,7 @@ function MeetingEntry({ lead, isToday }: { lead: Lead; isToday?: boolean }) {
         <button
           type="button"
           className={cn(
-            "flex w-full min-w-0 flex-col items-start gap-0.5 text-left text-[0.72rem] hover:underline",
+            "flex w-full min-w-0 flex-col items-start gap-0.5 text-left hover:underline text-[clamp(0.72rem,0.7vw,0.8rem)]",
             // Today's own meeting(s) need to pop immediately, not just rely on the day cell's own light
             // tint (user, 2026-10-23: "card green hota hai but meeting pr koi effect nhi jis sy foran
             // eye catching ho"). A soft pulsing ring in the SAME green the cell already uses -- a static
@@ -102,21 +102,26 @@ function MeetingEntry({ lead, isToday }: { lead: Lead; isToday?: boolean }) {
           style={isToday ? { background: "var(--success-tint)" } : undefined}
           title={lead.company_name}
         >
-          <span className="min-w-0 max-w-full truncate">
+          {/* Company name and time on their OWN lines (2026-10-27, user: "meeting time kisi lead pr
+              dikh rha kisi pr nhi, usy 2 line me krdo agar name bara hai") -- both used to share one
+              `truncate`-d line, so a long company name cut the time off entirely instead of just
+              itself. The name alone truncates now; the time is on its own line and never does. */}
+          <span className="min-w-0 max-w-full truncate font-medium">
             {hasActiveFollowup && (
               <>
                 <Ico e="🕐" />{" "}
               </>
             )}
-            <span className="font-medium">{lead.company_name}</span>
-            {" · "}
+            {lead.company_name}
+          </span>
+          <span className="shrink-0 text-muted">
             {new Date(lead.meeting_at).toLocaleTimeString("en-US", {
               hour: "numeric",
               minute: "2-digit",
             })}
           </span>
           <span
-            className="rounded-[4px] px-1 py-[1px] text-[0.62rem] font-medium leading-tight no-underline"
+            className="rounded-[4px] font-medium leading-tight no-underline px-[clamp(3px,0.3vw,6px)] py-[clamp(1px,0.1vw,2px)] text-[clamp(0.62rem,0.6vw,0.68rem)]"
             style={{ background: pill.bg, color: pill.fg }}
           >
             {withIcons(STAGE_LABELS[lead.pipeline_stage])}
@@ -231,15 +236,34 @@ export function MeetingsCalendar({ initialLeads }: { initialLeads: Lead[] }) {
       ) : (
         // A calendar can't drop below 7 columns, so instead of stacking, this scrolls sideways on a
         // narrow phone -- same tradeoff components/team/team-table.tsx already makes for its own
-        // too-wide-to-shrink-further content. min-w-[560px] keeps each cell at least 80px, never so
-        // cramped a day number or meeting pill becomes unreadable.
+        // too-wide-to-shrink-further content. min-w-[560px] keeps each cell at least 80px wide at the
+        // very narrowest, never so cramped a day number or meeting pill becomes unreadable.
+        //
+        // Cell height/padding/text all scale CONTINUOUSLY with viewport width via CSS clamp() (2026-10-27
+        // -- user: "har screen k hisab sy fix ho ... 14 inch ho ya 24 inch ho ya 52 inch, screen k hisab
+        // sy responsive hona chahiye"). Two earlier attempts both used discrete breakpoint tiers instead
+        // (first lg:/xl:, then narrowed to 2xl: only) -- both produce a visible SIZE JUMP right at their
+        // threshold and nothing in between, which is exactly what a continuous clamp(min, Nvw, max) curve
+        // avoids: every width in between 14" and 52" gets its own proportional size, not just two or
+        // three fixed steps. `vw` is the viewport width, not this component's own container width (which
+        // is narrower once the sidebar is subtracted) -- close enough in practice for a page-width grid
+        // like this one, and is what "screen k hisab se" literally asks for.
+        //
+        // CORRECTION (same day, live screenshots): the first clamp() pass grew min-height all the way to
+        // 160px -- cell HEIGHT scaling with viewport WIDTH, with no regard for viewport HEIGHT, meant 6
+        // rows + header + page chrome stopped fitting on an ordinary laptop screen at all ("half dikh rha
+        // hai calendar laptop screen pr"), and even on a large monitor the page just scrolled more
+        // instead of looking better. Every ceiling here is now much more conservative (max ~112px, not
+        // 160px) and the vw slope much gentler, so a typical 1280-1920px laptop/desktop stays close to
+        // the ORIGINAL fixed sizing (no regression) and only a genuinely wide/high-res monitor grows
+        // noticeably, without the whole month needing a scrollbar to see.
         <div className="overflow-x-auto rounded-[12px] border border-border">
         <div className="min-w-[560px]">
           <div className="grid grid-cols-7">
             {WEEKDAY_LABELS.map((w) => (
               <div
                 key={w}
-                className="border-b border-border bg-tag px-1.5 py-1 text-center text-[0.68rem] font-semibold uppercase tracking-wide text-muted sm:px-2 sm:py-1.5 sm:text-[0.72rem]"
+                className="border-b border-border bg-tag text-center font-semibold uppercase tracking-wide text-muted px-[clamp(6px,0.6vw,12px)] py-[clamp(4px,0.3vw,7px)] text-[clamp(0.68rem,0.7vw,0.78rem)]"
               >
                 {w}
               </div>
@@ -257,7 +281,7 @@ export function MeetingsCalendar({ initialLeads }: { initialLeads: Lead[] }) {
               return (
                 <div
                   key={key}
-                  className="min-h-[80px] border-b border-r border-border p-1 last:border-r-0 sm:min-h-[100px] sm:p-1.5"
+                  className="border-b border-r border-border last:border-r-0 min-h-[clamp(80px,5vw,112px)] p-[clamp(4px,0.35vw,8px)]"
                   style={{
                     opacity: inMonth ? 1 : 0.45,
                     // Today's whole card gets a light green highlight instead of just a small dot (user,
@@ -269,12 +293,18 @@ export function MeetingsCalendar({ initialLeads }: { initialLeads: Lead[] }) {
                       : dayMeetings.length > 0
                         ? "var(--warn-tint)"
                         : undefined,
-                    boxShadow: isToday ? "inset 0 0 0 1px var(--success)" : undefined,
+                    // --success-strong (2026-10-27, was plain --success): the light theme's darker
+                    // override keeps this outline visible against its cream --bg instead of washing out
+                    // -- user: "today k green color ka border thora sa dark krdo ... light theme pr kafi
+                    // halka lag raha". CORRECTION (same day, live screenshot): still read as too light
+                    // even with the darker color alone -- widened 1px -> 2px and darkened
+                    // --success-strong further (#047857 -> #065f46) together.
+                    boxShadow: isToday ? "inset 0 0 0 2px var(--success-strong)" : undefined,
                   }}
                   title={isToday ? "Today (PKT)" : undefined}
                 >
-                  <p className="mb-1 text-[0.75rem] text-muted">{d.getDate()}</p>
-                  <div className="flex flex-col gap-0.5">
+                  <p className="mb-1 text-muted text-[clamp(0.75rem,0.75vw,0.85rem)]">{d.getDate()}</p>
+                  <div className="flex flex-col gap-[clamp(2px,0.15vw,4px)]">
                     {visible.map((lead) => (
                       <MeetingEntry key={lead.id} lead={lead} isToday={isToday} />
                     ))}

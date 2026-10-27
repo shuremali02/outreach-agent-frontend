@@ -44,12 +44,23 @@ import { FollowupTracker, isFollowupEscalated } from "@/components/pipeline/foll
 import { ProposalReminderPrompt } from "@/components/pipeline/proposal-reminder-prompt";
 import { NoShowReminderPrompt } from "@/components/pipeline/no-show-reminder-prompt";
 
-/** Has a callback (a set time, or a Callback Scheduled disposition) AND is not already Won / Lost. */
+/**
+ * Has a callback (a set time, or a Callback Scheduled disposition) that's still OPEN -- gated on
+ * `pipeline_stage === "followup_due"` (2026-10-27 correction, user: "jab stage change ho gaya hai ab
+ * callback_at nahi rahega, ab jis stage pr hai us k according rahegi ... stage to aage barh gaya hai na"
+ * -- live report on "All Terrain Campers Inc.", a Callback-Scheduled lead whose stage correctly moved to
+ * "meeting_booked" still looked like it belonged on the Callbacks tab). "followup_due" is the ONLY stage
+ * a callback-scheduled lead is ever at (_OUTCOME_STAGE/set_meeting_outcome()'s "Callback" button both
+ * only ever land it there) -- the moment ANY real disposition moves pipeline_stage past that (Meeting
+ * Booked, Proposal Sent, Won, Lost, ...), the callback has been resolved by definition, regardless of
+ * callback_at's own stale value. Previously only excluded won/lost explicitly; this is the same rule,
+ * just stated the right way round -- no backend/data change needed, callback_at itself is left alone as
+ * a historical record.
+ */
 function hasOpenCallback(l: Lead): boolean {
   return (
-    (Boolean(l.callback_at) || l.last_call_outcome === "callback_scheduled") &&
-    l.pipeline_stage !== "won" &&
-    l.pipeline_stage !== "lost"
+    l.pipeline_stage === "followup_due" &&
+    (Boolean(l.callback_at) || l.last_call_outcome === "callback_scheduled")
   );
 }
 

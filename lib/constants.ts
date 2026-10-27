@@ -808,19 +808,24 @@ export const MEETING_BOOKING = {
   cancel: "Cancel",
 } as const;
 
-/** "Book Another Meeting" on a Pipeline card (2026-10-23) -- user: a lead already at Proposal
- * Sent/Follow-up Due needed a SECOND meeting before the deal closed (client had questions). Reuses the
- * exact same date/time prompt as the first "🎯 Meeting Booked" button (pipeline-view.tsx
- * PipelineActions) -- just a different label/toast/endpoint once the lead is already past its first
- * meeting, see hooks/use-leads.ts useBookFollowupMeeting(). */
+/** "Book Another Meeting" on a Pipeline card (2026-10-23) -- user: a lead already at Proposal Sent
+ * needed a SECOND meeting before the deal closed (client had questions). Reuses the exact same
+ * date/time prompt as the first "🎯 Meeting Booked" button (pipeline-view.tsx PipelineActions) -- just a
+ * different label/toast/endpoint once the lead is already past its first meeting, see
+ * hooks/use-leads.ts useBookFollowupMeeting(). */
 export const FOLLOWUP_MEETING = {
   buttonLabel: "Book Another Meeting",
   booked: (company: string) => `Follow-up meeting booked for ${company}.`,
 } as const;
 
 /** Stages where a lead already had its first meeting but might need another before the deal is decided
- * -- mirrors app/crud/leads.py FOLLOWUP_MEETING_STAGES exactly, keep in sync. */
-export const FOLLOWUP_MEETING_STAGES = ["proposal_sent", "followup_due"] as const;
+ * -- mirrors app/crud/leads.py FOLLOWUP_MEETING_STAGES exactly, keep in sync. "proposal_sent" ONLY
+ * (2026-10-27 correction -- this used to also include "followup_due", which is wrong: that's the SAME
+ * default stage a Callback-Scheduled lead already sits at, so booking a meeting from the Callbacks tab
+ * was wrongly routed through book_followup_meeting() instead of a normal first-time booking, and its
+ * stage never actually became "meeting_booked". See app/crud/leads.py's own comment for the live report
+ * that caught this -- "All Terrain Campers Inc."). */
+export const FOLLOWUP_MEETING_STAGES = ["proposal_sent"] as const;
 
 /**
  * Pipeline's "Not Interested" mandatory note (user, 2026-10-16: "jab woh not intrested mark kry tab woh

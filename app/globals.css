@@ -16,6 +16,7 @@
   --color-badge: var(--badge);
 
   --color-success: var(--success);
+  --color-success-strong: var(--success-strong);
   --color-warn: var(--warn);
   --color-info: var(--info);
   --color-danger: var(--danger);
@@ -456,16 +457,18 @@
    CORRECTION (same day): a static accent-orange border/background clashed against the green cell
    ("green phr us k andar red orange sa ajeeb"), replaced with this -- a soft pulsing ring in the SAME
    green family the cell itself already uses, so it stays cohesive and just adds motion for attention.
-   rgba values are --success (#10b981) spelled out, same convention as --success-tint in tokens.css. */
+   Uses --success-strong (2026-10-27, was hardcoded --success rgba before) so the light theme's darker
+   override applies here too -- see tokens.css, the plain --success ring read as too faint against the
+   light theme's cream --bg ("light theme pr kafi halka lag raha"). */
 @keyframes meeting-entry-pulse {
   0% {
-    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.55);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--success-strong) 55%, transparent);
   }
   70% {
-    box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--success-strong) 0%, transparent);
   }
   100% {
-    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--success-strong) 0%, transparent);
   }
 }
 
@@ -476,7 +479,7 @@
 @media (prefers-reduced-motion: reduce) {
   .meeting-entry-pulse {
     animation: none;
-    box-shadow: 0 0 0 2px var(--success);
+    box-shadow: 0 0 0 2px var(--success-strong);
   }
 }
 

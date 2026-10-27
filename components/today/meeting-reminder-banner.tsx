@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { useNow } from "@/hooks/use-now";
 import { CalendarClock } from "lucide-react";
+import { FOLLOWUP_MEETING_STAGES } from "@/lib/constants";
 import type { Lead } from "@/types";
 
 /**
@@ -56,8 +57,7 @@ export function MeetingReminderBanner({ leads }: { leads: Lead[] }) {
       .filter(
         (l) =>
           (l.pipeline_stage === "meeting_booked" ||
-            l.pipeline_stage === "proposal_sent" ||
-            l.pipeline_stage === "followup_due") &&
+            (FOLLOWUP_MEETING_STAGES as readonly string[]).includes(l.pipeline_stage)) &&
           l.meeting_at,
       )
       .map((l) => {

@@ -31,6 +31,12 @@
      differentiate krny k lye ek ek ko prhna prhta hai"). See components/meetings/meetings-calendar.tsx
      _STAGE_PILL. */
   --followup: #8b5cf6;
+  /* Same hue as --success, but reserved for places that draw it as a thin BORDER/RING rather than a
+     filled background or text color -- added 2026-10-27, user: the Meetings calendar's "today" outline
+     "light theme pr kafi halka lag raha" (too faint on the light theme). --success itself stays
+     unchanged (still used as fill/text everywhere it already was); only the light-theme override below
+     differs, picking a darker green that still reads as a 1px line against the light theme's cream --bg. */
+  --success-strong: var(--success);
 
   /* Tinted pill backgrounds (rgba(<hue>, .12-.15) in app.py) */
   --success-tint: rgba(16, 185, 129, 0.14);
@@ -66,4 +72,5 @@
   --input: #faf6ee;
   --sidebar: #ebe3d6;
   --badge: #c94528;
+  --success-strong: #065f46;
 }
