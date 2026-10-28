@@ -21,6 +21,7 @@ import {
 } from "@/lib/constants";
 import type { ExtraContactInput, Lead, PipelineStage } from "@/types";
 import { Ico, stripEmoji, withIcons } from "@/components/ui/emoji-icon";
+import { isPlausiblePhone, isPlausibleWebsite } from "@/lib/validation/lead";
 
 const EMPTY_ADD_CONTACT: ExtraContactInput = { name: "", role: "", email: "", phone: "", linkedin: "" };
 
@@ -271,6 +272,10 @@ function LeadEditFormFields({ lead, onDone }: { lead: Lead; onDone?: () => void 
   const [callbackTime, setCallbackTime] = useState(lead.callback_at ? lead.callback_at.slice(11, 16) : "");
   const showCallback =
     stage === "followup_due" || Boolean(lead.callback_at) || lead.last_call_outcome === "callback_scheduled";
+  // Format validation, BEFORE submit (2026-10-28) -- same reasoning/mirrored check as
+  // components/layout/add-lead-popover.tsx, see lib/validation/lead.ts.
+  const websiteInvalid = Boolean(companyWebsite) && !isPlausibleWebsite(companyWebsite);
+  const phoneInvalid = Boolean(phone) && !isPlausiblePhone(phone);
 
   return (
     <div className="flex flex-col gap-3">
@@ -283,7 +288,13 @@ function LeadEditFormFields({ lead, onDone }: { lead: Lead; onDone?: () => void 
           value={companyWebsite}
           onChange={(e) => setCompanyWebsite(e.target.value)}
           placeholder="example.com"
+          aria-invalid={websiteInvalid}
         />
+        {websiteInvalid && (
+          <p className="mt-1 text-[0.78rem] text-danger">
+            <Ico e="⚠️" /> Doesn&apos;t look like a real website -- fix it or leave it blank.
+          </p>
+        )}
       </Field>
 
       <h4 className="mt-2 text-[1rem] font-semibold"><Ico e="✉" /> Outreach Draft</h4>
@@ -348,7 +359,12 @@ function LeadEditFormFields({ lead, onDone }: { lead: Lead; onDone?: () => void 
         </>
       )}
       <Field label="Contact Phone">
-        <Input value={phone} onChange={(e) => setPhone(e.target.value)} />
+        <Input value={phone} onChange={(e) => setPhone(e.target.value)} aria-invalid={phoneInvalid} />
+        {phoneInvalid && (
+          <p className="mt-1 text-[0.78rem] text-danger">
+            <Ico e="⚠️" /> Doesn&apos;t look like a valid phone number.
+          </p>
+        )}
       </Field>
       <Field label="LinkedIn URL">
         <Input value={linkedin} onChange={(e) => setLinkedin(e.target.value)} />
@@ -379,7 +395,12 @@ function LeadEditFormFields({ lead, onDone }: { lead: Lead; onDone?: () => void 
         variant="primary"
         size="sm"
         loading={update.isPending}
-        disabled={!companyName.trim() || (stage === "meeting_booked" && !(meetingDate && meetingTime))}
+        disabled={
+          !companyName.trim() ||
+          (stage === "meeting_booked" && !(meetingDate && meetingTime)) ||
+          websiteInvalid ||
+          phoneInvalid
+        }
         onClick={async () => {
           if (stage === "lost" && lead.pipeline_stage !== "lost") {
             const ok = await confirm({

@@ -190,9 +190,45 @@ export function IngestDrawer() {
               </Button>
               <JobProgress job={csv.job} />
               {csv.job?.status === "done" && (
-                <p className="text-[0.85rem] text-success">
-                  {withIcons(CSV_IMPORT.success((csv.job.result as ImportJobResult | undefined)?.inserted ?? 0))}
-                </p>
+                <>
+                  <p className="text-[0.85rem] text-success">
+                    {withIcons(CSV_IMPORT.success((csv.job.result as ImportJobResult | undefined)?.inserted ?? 0))}
+                  </p>
+                  {/* Leads skipped for an invalid phone/website format (2026-10-28, REDESIGNED -- user:
+                      "galat formats me na ho ... csv me ho woh lead skip ho jaye or reason phr logs me
+                      dikh jaye") -- the WHOLE lead didn't import, same severity as a duplicate, not just
+                      one field left blank. See lead_engine.parse_and_enrich_csv()'s own
+                      `skipped_invalid`. */}
+                  {Boolean((csv.job.result as ImportJobResult | undefined)?.skipped_invalid?.length) && (
+                    <div
+                      className="flex flex-col gap-1 rounded-[8px] px-3 py-2 text-[0.8rem]"
+                      style={{ background: "var(--danger-tint)", color: "var(--danger)" }}
+                    >
+                      <p className="font-medium">{CSV_IMPORT.skippedInvalidHeading}</p>
+                      {(csv.job.result as ImportJobResult).skipped_invalid.map((w, i) => (
+                        <p key={i}>{w}</p>
+                      ))}
+                    </div>
+                  )}
+                  {/* Rows skipped as already-in-CRM (2026-10-28) -- answers "yeh kidhr dekh skta hun
+                      logs": exact name, exact website, or near-duplicate name (crud._name_key()) all
+                      land here with the reason, instead of silently vanishing into a bare count. */}
+                  {Boolean((csv.job.result as ImportJobResult | undefined)?.skipped_duplicates?.length) && (
+                    <div
+                      className="flex flex-col gap-1 rounded-[8px] border-l-[3px] px-3 py-2 text-[0.8rem]"
+                      style={{ background: "var(--tag)", borderColor: "var(--info)" }}
+                    >
+                      <p className="font-medium" style={{ color: "var(--info)" }}>
+                        {CSV_IMPORT.skippedDuplicatesHeading}
+                      </p>
+                      {(csv.job.result as ImportJobResult).skipped_duplicates.map((w, i) => (
+                        <p key={i} className="text-muted">
+                          {w}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
             </Tabs.Content>
 

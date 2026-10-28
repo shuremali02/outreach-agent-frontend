@@ -32,7 +32,14 @@ export interface DiscoverJobResult {
 export interface ImportJobResult {
   inserted: number;
   total_parsed: number;
-  skipped_duplicates: number;
+  /** "{company}: already in CRM (same company name/website)" or "...looks like it's already in CRM as
+   * \"X\"" strings (2026-10-28, was a bare count) -- one per company skipped because it (or a
+   * near-duplicate of it, see app/crud/leads.py's `_name_key()`) is already in the CRM. */
+  skipped_duplicates: string[];
+  /** "{company}: phone/website didn't look valid." strings (2026-10-28) -- a lead whose given
+   * phone/website format was invalid is skipped entirely (not just that one field), same severity as a
+   * duplicate. See app/services/lead_engine.py parse_and_enrich_csv()'s own `skipped_invalid`. */
+  skipped_invalid: string[];
 }
 
 /**

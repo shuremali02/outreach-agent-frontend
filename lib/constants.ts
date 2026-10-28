@@ -30,6 +30,10 @@ export const STANDARD_CATEGORIES = [
   "⛵ Superyachts & Marine",
   "⚡ Tech & Commercial Products",
   "🚐 Trailers & Campers",
+  // Added 2026-10-28, matches app/constants.py STANDARD_CATEGORIES -- a lead imported (CSV/Apollo) with
+  // no industry info at all now lands here instead of silently defaulting into "Tech & Commercial
+  // Products" (DEFAULT_CATEGORY there, see its comment).
+  "❓ Unknown",
 ] as const;
 
 export const ALL_CATEGORIES = "All Categories";
@@ -410,6 +414,16 @@ export const CSV_IMPORT = {
   label: "Upload CSV File",
   button: (n: number) => `⚡ Scrub Phones & Generate Battlecards (${n} Leads)`,
   success: (n: number) => `🎉 Successfully scrubbed and imported ${n} call-ready leads!`,
+  // Shown under the success line when any lead had an invalid phone/website, or was missing a company
+  // name/website entirely (2026-10-28, REDESIGNED, then widened same day -- see types/api.ts
+  // ImportJobResult.skipped_invalid) -- those leads were NOT imported at all, same severity as a
+  // duplicate, not just one field left blank on an otherwise-imported lead. Heading kept generic since
+  // each line's own text already says which of the three reasons applied.
+  skippedInvalidHeading: "🚫 A few leads were skipped (missing or invalid info):",
+  // Shown under the success line when any row was skipped because it's already in the CRM (2026-10-28 --
+  // user asked "yeh kidhr dekh skta hun logs" after a 57-row CSV only inserted 2; this is the answer,
+  // plus the per-company reason, see types/api.ts ImportJobResult.skipped_duplicates).
+  skippedDuplicatesHeading: "ℹ️ A few rows were skipped — already in your CRM:",
 } as const;
 
 /** app.py:1691-1736 — Apollo.io tab. */

@@ -13,6 +13,7 @@ import { useUsers } from "@/hooks/use-users";
 import { extractMentions } from "@/lib/mentions";
 import type { CreateLeadInput, ExtraContactInput, PipelineStage } from "@/types";
 import { Ico, stripEmoji } from "@/components/ui/emoji-icon";
+import { isPlausiblePhone, isPlausibleWebsite } from "@/lib/validation/lead";
 
 /** A fresh, empty row for "+ Add Another Contact" -- a stable per-row id
  * (not the array index) keeps React's reconciliation correct if a middle
@@ -121,6 +122,13 @@ export function AddLeadPopover() {
   // Category and Country are now required -- see EMPTY's industry_tag
   // comment above for why a silent default was removed.
   const missingRequired = !form.industry_tag || !form.country;
+  // Format validation, BEFORE submit (2026-10-28, user: "mujhse ghalti se qw lag jaye toh woh add nahi
+  // hona chahiye, wahin bole incorrect format, add lead he na ho jab tak woh sahi ho") -- empty is still
+  // always fine, only a GIVEN garbage value blocks the button. Same check the backend's own
+  // field_validators would reject with 422 either way (lib/validation/lead.ts mirrors them exactly) --
+  // this just surfaces the SAME verdict immediately instead of after a round trip.
+  const websiteInvalid = Boolean(form.company_website) && !isPlausibleWebsite(form.company_website ?? "");
+  const phoneInvalid = Boolean(form.contact_phone) && !isPlausiblePhone(form.contact_phone ?? "");
 
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
@@ -152,6 +160,14 @@ export function AddLeadPopover() {
               }
               if (needsMeetingTime) {
                 setError("Set both Date and Time for a lead staged as Meeting Booked.");
+                return;
+              }
+              if (websiteInvalid) {
+                setError("Website doesn't look like a real domain. Fix it or leave it blank.");
+                return;
+              }
+              if (phoneInvalid) {
+                setError("Phone number doesn't look valid. Fix it or leave it blank.");
                 return;
               }
               create.mutate({
@@ -192,7 +208,13 @@ export function AddLeadPopover() {
                 value={form.company_website}
                 onChange={(e) => set("company_website", e.target.value)}
                 placeholder="https://"
+                aria-invalid={websiteInvalid}
               />
+              {websiteInvalid && (
+                <p className="mt-1 text-[0.78rem] text-danger">
+                  <Ico e="⚠️" /> Doesn&apos;t look like a real website -- fix it or leave it blank.
+                </p>
+              )}
             </Field>
             {duplicateMatch && (
               <p
@@ -262,7 +284,13 @@ export function AddLeadPopover() {
                   value={form.contact_phone}
                   onChange={(e) => set("contact_phone", e.target.value)}
                   placeholder="+1 (555) 000-0000"
+                  aria-invalid={phoneInvalid}
                 />
+                {phoneInvalid && (
+                  <p className="mt-1 text-[0.78rem] text-danger">
+                    <Ico e="⚠️" /> Doesn&apos;t look like a valid phone number.
+                  </p>
+                )}
               </Field>
             </div>
 
@@ -420,7 +448,7 @@ export function AddLeadPopover() {
               variant="primary"
               block
               loading={create.isPending}
-              disabled={needsMeetingTime || missingRequired}
+              disabled={needsMeetingTime || missingRequired || websiteInvalid || phoneInvalid}
             >
               {create.isPending ? "Saving…" : "Save Lead to CRM"}
             </Button>

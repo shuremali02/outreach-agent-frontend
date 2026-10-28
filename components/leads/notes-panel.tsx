@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useAddNote, useEditNotes, useFullLead } from "@/hooks/use-leads";
-import { MailtoButton } from "@/components/common/mailto-button";
 import { Button } from "@/components/ui/button";
 import { Field, Textarea } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
@@ -118,7 +117,9 @@ export function NotesPanel({ lead: listLead }: { lead: Lead }) {
       {/* "Open in Email App" temporarily commented out, not removed (user, 2026-10-21: "abhi k lye
           commentout krdo jab need ho gi tb dekh lyngy") -- a proper email feature is being built to
           replace this mailto: shortcut. Shared component (Pipeline/Contacts/Meetings popup all render
-          this same NotesPanel), so this takes it out of all three at once.
+          this same NotesPanel), so this takes it out of all three at once. The `MailtoButton` import
+          above was removed (2026-10-28) since it was unused while this stays commented out -- re-add
+          `import { MailtoButton } from "@/components/common/mailto-button";` when uncommenting this.
       <MailtoButton
         email={lead.contact_email}
         subject={lead.subject}
