@@ -21,7 +21,7 @@ import {
 } from "@/lib/constants";
 import type { ExtraContactInput, Lead, PipelineStage } from "@/types";
 import { Ico, stripEmoji, withIcons } from "@/components/ui/emoji-icon";
-import { isPlausiblePhone, isPlausibleWebsite } from "@/lib/validation/lead";
+import { autoSeparatePhoneNumbers, isPlausiblePhone, isPlausibleWebsite } from "@/lib/validation/lead";
 
 const EMPTY_ADD_CONTACT: ExtraContactInput = { name: "", role: "", email: "", phone: "", linkedin: "" };
 
@@ -359,7 +359,12 @@ function LeadEditFormFields({ lead, onDone }: { lead: Lead; onDone?: () => void 
         </>
       )}
       <Field label="Contact Phone">
-        <Input value={phone} onChange={(e) => setPhone(e.target.value)} aria-invalid={phoneInvalid} />
+        <Input
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          onBlur={(e) => setPhone(autoSeparatePhoneNumbers(e.target.value))}
+          aria-invalid={phoneInvalid}
+        />
         {phoneInvalid && (
           <p className="mt-1 text-[0.78rem] text-danger">
             <Ico e="⚠️" /> Doesn&apos;t look like a valid phone number.

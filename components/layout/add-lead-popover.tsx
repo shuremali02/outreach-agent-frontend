@@ -13,7 +13,7 @@ import { useUsers } from "@/hooks/use-users";
 import { extractMentions } from "@/lib/mentions";
 import type { CreateLeadInput, ExtraContactInput, PipelineStage } from "@/types";
 import { Ico, stripEmoji } from "@/components/ui/emoji-icon";
-import { isPlausiblePhone, isPlausibleWebsite } from "@/lib/validation/lead";
+import { autoSeparatePhoneNumbers, isPlausiblePhone, isPlausibleWebsite } from "@/lib/validation/lead";
 
 /** A fresh, empty row for "+ Add Another Contact" -- a stable per-row id
  * (not the array index) keeps React's reconciliation correct if a middle
@@ -283,6 +283,7 @@ export function AddLeadPopover() {
                   type="tel"
                   value={form.contact_phone}
                   onChange={(e) => set("contact_phone", e.target.value)}
+                  onBlur={(e) => set("contact_phone", autoSeparatePhoneNumbers(e.target.value))}
                   placeholder="+1 (555) 000-0000"
                   aria-invalid={phoneInvalid}
                 />

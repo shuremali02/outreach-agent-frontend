@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useLeads, useUpdateLead } from "@/hooks/use-leads";
+import { useCallOutcome, useLeads } from "@/hooks/use-leads";
 import { EditLeadDialog } from "@/components/leads/edit-lead-dialog";
 import { LeadCard } from "@/components/leads/lead-card";
 import { Button } from "@/components/ui/button";
@@ -31,7 +31,12 @@ Elipse Studio`;
 }
 
 function NeedsFollowUpCard({ lead, calendarLink }: { lead: Lead; calendarLink: string }) {
-  const update = useUpdateLead();
+  // Goes through the same call-outcome endpoint Cold Call Desk uses (useCallOutcome ->
+  // apply_call_outcome), not a plain PATCH (2026-10-29 bugfix, same root cause as
+  // pipeline-view.tsx's PipelineActions -- see its own comment: a raw field update never touched
+  // app/crud/call_events.py, so a meeting booked from here never counted in Today/This-Week's
+  // "Meetings" stat even though the lead correctly showed up on the Meetings calendar).
+  const update = useCallOutcome();
   const toast = useToast();
   const [draft, setDraft] = useState(() => secondTouch(lead, calendarLink));
   // "Mark as Meeting Booked" used to PATCH pipeline_stage straight to "meeting_booked" with no meeting_at
@@ -46,10 +51,7 @@ function NeedsFollowUpCard({ lead, calendarLink }: { lead: Lead; calendarLink: s
   function confirmBooking() {
     if (!meetingDate || !meetingTime) return;
     update.mutate(
-      {
-        id: lead.id,
-        input: { pipeline_stage: "meeting_booked", meeting_at: `${meetingDate}T${meetingTime}:00` },
-      },
+      { id: lead.id, outcome: "meeting_booked", meetingAt: `${meetingDate}T${meetingTime}:00` },
       {
         onSuccess: () => {
           toast.success(TOASTS.meetingBooked(lead.company_name));

@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useMemo, useState } from "react";
-import { useAddNote, useBookFollowupMeeting, useLeads, useMeetingOutcome, useUpdateLead } from "@/hooks/use-leads";
+import { useAddNote, useBookFollowupMeeting, useCallOutcome, useLeads, useMeetingOutcome } from "@/hooks/use-leads";
 import { EmailPickerDialog } from "@/components/leads/email-picker-dialog";
 import { EditLeadDialog } from "@/components/leads/edit-lead-dialog";
 import { LeadCard } from "@/components/leads/lead-card";
@@ -128,7 +128,14 @@ function isAnySlotEscalated(lead: Lead): boolean {
  */
 function PipelineActions({ lead }: { lead: Lead }) {
   const outcome = useMeetingOutcome();
-  const update = useUpdateLead();
+  // First-time "Meeting Booked" (below, in confirmBooking()) goes through the SAME call-outcome endpoint
+  // Cold Call Desk's battlecard uses (useCallOutcome -> apply_call_outcome), not a plain PATCH (2026-10-29
+  // bugfix -- user: "agar callbacks tab sy ya kahin sy meeting booked hoti hai woh meetings me count nhi
+  // hoti today me"). A raw field update never touched app/crud/call_events.py, which is what Today/
+  // This-Week's "Meetings" stat actually counts (_count_outcomes(... ("meeting_booked",))) -- so a meeting
+  // booked from the Callbacks tab, or anywhere else via this shared PipelineActions component, silently
+  // never counted, even though the lead itself correctly showed up on the Meetings calendar.
+  const callOutcome = useCallOutcome();
   const bookFollowup = useBookFollowupMeeting();
   const addNote = useAddNote();
   // A lead already past its first meeting (user, 2026-10-23: client wanted another meeting before the
@@ -260,11 +267,8 @@ function PipelineActions({ lead }: { lead: Lead }) {
       );
       return;
     }
-    update.mutate(
-      {
-        id: lead.id,
-        input: { pipeline_stage: "meeting_booked", meeting_at: meetingAt },
-      },
+    callOutcome.mutate(
+      { id: lead.id, outcome: "meeting_booked", meetingAt },
       {
         onSuccess: () => {
           toast.success(TOASTS.meetingBooked(lead.company_name));
@@ -353,17 +357,17 @@ function PipelineActions({ lead }: { lead: Lead }) {
           <Button
             variant="primary"
             size="sm"
-            loading={update.isPending || bookFollowup.isPending}
+            loading={callOutcome.isPending || bookFollowup.isPending}
             disabled={!meetingDate || !meetingTime}
             onClick={confirmBooking}
           >
             {withIcons(MEETING_BOOKING.confirm)}
           </Button>
         </div>
-        {(update.isError || bookFollowup.isError) && (
+        {(callOutcome.isError || bookFollowup.isError) && (
           <p className="text-[0.78rem] text-danger">
-            {(update.error || bookFollowup.error) instanceof Error
-              ? ((update.error || bookFollowup.error) as Error).message
+            {(callOutcome.error || bookFollowup.error) instanceof Error
+              ? ((callOutcome.error || bookFollowup.error) as Error).message
               : TOASTS.actionFailed}
           </p>
         )}
