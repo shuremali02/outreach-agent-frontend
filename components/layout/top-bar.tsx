@@ -5,7 +5,6 @@ import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Menu, RefreshCw, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { NAV_ITEMS } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AddLeadPopover } from "./add-lead-popover";
@@ -13,6 +12,7 @@ import { NotificationBell } from "./notification-bell";
 import { ThemeSwitch } from "./theme-switch";
 import { UserMenu } from "./user-menu";
 import { toggleMobileSidebar } from "./sidebar";
+import { WorldClocksNav } from "./world-clocks-nav";
 
 /** Routes where a global search actually filters something. Cold Call Desk moved its search box down
  * next to "Re-sort by local time" instead (user, 2026-09-23) -- not rendered up here any more. */
@@ -48,7 +48,6 @@ export function TopBar() {
     }
   }
 
-  const current = NAV_ITEMS.find((n) => n.href === pathname)?.name ?? "Workspace";
   const canSearch = SEARCHABLE.includes(pathname);
 
   const urlQ = searchParams.get("q") ?? "";
@@ -103,15 +102,14 @@ export function TopBar() {
         >
           <Menu className="h-5 w-5" aria-hidden />
         </button>
-        {/* Mobile: a compact page name next to the hamburger (the mockup puts it here, replacing the old
-            "hide it entirely on a phone" call). `sm:` and up: today's exact WORKSPACE / PAGE breadcrumb,
-            unchanged. */}
-        <p className="truncate text-[0.95rem] font-bold text-text sm:hidden">{current}</p>
-        <p className="hidden text-[0.78rem] tracking-wider text-muted sm:block">
-          WORKSPACE / <span className="font-bold text-text">{current.toUpperCase()}</span>
-        </p>
+        {/* "WORKSPACE / PAGE" breadcrumb removed (2026-10-29, user: "header me ye workspace headings jo
+            hain woh remove kr dyn taky clocks sahi sy visible hon") -- the sidebar already highlights the
+            current page, so this wasn't the only way to tell where you are. */}
 
         <div className="ml-auto flex flex-wrap items-center justify-end gap-2 sm:gap-3">
+          {/* Right-aligned, grouped with the rest of the action row (2026-10-29, user: "right side he
+              align krdo" -- was sitting alone on the left after the breadcrumb above it was removed). */}
+          <WorldClocksNav />
           {/* Hidden below `sm`: search and +Add a Lead move to row 2 on mobile. Refresh stays up here at
               every width (user, 2026-10-05: "refresh button ko upar he rakh dein, notification icon k
               sath") -- as a circular icon button below `sm`, the full text+icon button at `sm:` and up. */}

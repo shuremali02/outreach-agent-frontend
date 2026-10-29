@@ -9,7 +9,9 @@ export const dynamic = "force-dynamic";
 export default async function ContactsPage({ searchParams }: PageProps<"/contacts">) {
   const sp = await searchParams;
   const q = typeof sp.q === "string" ? sp.q : "";
-  const leads = await leadsApi.list({ q, limit: 100 });
+  // searchAllStages (2026-10-29): a real search here should also find a Not Interested/Dead Line lead --
+  // see types/lead.ts LeadFilters.searchAllStages. No-op when q is empty.
+  const leads = await leadsApi.list({ q, limit: 100, searchAllStages: true });
 
   return (
     <div>

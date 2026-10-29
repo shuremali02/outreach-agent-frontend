@@ -128,12 +128,15 @@ export function ContactsView({ initialLeads, q }: { initialLeads: Lead[]; q: str
   // (confirmed live, 2026-10-19). `q` already searches the backend (crud/leads.py _lead_filters()), so
   // typing in the search box narrows the SQL query itself rather than filtering an already-fetched list.
   const [limit, setLimit] = useState(100);
-  const { data: allLeads = [], isFetching } = useLeads({ q, limit }, initialLeads);
+  // searchAllStages (2026-10-29): a real search here should also find a Not Interested/Dead Line lead --
+  // see types/lead.ts LeadFilters.searchAllStages. No-op when q is empty.
+  const { data: allLeads = [], isFetching } = useLeads({ q, limit, searchAllStages: true }, initialLeads);
   // The TRUE total for this search, independent of `limit` -- allLeads.length is only ever <=limit once
-  // pagination is in play, so the Load More button's visibility needs its own count query.
+  // pagination is in play, so the Load More button's visibility needs its own count query. Must pass the
+  // same searchAllStages as the list query above, or this total would disagree with what's shown.
   const total = useQuery({
-    queryKey: ["leads-filtered-count", { q }],
-    queryFn: () => leadsApi.filteredCount({ q }),
+    queryKey: ["leads-filtered-count", { q, searchAllStages: true }],
+    queryFn: () => leadsApi.filteredCount({ q, searchAllStages: true }),
     staleTime: 30_000,
   });
   const [category, setCategory] = useState(ALL_CATEGORIES);
