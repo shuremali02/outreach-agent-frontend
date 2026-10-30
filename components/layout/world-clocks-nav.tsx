@@ -40,6 +40,7 @@ const US_DROPDOWN = [
 const OTHER_CLOCKS = [
   { code: "GB", label: "UK", tz: "Europe/London" },
   { code: "AU", label: "Sydney", tz: "Australia/Sydney" },
+  { code: "SA", label: "KSA", tz: "Asia/Riyadh" },
 ] as const;
 
 function zoneAbbrev(tz: string, at: Date): string {
@@ -55,13 +56,17 @@ function digitalTime(tz: string, at: Date): string {
   );
 }
 
-/** Shared look for every pill in this row (the US trigger button and the plain UK/Sydney pills) --
- * same border/background/radius/padding as the navbar's own circular icon buttons (notification-bell.tsx
- * etc.), so these read as "more of the same instrument row" instead of plain unstyled text floating in
- * the header (user screenshot, 2026-10-29: "sahi sy visvle hon color full theme j hisab sy cards me rkh
- * do ya choty choty" -- card-style background, theme-correct colour, kept small). */
+/** Shared look for every pill in this row (the US trigger button and the plain UK/Sydney pills).
+ * `rounded-[8px]` (2026-10-30, user: "border button style me he rkho jese chakor round nhi kro") matches
+ * Refresh/+Add a Lead's own corner radius (components/ui/button.tsx, --radius-control). Background tinted
+ * `--info-tint`/border `--info` at low opacity (2026-10-30, user: "in k color thory sy change krny
+ * prhyngy humyn minro sy taky attractive ho jayen 3no cards bilkl minor light sy change hon" -- a small,
+ * deliberate colour step up from the previous flat `bg-input`/`border-border`, not a redesign) -- the
+ * same soft blue "live/info" tint the Sales Terminal's original "🕐 Live World Clocks" heading used,
+ * carried over here since these are still fundamentally the same "live info" idea. Both tokens are
+ * already theme-correct (styles/tokens.css), so this stays right on both themes with no extra rule. */
 const PILL_CLASS =
-  "flex items-center gap-1.5 rounded-full border border-border bg-input px-2.5 py-1";
+  "flex items-center gap-1.5 rounded-[8px] border border-[var(--info)]/25 bg-[var(--info-tint)] px-2.5 py-1";
 
 /** One compact digital-time readout. */
 function ClockPill({ tz, at, caption }: { tz: string; at: Date; caption: React.ReactNode }) {

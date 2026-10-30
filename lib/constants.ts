@@ -118,11 +118,11 @@ export function countryLabel(code: string): string {
 export const ADD_LEAD_COUNTRIES = [
   // Germany/Australia/Slovenia added 2026-10-20 (user request) -- Germany/Australia were already in the
   // full COUNTRIES list/filterable everywhere, just not offered here yet; Slovenia is brand new (also
-  // added to the full COUNTRIES list above). User explicitly asked to leave out ones that see no real
-  // use here (Spain, Turkey, China, etc.) -- those stay filterable on Pipeline/Contacts via COUNTRIES,
-  // just not offered on this popover.
+  // added to the full COUNTRIES list above). User originally asked to leave out ones that saw no real use
+  // here (Spain, Turkey, China, etc.) -- Turkey added back 2026-10-30 (user request); the others stay
+  // filterable on Pipeline/Contacts via COUNTRIES, just not offered on this popover.
   ...COUNTRIES.filter((c) =>
-    ["US", "GB", "CA", "FR", "SA", "AE", "QA", "EG", "PK", "DE", "AU", "SI"].includes(c.id),
+    ["US", "GB", "CA", "FR", "SA", "AE", "QA", "EG", "PK", "DE", "AU", "SI", "TR"].includes(c.id),
   ),
   // User, 2026-10-19: a rep adding a lead manually sometimes genuinely doesn't know the country yet --
   // without this they were forced to guess a real one just to get past the required-field check.
@@ -820,6 +820,15 @@ export const MEETING_BOOKING = {
   timeLabel: "Time",
   confirm: "✅ Confirm booking",
   cancel: "Cancel",
+} as const;
+
+/** Edit the date/time of an ALREADY-booked meeting on the Meetings tab (2026-10-30, user: "meeting tab
+ * me hum meeting ka time change nhi kr skty whn bhi edit button hona chahiye jo sirf time wgera change
+ * krny dy meeting ka"). Plain reschedule of the SAME meeting, not a new booking/disposition -- a bare
+ * meeting_at PATCH, see components/meetings/meeting-detail-dialog.tsx. */
+export const MEETING_RESCHEDULE = {
+  prompt: "Reschedule this meeting",
+  confirm: "✅ Save new time",
 } as const;
 
 /** "Book Another Meeting" on a Pipeline card (2026-10-23) -- user: a lead already at Proposal Sent

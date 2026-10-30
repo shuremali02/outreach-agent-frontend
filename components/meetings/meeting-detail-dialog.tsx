@@ -2,7 +2,7 @@
 
 import * as Dialog from "@radix-ui/react-dialog";
 import { useState } from "react";
-import { useAddNote, useMeetingOutcome } from "@/hooks/use-leads";
+import { useAddNote, useMeetingOutcome, useUpdateLead } from "@/hooks/use-leads";
 import { EmailPickerDialog } from "@/components/leads/email-picker-dialog";
 import { AttemptTracker } from "@/components/pipeline/attempt-tracker";
 import { FollowupTracker } from "@/components/pipeline/followup-tracker";
@@ -18,7 +18,9 @@ import { useToast } from "@/components/ui/toast";
 import {
   CALLBACK_BOOKING,
   EMAIL_SEND,
+  MEETING_BOOKING,
   MEETING_OUTCOMES,
+  MEETING_RESCHEDULE,
   NOT_INTERESTED_NOTE,
   STAGE_LABELS,
   TOASTS,
@@ -86,6 +88,31 @@ export function MeetingDetailDialog({
   // "Client Closed" celebration (user, 2026-10-14) -- a sibling of <Dialog.Root>, not inside its Portal,
   // so it keeps rendering even once setOpen(false) below unmounts the dialog's own content.
   const [celebrate, setCelebrate] = useState(false);
+
+  // Reschedule THIS meeting's date/time (2026-10-30) -- a plain meeting_at PATCH, not a disposition/call
+  // outcome, so it uses the generic update mutation, not useMeetingOutcome()/useCallOutcome(). meeting_at
+  // is a naive "YYYY-MM-DDTHH:MM:SS" wall-clock string (no "Z", same convention callback_at/meeting_at
+  // always use elsewhere -- see components/pipeline/followup-tracker.tsx's own comment on this), so
+  // slicing it directly to prefill the inputs is safe and avoids any browser-timezone reinterpretation
+  // new Date() would risk.
+  const rescheduleUpdate = useUpdateLead();
+  const [rescheduling, setRescheduling] = useState(false);
+  const [meetingDate, setMeetingDate] = useState(() => lead.meeting_at.slice(0, 10));
+  const [meetingTime, setMeetingTime] = useState(() => lead.meeting_at.slice(11, 16));
+
+  function confirmReschedule() {
+    if (!meetingDate || !meetingTime) return;
+    rescheduleUpdate.mutate(
+      { id: lead.id, input: { meeting_at: `${meetingDate}T${meetingTime}:00` } },
+      {
+        onSuccess: () => {
+          toast.success(TOASTS.meetingBooked(lead.company_name));
+          setRescheduling(false);
+        },
+        onError: (e) => toast.error(e instanceof Error ? e.message : TOASTS.actionFailed),
+      },
+    );
+  }
 
   function confirmCallback() {
     if (!callbackDate || !callbackTime) return;
@@ -223,16 +250,61 @@ export function MeetingDetailDialog({
             </Dialog.Close>
           </div>
 
-          <p className="mb-4 text-[0.85rem] text-muted">
-            <Ico e="📅" />{" "}
-            {new Date(lead.meeting_at).toLocaleString("en-US", {
-              weekday: "short",
-              month: "short",
-              day: "numeric",
-              hour: "numeric",
-              minute: "2-digit",
-            })}
-          </p>
+          {rescheduling ? (
+            <div className="mb-4 flex flex-col gap-2 rounded-[8px] border border-accent bg-input px-3 py-3">
+              <p className="text-[0.85rem] font-semibold">{withIcons(MEETING_RESCHEDULE.prompt)}</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <Field label={MEETING_BOOKING.dateLabel}>
+                  <Input type="date" value={meetingDate} onChange={(e) => setMeetingDate(e.target.value)} />
+                </Field>
+                <Field label={MEETING_BOOKING.timeLabel}>
+                  <Input type="time" value={meetingTime} onChange={(e) => setMeetingTime(e.target.value)} />
+                </Field>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <Button variant="secondary" size="sm" onClick={() => setRescheduling(false)}>
+                  {withIcons(MEETING_BOOKING.cancel)}
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  loading={rescheduleUpdate.isPending}
+                  disabled={!meetingDate || !meetingTime}
+                  onClick={confirmReschedule}
+                >
+                  {withIcons(MEETING_RESCHEDULE.confirm)}
+                </Button>
+              </div>
+              {rescheduleUpdate.isError && (
+                <p className="text-[0.78rem] text-danger">
+                  {rescheduleUpdate.error instanceof Error ? rescheduleUpdate.error.message : TOASTS.actionFailed}
+                </p>
+              )}
+            </div>
+          ) : (
+            <p className="mb-4 flex items-center gap-2 text-[0.85rem] text-muted">
+              <Ico e="📅" />{" "}
+              {new Date(lead.meeting_at).toLocaleString("en-US", {
+                weekday: "short",
+                month: "short",
+                day: "numeric",
+                hour: "numeric",
+                minute: "2-digit",
+              })}
+              <button
+                type="button"
+                onClick={() => {
+                  setMeetingDate(lead.meeting_at.slice(0, 10));
+                  setMeetingTime(lead.meeting_at.slice(11, 16));
+                  setRescheduling(true);
+                }}
+                aria-label="Edit meeting time"
+                className="cursor-pointer text-accent hover:underline"
+              >
+                <Ico e="✏️" />
+              </button>
+            </p>
+          )}
 
           <div className="flex flex-col gap-3">
             {lead.company_website && (
