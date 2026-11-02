@@ -132,6 +132,23 @@ export function useUpdateLead() {
   });
 }
 
+/**
+ * Good/wrong/called mark on ONE phone number (2026-11-02) -- see components/leads/phone-number-list.tsx.
+ * Both endpoints already return the updated Lead, so `invalidate` patches it into every cached list
+ * in place, no refetch -- this was inline in phone-number-list.tsx using a raw
+ * `qc.invalidateQueries({queryKey:["leads"]})` at first, which is exactly the "har button bohut time ly
+ * rha hai" anti-pattern `useInvalidate`'s own comment documents; moved here to use it properly (user,
+ * 2026-11-02: "in actions kafi slow hain... action click hone k itni der bad ja kr state change ho ri ha").
+ */
+export function usePhoneMark() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: ({ leadId, phoneNumber, status }: { leadId: number; phoneNumber: string; status: "called" | "good" | "wrong" | null }) =>
+      status === null ? leadsApi.unsetPhoneMark(leadId, phoneNumber) : leadsApi.setPhoneMark(leadId, phoneNumber, status),
+    onSuccess: invalidate,
+  });
+}
+
 export function useDeleteLead() {
   const invalidate = useInvalidate();
   return useMutation({

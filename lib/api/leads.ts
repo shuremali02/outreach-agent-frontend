@@ -72,6 +72,14 @@ export const leadsApi = {
   /** "Email Send" button (REPURPOSED 2026-10-21) -- opens the address-picker dialog, then moves the
    * lead into the manual Email desk. See app/api/leads.py send_to_email(). */
   sendToEmailDesk: (id: number, email: string) => api.post<Lead>(`/leads/${id}/send-to-email`, { email }),
+  /** Mark on ONE phone number (2026-11-02) -- persisted, visible to every rep. "called" = plain tick
+   * (dialed, no verdict yet), "good"/"wrong" = the star/cross verdict. See app/models.py LeadPhoneMark /
+   * components/leads/phone-number-list.tsx. */
+  setPhoneMark: (id: number, phoneNumber: string, status: "called" | "good" | "wrong") =>
+    api.post<Lead>(`/leads/${id}/phone-marks`, { phone_number: phoneNumber, status }),
+  /** Clears a number's mark entirely -- a rep correcting a misclick. */
+  unsetPhoneMark: (id: number, phoneNumber: string) =>
+    api.delete<Lead>(`/leads/${id}/phone-marks?phone_number=${encodeURIComponent(phoneNumber)}`),
   /** Email desk's "✅ Mark Sent" toggle -- persisted on the lead (unlike markEmailSent above). See
    * app/api/leads.py mark_email_desk_sent()/unmark_email_desk_sent(). */
   markEmailDeskSent: (id: number) => api.post<Lead>(`/leads/${id}/email-desk/sent`, {}),

@@ -411,7 +411,7 @@ export function Battlecard({
         <div className="flex flex-col gap-3">
           <h4 className="text-[0.95rem] font-semibold"><Ico e="📞" /> Direct Outbound Line</h4>
           {lead.contact_phone ? (
-            <PhoneNumberList phones={lead.contact_phone} size="button" />
+            <PhoneNumberList phones={lead.contact_phone} size="button" leadId={lead.id} marks={lead.phone_marks} />
           ) : (
             <p
               className="rounded-[8px] px-3 py-2 text-[0.85rem]"

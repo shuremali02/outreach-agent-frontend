@@ -299,12 +299,12 @@ export function ContactsPanel({
                     )}
                     {c.phone && (
                       <div className="mt-0.5">
-                        <PhoneNumberList phones={c.phone} />
+                        <PhoneNumberList phones={c.phone} leadId={lead.id} marks={lead.phone_marks} />
                       </div>
                     )}
                     {!c.phone && c.role && looksLikePhone(c.role) && (
                       <div className="mt-0.5">
-                        <PhoneNumberList phones={c.role} />
+                        <PhoneNumberList phones={c.role} leadId={lead.id} marks={lead.phone_marks} />
                       </div>
                     )}
                     {c.linkedin && (

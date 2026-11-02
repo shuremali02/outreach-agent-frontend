@@ -159,7 +159,10 @@ export const TEAM_ACTIVITY = {
   sheetTab: "📊 Google Sheet history",
   person: "Person",
   columns: {
-    calls: "Calls",
+    // "Calls" renamed "Company Calls" 2026-11-02 (user: "existing call ka name company call kr dety hein
+    // na hum k kitny company me call hoi") once numbers_called/good/wrong (below) split out the
+    // per-NUMBER counts -- this column still counts companies/leads worked, unchanged.
+    calls: "Company Calls",
     connected: "Connected",
     voicemail: "Voicemail",
     receptionist: "Reception",
@@ -176,6 +179,11 @@ export const TEAM_ACTIVITY = {
     leads_added: "Leads Added",
     disconnected: "Dead Lines",
     no_shows: "No Shows",
+    // Per-NUMBER marks (2026-11-02, see components/leads/phone-number-list.tsx) -- how many individual
+    // phone numbers this person marked, and how many of those were good vs. wrong/dead.
+    numbers_called: "Numbers Called",
+    numbers_good: "Good Numbers",
+    numbers_wrong: "Wrong Numbers",
   },
   unassignedNote:
     "\"Unassigned\" is activity recorded before sign-in existed. It is counted in the team total.",
@@ -1366,6 +1374,11 @@ export const ACTIVITY_SCROLLER = {
   // has 4-5 semantic tokens, not enough for 10 visually-different cards.
   cards: [
     { key: "calls", label: "Calls", color: "#3b82f6" },
+    // Org-wide total of individual phone NUMBERS marked, 2026-11-02 (user: "yeh waly cards update nhi
+    // hue why" -- wanted the per-rep Numbers Called stat reflected here too, combined across everyone;
+    // then: "yeh card call k bilkl sath ayega last me nhi bilkl" -- right next to Calls, not at the end).
+    // Distinct from "calls" above (companies/leads worked, unchanged).
+    { key: "numbers_called", label: "Numbers Called", color: "#84cc16" },
     { key: "connected", label: "Connected", color: "#10b981" },
     { key: "emails", label: "Emails", color: "#e06842" },
     // "Leads" alone read as ambiguous -- this specifically counts leads the

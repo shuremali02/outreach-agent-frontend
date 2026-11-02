@@ -42,6 +42,12 @@ export interface TeamRow {
   decision_maker: number;
   /** Meeting outcome "No Show" (2026-09-28) -- see app/crud/leads.py set_meeting_outcome(no_show=True). */
   no_shows: number;
+  /** Per-NUMBER activity (2026-11-02, see app/models.py LeadPhoneMark) -- "calls" above counts
+   *  companies/leads worked, this counts individual phone numbers marked. numbers_called =
+   *  numbers_good + numbers_wrong. */
+  numbers_called: number;
+  numbers_good: number;
+  numbers_wrong: number;
 }
 
 export interface TeamToday {

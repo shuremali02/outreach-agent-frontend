@@ -82,6 +82,9 @@ export interface ActivityWindow {
   decision_maker: number;
   /** Meeting outcome "No Show" (2026-09-28) -- see app/crud/leads.py set_meeting_outcome(no_show=True). */
   no_shows: number;
+  /** Org-wide total of individual phone numbers marked (2026-11-02) -- see app/models.py LeadPhoneMark.
+   *  Distinct from "calls" above (companies/leads worked). Per-rep breakdown is TeamRow, not this. */
+  numbers_called: number;
 }
 
 export interface ActivityMetrics {

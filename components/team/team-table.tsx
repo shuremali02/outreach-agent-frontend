@@ -8,6 +8,8 @@ const COLS: (keyof typeof TEAM_ACTIVITY.columns)[] = [
   "calls", "connected", "voicemail", "receptionist", "decision_maker",
   // "callbacks" split out of "followups"/Pipeline 2026-10-17, see TEAM_ACTIVITY.columns.
   "meetings", "no_shows", "followups", "callbacks", "emails", "leads_added", "disconnected",
+  // Per-number marks, 2026-11-02 -- see TEAM_ACTIVITY.columns.
+  "numbers_called", "numbers_good", "numbers_wrong",
 ];
 
 function Avatar({ row }: { row: TeamRow }) {

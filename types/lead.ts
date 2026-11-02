@@ -172,6 +172,10 @@ export interface Lead {
   signalhire_uid: string;
   /** URLs the discovery agent actually read, so a lead can be audited. */
   discovery_citations: string[];
+  /** {phone_number: "called" | "good" | "wrong"} -- per-number mark, persisted and visible to every rep.
+   *  "called" = plain tick (dialed, no verdict yet). See components/leads/phone-number-list.tsx and
+   *  app/models.py LeadPhoneMark (backend). */
+  phone_marks: Record<string, "called" | "good" | "wrong">;
 
   // --- meeting scheduling (schema revision 0003) ---
   /**
