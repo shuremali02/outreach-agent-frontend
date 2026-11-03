@@ -177,7 +177,8 @@ export const TEAM_ACTIVITY = {
     callbacks: "Callbacks",
     emails: "Emails",
     leads_added: "Leads Added",
-    disconnected: "Dead Lines",
+    // "Dead Lines" renamed "Dead Leads" 2026-11-03, same reasoning as DISPOSITIONS.dead_number's label.
+    disconnected: "Dead Leads",
     no_shows: "No Shows",
     // Per-NUMBER marks (2026-11-02, see components/leads/phone-number-list.tsx) -- how many individual
     // phone numbers this person marked, and how many of those were good vs. wrong/dead.
@@ -739,8 +740,14 @@ export const FALLBACK_OBJECTIONS = [
 export const DISPOSITIONS = [
   {
     outcome: "dead_number",
-    label: "🔴 Dead Line",
-    help: "Number is disconnected or bad. Removes from queue.",
+    // "Dead Line" renamed "Dead Lead" 2026-11-03 (user: "dead line ko dead lead name pr shift krna
+    // hoga confusion ho rhi hai... yeh hamary pass dead lead pr mark hota ha k lead not in ICP ho
+    // wgera" -- a colleague read "Dead Line" as being about a bad PHONE NUMBER and used it for a Wrong
+    // Number situation; this disposition is actually about the LEAD not being worth pursuing (not ICP
+    // fit, etc.), not the number itself -- Wrong Number is the button for a bad number. Wire value
+    // (outcome: "dead_number") unchanged -- only the label/help text changed.
+    label: "🔴 Dead Lead",
+    help: "Lead isn't a fit (not ICP, shut down, etc.) -- not about the phone number. Removes from queue.",
   },
   {
     outcome: "voicemail",
@@ -1142,9 +1149,9 @@ export const CLOSING_DISPOSITIONS: Record<
   { title: (company: string) => string; body: string; confirmLabel: string }
 > = {
   dead_number: {
-    title: (company) => `Mark ${company}'s number as a Dead Line?`,
-    body: `The number is disconnected or bad.\n\n${HIDDEN_STAY_NOTE}`,
-    confirmLabel: "Yes, dead line",
+    title: (company) => `Mark ${company} as a Dead Lead?`,
+    body: `This lead isn't a fit (not ICP, shut down, etc.) -- not about the phone number itself (use Wrong Number for a bad number).\n\n${HIDDEN_STAY_NOTE}`,
+    confirmLabel: "Yes, dead lead",
   },
   not_interested: {
     title: (company) => `Mark ${company} as No Interest?`,
@@ -1373,7 +1380,9 @@ export const ACTIVITY_SCROLLER = {
   // can each get their own distinct, high-contrast color -- the app only
   // has 4-5 semantic tokens, not enough for 10 visually-different cards.
   cards: [
-    { key: "calls", label: "Calls", color: "#3b82f6" },
+    // "Calls" renamed "Company Calls" 2026-11-03, matching the per-rep TeamTable's own column label
+    // (TEAM_ACTIVITY.columns.calls) -- user noticed the two tables were inconsistent.
+    { key: "calls", label: "Company Calls", color: "#3b82f6" },
     // Org-wide total of individual phone NUMBERS marked, 2026-11-02 (user: "yeh waly cards update nhi
     // hue why" -- wanted the per-rep Numbers Called stat reflected here too, combined across everyone;
     // then: "yeh card call k bilkl sath ayega last me nhi bilkl" -- right next to Calls, not at the end).
@@ -1392,7 +1401,8 @@ export const ACTIVITY_SCROLLER = {
     // _CALLBACK_OUTCOMES.
     { key: "callbacks", label: "Callbacks", color: "#0ea5e9" },
     { key: "meetings", label: "Meetings", color: "#14b8a6" },
-    { key: "disconnected", label: "Disconnected", color: "#ef4444" },
+    // "Disconnected"/"Dead Lines" renamed "Dead Leads" 2026-11-03, see DISPOSITIONS.dead_number's label.
+    { key: "disconnected", label: "Dead Leads", color: "#ef4444" },
     { key: "voicemail", label: "Voicemail", color: "#ec4899" },
     { key: "receptionist", label: "Receptionist", color: "#06b6d4" },
     { key: "decision_maker", label: "Decision Maker", color: "#6366f1" },
