@@ -39,6 +39,7 @@ const US_DROPDOWN = [
 
 const OTHER_CLOCKS = [
   { code: "GB", label: "UK", tz: "Europe/London" },
+  { code: "DE", label: "Germany", tz: "Europe/Berlin" }, // CET/CEST, added 2026-11-04 (user request)
   { code: "AU", label: "Sydney", tz: "Australia/Sydney" },
   { code: "SA", label: "KSA", tz: "Asia/Riyadh" },
 ] as const;

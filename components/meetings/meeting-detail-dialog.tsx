@@ -26,7 +26,7 @@ import {
   TOASTS,
   countryLabel,
 } from "@/lib/constants";
-import { currency, displayDomain, externalUrl, hasUsableEmail } from "@/lib/format";
+import { addedAt, currency, displayDomain, externalUrl, hasUsableEmail } from "@/lib/format";
 import type { Lead } from "@/types";
 import { CategoryLabel, CountryFlag, Ico, withIcons } from "@/components/ui/emoji-icon";
 
@@ -227,6 +227,10 @@ export function MeetingDetailDialog({
     );
   }
 
+  const hasOpenCallback =
+    lead.pipeline_stage === "followup_due" &&
+    (Boolean(lead.callback_at) || lead.last_call_outcome === "callback_scheduled");
+
   return (
     <>
       {celebrate && <Celebration onDone={() => setCelebrate(false)} />}
@@ -337,6 +341,13 @@ export function MeetingDetailDialog({
               )}{" "}
               · {currency(lead.deal_value)} · <CategoryLabel value={lead.industry_tag} />
             </p>
+            {/* Callback date (2026-11-04, user: callback + reminder status visible here like on the
+                Callbacks tab) -- same open-callback rule as PipelineView's hasOpenCallback(). */}
+            {hasOpenCallback && lead.callback_at && (
+              <p className="text-[0.85rem] text-muted">
+                <strong>Callback:</strong> {addedAt(lead.callback_at)}
+              </p>
+            )}
             {lead.reason && (
               <p className="text-[0.82rem] text-muted">
                 <strong>Sales Angle:</strong> {lead.reason}
@@ -463,6 +474,15 @@ export function MeetingDetailDialog({
                   <AttemptTracker lead={lead} context="proposal" />
                   <FollowupTracker lead={lead} context="email_followup" />
                   <FollowupTracker lead={lead} context="call_followup" />
+                </div>
+              )}
+              {/* Callback's reminder tracker (2026-11-04) -- same FollowupTracker the Callbacks tab shows:
+                  when the reminder is due, and whether one is set at all. A No Show lead uses its own
+                  trackers below instead, same either/or as PipelineSummary. */}
+              {!callbackPrompt && !notInterestedPrompt && !proposalPrompt && !noShowPrompt &&
+                hasOpenCallback && !lead.no_show_at && (
+                <div className="mt-2 flex flex-col gap-2">
+                  <FollowupTracker lead={lead} context="callback" />
                 </div>
               )}
               {/* No Show's own Email/Call Attempt trackers (user, 2026-10-19) -- same pattern as Proposal
