@@ -1,6 +1,7 @@
 "use client";
 
-import { Bell, CalendarClock, Clock } from "lucide-react";
+import { Bell, CalendarClock, Clock, X } from "lucide-react";
+import { createPortal } from "react-dom";
 import { CategoryLabel } from "@/components/ui/emoji-icon";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -152,7 +153,7 @@ export function NotificationBell() {
   // No interval, no focus refetch: kept fresh by the count effect below and by opening the dropdown.
   const list = useQuery({
     queryKey: ["notifications"],
-    queryFn: () => notificationsApi.list(20),
+    queryFn: () => notificationsApi.list(50),
     enabled: signedIn && (open || unread > 0),
     retry: false,
   });
@@ -194,16 +195,11 @@ export function NotificationBell() {
   // Close on outside click / Escape.
   useEffect(() => {
     if (!open) return;
-    const away = (e: MouseEvent) => {
-      if (boxRef.current && !boxRef.current.contains(e.target as Node)) setOpen(false);
-    };
+    // Outside-click is handled by the drawer's backdrop (the drawer is portaled to <body>, so it is not
+    // inside boxRef any more) -- only Escape needs a listener here.
     const esc = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
-    document.addEventListener("mousedown", away);
     document.addEventListener("keydown", esc);
-    return () => {
-      document.removeEventListener("mousedown", away);
-      document.removeEventListener("keydown", esc);
-    };
+    return () => document.removeEventListener("keydown", esc);
   }, [open]);
 
   // Both read endpoints already return the new unread count -- use it instead of asking again.
@@ -213,6 +209,30 @@ export function NotificationBell() {
   };
   const markRead = useMutation({ mutationFn: notificationsApi.markRead, onSuccess: applyRead });
   const markAll = useMutation({ mutationFn: notificationsApi.markAllRead, onSuccess: applyRead });
+  // Dismiss one (2026-11-06, user: "an option to clear individual notification as I read them").
+  // Optimistic (2026-11-06, user: clearing felt slow): the row disappears and the badge drops at once;
+  // the server DELETE runs behind it, and a failure puts the row back. No list refetch on success --
+  // the cache already matches, and the DELETE's own response carries the true unread count.
+  const dismiss = useMutation({
+    mutationFn: notificationsApi.dismiss,
+    onMutate: async (id: number) => {
+      await qc.cancelQueries({ queryKey: ["notifications"] });
+      const prevList = qc.getQueryData<AppNotification[]>(["notifications"]);
+      const prevCount = qc.getQueryData<{ count: number }>(["notifications-count"]);
+      const gone = prevList?.find((x) => x.id === id);
+      qc.setQueryData<AppNotification[]>(["notifications"], (old) => old?.filter((x) => x.id !== id));
+      if (gone && !gone.read && prevCount) {
+        qc.setQueryData(["notifications-count"], { count: Math.max(0, prevCount.count - 1) });
+      }
+      return { prevList, prevCount };
+    },
+    onError: (_err, _id, ctx) => {
+      if (ctx?.prevList) qc.setQueryData(["notifications"], ctx.prevList);
+      if (ctx?.prevCount) qc.setQueryData(["notifications-count"], ctx.prevCount);
+      toast.error("Could not clear that notification. Try again.");
+    },
+    onSuccess: (res) => qc.setQueryData(["notifications-count"], res),
+  });
 
   /**
    * Fixed 2026-10-16 (user: "me jab click kr rha hun toh woh pipeline pr ja kr lead dhund rha or usy mill
@@ -296,102 +316,120 @@ export function NotificationBell() {
         )}
       </button>
 
-      {open && (
-        <>
-          {/* Backdrop, mobile only (2026-10-03, caught live on a phone -- "acha nahi lag raha"): without
-              it, whatever sits behind the panel (other top bar buttons, the page content underneath) kept
-              showing through at the edges, reading as cluttered/half-transparent. Same `fixed inset-0`
-              dim-and-tap-to-close pattern the mobile sidebar drawer already uses. Not shown at `sm:` and
-              up -- the panel is narrow there and this never looked like a problem on a bigger screen. */}
-          <div className="fixed inset-0 z-40 bg-black/50 sm:hidden" onClick={() => setOpen(false)} aria-hidden />
-          {/* max-w is viewport-relative, not just 90vw (2026-10-03, caught live on a phone): the bell
-              isn't the rightmost element -- UserMenu's avatar sits to its right below `lg` -- so `right-0`
-              anchors this panel's right edge well short of the true screen edge. A width that's merely
-              "90% of the viewport" could still be wider than the actual room to the panel's left, pushing
-              its left edge past x=0 and clipping it (confirmed: the first letter of "Notifications" was
-              cut off). Reserving a fixed ~3.5rem (covers the avatar + gap) out of 100vw guarantees the
-              left edge never goes negative, however narrow the phone. */}
-          <div className="absolute right-0 z-50 mt-2 w-96 max-w-[calc(100vw-3.5rem)] rounded-[10px] border border-border bg-card shadow-lg">
-          <div className="flex items-center justify-between border-b border-border px-3 py-2">
-            <span className="text-[0.95rem] font-semibold">{NOTIFICATIONS.title}</span>
-            {unread > 0 && (
-              <button
-                type="button"
-                onClick={() => markAll.mutate()}
-                disabled={markAll.isPending}
-                className="inline-flex cursor-pointer items-center gap-1 text-[0.8rem] font-semibold text-accent hover:underline disabled:cursor-default"
-              >
-                {markAll.isPending && <Loader className="h-3 w-3" />}
-                {NOTIFICATIONS.markAll}
-              </button>
-            )}
-          </div>
-          <ul className="max-h-96 overflow-auto">
-            {list.isError && <li className="px-3 py-4 text-[0.85rem] text-danger">{NOTIFICATIONS.loadFailed}</li>}
-            {!list.isError && items.length === 0 && (
-              <li className="px-3 py-4 text-[0.85rem] text-muted">{NOTIFICATIONS.empty}</li>
-            )}
-            {items.map((n) => (
-              <li key={n.id}>
-                <button
-                  type="button"
-                  onClick={() => go(n)}
-                  className="flex w-full cursor-pointer items-start gap-2 border-b border-border px-3 py-2 text-left last:border-b-0 hover:bg-input"
-                >
-                  {n.kind === "meeting_reminder" ? (
-                    <CalendarClock className="mt-0.5 h-4 w-4 shrink-0" style={{ color: "var(--accent)" }} aria-hidden />
-                  ) : n.kind === "attempt_reminder" ? (
-                    <Clock className="mt-0.5 h-4 w-4 shrink-0" style={{ color: "var(--warn)" }} aria-hidden />
-                  ) : (
-                    <span
-                      className="mt-1.5 h-2 w-2 shrink-0 rounded-full"
-                      style={{ background: n.read ? "transparent" : "var(--accent)" }}
-                      aria-hidden
-                    />
+      {open &&
+        createPortal(
+          <>
+            {/* Right-side drawer (2026-11-06, user: "Notifications UI should be on the right side, I'm
+                really not able to navigate through this small box") -- full height instead of the old
+                ~384px dropdown under the bell. Portaled to <body> so no ancestor's transform/filter can
+                break `fixed`. The backdrop closes it on click (all sizes now, not just mobile). */}
+            <div className="fixed inset-0 z-40 bg-black/40" onClick={() => setOpen(false)} aria-hidden />
+            <aside
+              role="dialog"
+              aria-label={NOTIFICATIONS.title}
+              className="fixed bottom-0 right-0 top-0 z-50 flex w-[440px] max-w-full flex-col border-l border-border bg-card shadow-[var(--shadow-overlay)]"
+            >
+              <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
+                <span className="text-[1.05rem] font-semibold">{NOTIFICATIONS.title}</span>
+                <div className="flex items-center gap-3">
+                  {unread > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => markAll.mutate()}
+                      disabled={markAll.isPending}
+                      className="inline-flex cursor-pointer items-center gap-1 text-[0.8rem] font-semibold text-accent hover:underline disabled:cursor-default"
+                    >
+                      {markAll.isPending && <Loader className="h-3 w-3" />}
+                      {NOTIFICATIONS.markAll}
+                    </button>
                   )}
-                  <span className="min-w-0 flex-1">
-                    {/* Lead name / category / who added / who last touched it -- user, 2026-09-28: a bare
-                        "Someone mentioned you on X" left no way to tell what this was about at a glance;
-                        this reads the same as a lead card without opening it. Blank fields (pre-login data,
-                        or no lead at all -- e.g. a Problem Desk mention) just don't render their line. */}
-                    {n.company_name && (
-                      <span className="block truncate text-[0.85rem] font-semibold">
-                        {n.company_name}
-                        {n.category && (
-                          <span className="ml-1.5 text-[0.72rem] font-normal text-muted">
-                            <CategoryLabel value={n.category} />
+                  <button
+                    type="button"
+                    onClick={() => setOpen(false)}
+                    aria-label="Close notifications"
+                    className="cursor-pointer text-muted hover:text-text"
+                  >
+                    <X className="h-5 w-5" aria-hidden />
+                  </button>
+                </div>
+              </div>
+              <ul className="min-h-0 flex-1 overflow-y-auto">
+                {list.isError && <li className="px-4 py-4 text-[0.85rem] text-danger">{NOTIFICATIONS.loadFailed}</li>}
+                {!list.isError && items.length === 0 && (
+                  <li className="px-4 py-4 text-[0.85rem] text-muted">{NOTIFICATIONS.empty}</li>
+                )}
+                {items.map((n) => (
+                  <li key={n.id} className="group relative border-b border-border last:border-b-0">
+                    <button
+                      type="button"
+                      onClick={() => go(n)}
+                      className="flex w-full cursor-pointer items-start gap-2 px-4 py-3 pr-11 text-left hover:bg-input"
+                    >
+                      {n.kind === "meeting_reminder" ? (
+                        <CalendarClock className="mt-0.5 h-4 w-4 shrink-0" style={{ color: "var(--accent)" }} aria-hidden />
+                      ) : n.kind === "attempt_reminder" ? (
+                        <Clock className="mt-0.5 h-4 w-4 shrink-0" style={{ color: "var(--warn)" }} aria-hidden />
+                      ) : (
+                        <span
+                          className="mt-1.5 h-2 w-2 shrink-0 rounded-full"
+                          style={{ background: n.read ? "transparent" : "var(--accent)" }}
+                          aria-hidden
+                        />
+                      )}
+                      <span className="min-w-0 flex-1">
+                        {/* Lead name / category / who added / who last touched it -- user, 2026-09-28: a bare
+                            "Someone mentioned you on X" left no way to tell what this was about at a glance;
+                            this reads the same as a lead card without opening it. Blank fields (pre-login data,
+                            or no lead at all -- e.g. a Problem Desk mention) just don't render their line. */}
+                        {n.company_name && (
+                          <span className="block truncate text-[0.85rem] font-semibold">
+                            {n.company_name}
+                            {n.category && (
+                              <span className="ml-1.5 text-[0.72rem] font-normal text-muted">
+                                <CategoryLabel value={n.category} />
+                              </span>
+                            )}
                           </span>
                         )}
+                        {(n.added_by_name || n.last_activity_by_name) && (
+                          <span className="block text-[0.72rem] text-muted">
+                            {n.added_by_name && `Added by ${n.added_by_name}`}
+                            {n.added_by_name && n.last_activity_by_name && " · "}
+                            {n.last_activity_by_name && `Last activity by ${n.last_activity_by_name}`}
+                          </span>
+                        )}
+                        {n.stage && STAGE_BADGE[n.stage] && (
+                          <span
+                            className="mt-0.5 inline-block rounded-[6px] px-1.5 py-0.5 text-[0.72rem] font-semibold"
+                            style={{ background: STAGE_BADGE[n.stage].color, color: "#fff" }}
+                          >
+                            {STAGE_BADGE[n.stage].label}
+                          </span>
+                        )}
+                        <span className={`block text-[0.88rem] ${n.read ? "" : "font-semibold"}`}>{messageText(n)}</span>
+                        {!isSystemReminder(n) && n.excerpt && (
+                          <span className="mt-0.5 block truncate text-[0.8rem] text-muted">{n.excerpt}</span>
+                        )}
+                        <span className="mt-0.5 block text-[0.72rem] text-muted">{notificationTime(n.created_at)}</span>
                       </span>
-                    )}
-                    {(n.added_by_name || n.last_activity_by_name) && (
-                      <span className="block text-[0.72rem] text-muted">
-                        {n.added_by_name && `Added by ${n.added_by_name}`}
-                        {n.added_by_name && n.last_activity_by_name && " · "}
-                        {n.last_activity_by_name && `Last activity by ${n.last_activity_by_name}`}
-                      </span>
-                    )}
-                    {n.stage && STAGE_BADGE[n.stage] && (
-                      <span
-                        className="mt-0.5 inline-block rounded-[6px] px-1.5 py-0.5 text-[0.72rem] font-semibold"
-                        style={{ background: STAGE_BADGE[n.stage].color, color: "#fff" }}
-                      >
-                        {STAGE_BADGE[n.stage].label}
-                      </span>
-                    )}
-                    <span className={`block text-[0.88rem] ${n.read ? "" : "font-semibold"}`}>{messageText(n)}</span>
-                    {!isSystemReminder(n) && n.excerpt && (
-                      <span className="mt-0.5 block truncate text-[0.8rem] text-muted">{n.excerpt}</span>
-                    )}
-                    <span className="mt-0.5 block text-[0.72rem] text-muted">{notificationTime(n.created_at)}</span>
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-          </div>
-        </>
-      )}
+                    </button>
+                    {/* Clear just this one -- sibling of the row button (a <button> can't nest in one). */}
+                    <button
+                      type="button"
+                      onClick={() => dismiss.mutate(n.id)}
+                      aria-label="Clear this notification"
+                      title="Clear"
+                      className="absolute right-2 top-2 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full text-muted hover:bg-border hover:text-text"
+                    >
+                      <X className="h-4 w-4" aria-hidden />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </aside>
+          </>,
+          document.body,
+        )}
     </div>
   );
 }

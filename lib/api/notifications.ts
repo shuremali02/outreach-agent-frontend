@@ -6,5 +6,6 @@ export const notificationsApi = {
   list: (limit = 20) => api.get<AppNotification[]>("/notifications", { limit }),
   unreadCount: () => api.get<{ count: number }>("/notifications/unread-count"),
   markRead: (id: number) => api.post<{ count: number }>(`/notifications/${id}/read`),
+  dismiss: (id: number) => api.delete<{ count: number }>(`/notifications/${id}`),
   markAllRead: () => api.post<{ count: number }>("/notifications/read-all"),
 };

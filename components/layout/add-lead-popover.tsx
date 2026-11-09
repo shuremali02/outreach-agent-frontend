@@ -46,6 +46,10 @@ const EMPTY: CreateLeadInput = {
 export function AddLeadPopover() {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<CreateLeadInput>(EMPTY);
+  // Raw typed text for Deal Value (2026-11-06, user: couldn't clear the 0/10000 to type 35500 -- a number
+  // state turned a cleared field straight back into 0). form.deal_value is kept in sync as a number
+  // (Number(text) || 0) so submit/reset logic is unchanged.
+  const [dealValueText, setDealValueText] = useState(String(EMPTY.deal_value ?? ""));
   const [error, setError] = useState<string | null>(null);
   // Separate date/time inputs, combined into meeting_at on submit -- same
   // pattern as Pipeline/Contacts' stage editors. A rep adding a lead they
@@ -100,6 +104,7 @@ export function AddLeadPopover() {
       qc.invalidateQueries({ queryKey: ["leads"] });
       qc.invalidateQueries({ queryKey: ["metrics"] });
       setForm(EMPTY);
+      setDealValueText(String(EMPTY.deal_value ?? ""));
       setMeetingDate("");
       setMeetingTime("");
       setExtraContacts([]);
@@ -355,8 +360,12 @@ export function AddLeadPopover() {
                   type="number"
                   step={1000}
                   min={0}
-                  value={form.deal_value}
-                  onChange={(e) => set("deal_value", Number(e.target.value))}
+                  value={dealValueText}
+                  placeholder="0"
+                  onChange={(e) => {
+                    setDealValueText(e.target.value);
+                    set("deal_value", Number(e.target.value) || 0);
+                  }}
                 />
               </Field>
               <Field label="Pipeline Stage">

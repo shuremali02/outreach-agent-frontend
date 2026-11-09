@@ -6,10 +6,13 @@ import { metricsApi } from "@/lib/api";
 export const dynamic = "force-dynamic";
 
 export default async function TerminalPage() {
-  // Each source can fail on its own (Google Sheet down / older backend): show what loads.
-  const [weeks, sheet] = await Promise.all([
-    metricsApi.teamWeeks().catch(() => null),
-    metricsApi.team().catch(() => null),
-  ]);
-  return <TerminalTabs weeks={weeks} sheet={sheet} />;
+  // Google Sheet fetch commented out 2026-11-07 (tab removed, so no point calling the sheet endpoint on
+  // every page load). Restore together with the SHEET TAB blocks in terminal-tabs.tsx:
+  // const [weeks, sheet] = await Promise.all([
+  //   metricsApi.teamWeeks().catch(() => null),
+  //   metricsApi.team().catch(() => null),
+  // ]);
+  // return <TerminalTabs weeks={weeks} sheet={sheet} />;
+  const weeks = await metricsApi.teamWeeks().catch(() => null);
+  return <TerminalTabs weeks={weeks} />;
 }

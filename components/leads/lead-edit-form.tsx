@@ -255,7 +255,9 @@ function LeadEditFormFields({ lead, onDone }: { lead: Lead; onDone?: () => void 
   const [stage, setStage] = useState<PipelineStage>(lead.pipeline_stage);
   const [phone, setPhone] = useState(lead.contact_phone);
   const [linkedin, setLinkedin] = useState(lead.contact_linkedin);
-  const [dealValue, setDealValue] = useState(lead.deal_value);
+  // Kept as the raw TEXT the rep types (2026-11-06, user: "yeh zero jata hi nahi" -- couldn't type 35500
+  // because a number state turned a cleared field straight back into 0). Converted only on save.
+  const [dealValue, setDealValue] = useState(lead.deal_value ? String(lead.deal_value) : "");
   // Corrects a wrong or missing country on an already-saved lead.
   const [country, setCountry] = useState(lead.country);
   // No way at all to set a meeting date/time otherwise, so selecting "Meeting Booked" here always left
@@ -383,7 +385,8 @@ function LeadEditFormFields({ lead, onDone }: { lead: Lead; onDone?: () => void 
           step={1000}
           min={0}
           value={dealValue}
-          onChange={(e) => setDealValue(Number(e.target.value))}
+          placeholder="0"
+          onChange={(e) => setDealValue(e.target.value)}
         />
       </Field>
       <Field label="Country">
@@ -428,7 +431,7 @@ function LeadEditFormFields({ lead, onDone }: { lead: Lead; onDone?: () => void 
                 pipeline_stage: stage,
                 contact_phone: phone,
                 contact_linkedin: linkedin,
-                deal_value: dealValue,
+                deal_value: Number(dealValue) || 0,
                 country,
                 ...(meetingDate && meetingTime
                   ? { meeting_at: `${meetingDate}T${meetingTime}:00` }
