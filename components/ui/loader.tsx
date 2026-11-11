@@ -14,7 +14,7 @@ export function Loader({ className }: { className?: string }) {
 
 export function PageLoader() {
   return (
-    <div className="flex h-full min-h-[50vh] w-full items-center justify-center px-8">
+    <div className="flex h-full min-h-[50dvh] w-full items-center justify-center px-8">
       <div className="w-full max-w-xs">
         <BarLoader />
       </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { NotesLog } from "@/components/leads/notes-log";
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useUpdateLead, useCallOutcome, useAddNote, useCallPickedBy } from "@/hooks/use-leads";
@@ -586,9 +587,7 @@ export function Battlecard({
                 {withIcons(notesOpen ? BATTLECARD.hideNotes : BATTLECARD.showNotes)}
               </button>
               {notesOpen && (
-                <p className="mt-1.5 whitespace-pre-line rounded-[8px] bg-input px-3 py-2 text-[0.85rem]">
-                  {lead.notes}
-                </p>
+                <NotesLog notes={lead.notes} className="mt-1.5" />
               )}
             </div>
           )}

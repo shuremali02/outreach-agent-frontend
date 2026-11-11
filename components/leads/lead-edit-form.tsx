@@ -148,7 +148,7 @@ function DecisionMakersSection({ leadId }: { leadId: number }) {
                 key={c.id}
                 className="flex items-center justify-between gap-2 border-b border-border py-1.5 text-[0.82rem] last:border-0"
               >
-                <span>
+                <span className="min-w-0 break-words">
                   <strong>{c.name}</strong>
                   {c.role && <span className="text-muted"> — {c.role}</span>}
                   {c.email && <span className="text-muted"> · {c.email}</span>}

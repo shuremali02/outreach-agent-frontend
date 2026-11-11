@@ -7,6 +7,7 @@ import { EMPTY_STATES, MEETINGS_CALENDAR } from "@/lib/constants";
 import type { Lead } from "@/types";
 import { withIcons } from "@/components/ui/emoji-icon";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-is-mobile";
 
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -70,6 +71,8 @@ function CallbackEntry({ lead, isToday }: { lead: Lead; isToday: boolean }) {
 }
 
 export function CallbacksCalendar({ leads }: { leads: Lead[] }) {
+  // Phone: one entry per day, the rest behind "+N more" (user, 2026-11-11). Desktop still shows 2.
+  const perDay = useIsMobile() ? 1 : 2;
   const callbacks = useMemo(() => leads.filter((l) => l.callback_at), [leads]);
 
   const [cursor, setCursor] = useState(() => todayInPKT());
@@ -172,7 +175,7 @@ export function CallbacksCalendar({ leads }: { leads: Lead[] }) {
                 const isToday = key === todayKey;
                 const dayCallbacks = byDay.get(key) ?? [];
                 const isExpanded = expanded === key;
-                const visible = isExpanded ? dayCallbacks : dayCallbacks.slice(0, 2);
+                const visible = isExpanded ? dayCallbacks : dayCallbacks.slice(0, perDay);
                 const hiddenCount = dayCallbacks.length - visible.length;
                 return (
                   <div

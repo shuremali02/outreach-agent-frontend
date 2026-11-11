@@ -13,7 +13,6 @@ import { LinkedInResearchPanel, HunterDecisionMakers, SiteScanPanel } from "@/co
 import { NotesPanel } from "@/components/leads/notes-panel";
 import { MetricCard } from "@/components/metrics/metric-card";
 import { Button } from "@/components/ui/button";
-import { Celebration } from "@/components/ui/celebration";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import { Select, Field, Input, Textarea } from "@/components/ui/input";
@@ -167,12 +166,9 @@ function PipelineActions({ lead }: { lead: Lead }) {
   // No Show's own blocking reminder gate (user, 2026-10-19: "humny jo system proposal button pr lgaya
   // hai same woh no show pr bhi lagega") -- identical mechanism, see onNoShowScheduled below.
   const [noShowPrompt, setNoShowPrompt] = useState(false);
-  // "Client Closed" celebration (2026-11-10, user: "pipeline tab sy woh closed won dbaya na celebration
-  // aya jo pehle humny lagaya tha") -- Celebration (components/ui/celebration.tsx) was only ever wired
-  // into the Meetings detail dialog's own Client Closed button (meeting-detail-dialog.tsx), never into
-  // this shared PipelineActions (used by both Pipeline and Callbacks), so pressing it from either of
-  // those pages never showed anything -- not a regression, just never built here.
-  const [celebrate, setCelebrate] = useState(false);
+  // "Client Closed" celebration: fired from useMeetingOutcome()'s own onSuccess (hooks/use-leads.ts) and
+  // rendered by CelebrationHost in Providers -- NOT local state here, because this card unmounts the moment
+  // the won lead leaves the list (2026-11-11).
   const noShowOutcome = MEETING_OUTCOMES.find((o) => o.noShow)!;
 
   // Not Interested / Proposal Send / Client Closed -- the same 3 (of 4) MEETING_OUTCOMES entries the
@@ -205,7 +201,6 @@ function PipelineActions({ lead }: { lead: Lead }) {
       {
         onSuccess: () => {
           toast.success(o.done(lead.company_name));
-          if (o.stage === "won") setCelebrate(true);
         },
         onError: (e) => toast.error(e instanceof Error ? e.message : TOASTS.actionFailed),
       },
@@ -391,7 +386,6 @@ function PipelineActions({ lead }: { lead: Lead }) {
 
   return (
     <>
-      {celebrate && <Celebration onDone={() => setCelebrate(false)} />}
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
       {/* One shared `outcome` mutation for all 3 buttons -- `disabled` blocks all of them while any one
           is in flight (a rep noticed, 2026-09-23: "loader spinner har button par chal rha hai"), but the
@@ -626,7 +620,7 @@ function CallbackDaySection({
           -- NOT a fixed column count: 1 column on a narrow phone, many columns filling the full width on
           a large monitor, every width in between gets its own natural column count. Replaces the earlier
           fixed-width flex-wrap tiles, which left most of a wide screen empty. */}
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4">
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(min(280px,100%),1fr))] gap-4">
         {dayLeads.map((lead) => (
           <CallbackGridTile key={lead.id} lead={lead} />
         ))}

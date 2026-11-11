@@ -1,5 +1,6 @@
 "use client";
 
+import { NotesLog } from "@/components/leads/notes-log";
 import { useMemo, useState } from "react";
 import { useCallOutcome, useLeads } from "@/hooks/use-leads";
 import { EditLeadDialog } from "@/components/leads/edit-lead-dialog";
@@ -114,7 +115,7 @@ function NeedsFollowUpCard({ lead, calendarLink }: { lead: Lead; calendarLink: s
         {lead.notes && (
           <div>
             <h4 className="mb-1 text-[1rem] font-semibold"><Ico e="📝" /> Notes</h4>
-            <p className="whitespace-pre-line rounded-[8px] bg-input px-3 py-2 text-[0.85rem]">{lead.notes}</p>
+            <NotesLog notes={lead.notes} />
           </div>
         )}
         <div>

@@ -3,6 +3,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { ConfirmProvider } from "@/components/ui/confirm-dialog";
+import { CelebrationHost } from "@/components/ui/celebration-host";
 import { ToastProvider } from "@/components/ui/toast";
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -39,6 +40,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <QueryClientProvider client={client}>
       <ToastProvider>
         <ConfirmProvider>{children}</ConfirmProvider>
+        <CelebrationHost />
       </ToastProvider>
     </QueryClientProvider>
   );

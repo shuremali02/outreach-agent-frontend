@@ -11,7 +11,6 @@ import { NoShowReminderPrompt } from "@/components/pipeline/no-show-reminder-pro
 import { NotesPanel } from "@/components/leads/notes-panel";
 import { PhoneNumberList } from "@/components/leads/phone-number-list";
 import { Button } from "@/components/ui/button";
-import { Celebration } from "@/components/ui/celebration";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { Field, Input, Textarea } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
@@ -85,9 +84,7 @@ export function MeetingDetailDialog({
   const [callbackDate, setCallbackDate] = useState("");
   const [callbackTime, setCallbackTime] = useState("");
   const callbackOutcome = MEETING_OUTCOMES.find((o) => o.stage === "followup_due" && !o.noShow)!;
-  // "Client Closed" celebration (user, 2026-10-14) -- a sibling of <Dialog.Root>, not inside its Portal,
-  // so it keeps rendering even once setOpen(false) below unmounts the dialog's own content.
-  const [celebrate, setCelebrate] = useState(false);
+  // "Client Closed" celebration now fires from useMeetingOutcome()'s onSuccess (hooks/use-leads.ts).
 
   // Reschedule THIS meeting's date/time (2026-10-30) -- a plain meeting_at PATCH, not a disposition/call
   // outcome, so it uses the generic update mutation, not useMeetingOutcome()/useCallOutcome(). meeting_at
@@ -159,7 +156,6 @@ export function MeetingDetailDialog({
       {
         onSuccess: () => {
           toast.success(outcome.done(lead.company_name));
-          if (outcome.stage === "won") setCelebrate(true);
           // Proposal Sent stays open (user, 2026-10-16: "humny dropdown show krna tha... taky me
           // reminder set kr skun") -- the Email/Call Attempt trackers render inline below so a rep can
           // schedule the first reminder right away, instead of having to re-open the lead on Pipeline.
@@ -233,12 +229,11 @@ export function MeetingDetailDialog({
 
   return (
     <>
-      {celebrate && <Celebration onDone={() => setCelebrate(false)} />}
       <Dialog.Root open={open} onOpenChange={setOpen}>
         <Dialog.Trigger asChild>{trigger}</Dialog.Trigger>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/50" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 max-h-[85vh] w-[92vw] max-w-[440px] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-[12px] border border-border bg-card p-5 shadow-[var(--shadow-overlay)]">
+        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 max-h-[85dvh] w-[92vw] max-w-[440px] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-[12px] border border-border bg-card p-5 shadow-[var(--shadow-overlay)]">
           <div className="mb-3 flex items-start justify-between gap-3">
             <Dialog.Title className="text-[1.05rem] font-semibold">
               {lead.company_name}

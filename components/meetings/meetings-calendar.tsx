@@ -9,6 +9,7 @@ import { EMPTY_STATES, MEETINGS_CALENDAR, STAGE_LABELS } from "@/lib/constants";
 import type { Lead } from "@/types";
 import { Ico, withIcons } from "@/components/ui/emoji-icon";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-is-mobile";
 
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -146,6 +147,8 @@ function MeetingEntry({ lead, isToday }: { lead: Lead; isToday?: boolean }) {
  * only by meeting_at being set.
  */
 export function MeetingsCalendar({ initialLeads }: { initialLeads: Lead[] }) {
+  // Phone: one entry per day, the rest behind "+N more" (user, 2026-11-11). Desktop still shows 2.
+  const perDay = useIsMobile() ? 1 : 2;
   const { data: allLeads = [] } = useLeads({ includeMeetingHidden: true }, initialLeads);
   // A lead can reach meeting_booked without a time (e.g. dragged there
   // directly via the Pipeline stage dropdown) -- those simply don't render
@@ -276,7 +279,7 @@ export function MeetingsCalendar({ initialLeads }: { initialLeads: Lead[] }) {
               const isToday = key === todayKey;
               const dayMeetings = byDay.get(key) ?? [];
               const isExpanded = expanded === key;
-              const visible = isExpanded ? dayMeetings : dayMeetings.slice(0, 2);
+              const visible = isExpanded ? dayMeetings : dayMeetings.slice(0, perDay);
               const hiddenCount = dayMeetings.length - visible.length;
               return (
                 <div

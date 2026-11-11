@@ -22,7 +22,7 @@ export default async function WorkspaceLayout({ children }: LayoutProps<"/">) {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-bg">
+    <div className="flex h-dvh overflow-hidden bg-bg">
       <Sidebar initialMetrics={metrics} initialStatus={status} />
       <div className="flex min-w-0 flex-1 flex-col">
         <Suspense fallback={<div className="h-[53px] border-b border-border" />}>

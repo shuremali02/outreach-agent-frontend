@@ -37,6 +37,10 @@ export const metadata: Metadata = {
 // defaults to dark.
 export const viewport: Viewport = {
   themeColor: "#0d0f12",
+  width: "device-width",
+  initialScale: 1,
+  // Lets env(safe-area-inset-*) work on notched iPhones / Android gesture bars.
+  viewportFit: "cover",
 };
 
 /**

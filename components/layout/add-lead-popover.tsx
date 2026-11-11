@@ -150,7 +150,7 @@ export function AddLeadPopover() {
           // the form grows taller than the viewport, and this had no
           // max-height/overflow of its own -- the extra rows were just
           // clipped, with nothing on the page able to scroll to reach them.
-          className="z-50 max-h-[85vh] w-[92vw] max-w-[420px] overflow-y-auto rounded-[12px] border border-border bg-card p-5 shadow-[var(--shadow-overlay)]"
+          className="z-50 max-h-[85dvh] w-[92vw] max-w-[420px] overflow-y-auto rounded-[12px] border border-border bg-card p-5 shadow-[var(--shadow-overlay)]"
         >
           <form
             onSubmit={(e) => {

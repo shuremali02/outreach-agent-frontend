@@ -102,7 +102,7 @@ export function MentionField({ value, onChange, rows, ...rest }: Props) {
       {query !== null && options.length > 0 && (
         <ul
           role="listbox"
-          className="absolute left-0 z-50 mt-1 max-h-56 w-72 overflow-auto rounded-[8px] border border-border bg-card p-1 shadow-lg"
+          className="absolute left-0 z-50 mt-1 max-h-56 w-72 max-w-full overflow-auto rounded-[8px] border border-border bg-card p-1 shadow-lg"
         >
           {options.map((o, i) => (
             <li key={o.key} role="option" aria-selected={i === active}>

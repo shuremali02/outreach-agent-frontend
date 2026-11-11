@@ -87,7 +87,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         aria-label="Notifications"
         // Full-width, inset from both sides, below `sm` -- standard mobile toast placement. At `sm` and up,
         // today's exact bottom-right box (w-[380px], clamped so it never overflows a narrow desktop window).
-        className="pointer-events-none fixed inset-x-4 bottom-4 z-[100] flex flex-col gap-2 sm:inset-x-auto sm:right-4 sm:w-[380px] sm:max-w-[calc(100vw-2rem)]"
+        className="pointer-events-none fixed inset-x-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-[100] flex flex-col gap-2 sm:inset-x-auto sm:right-4 sm:w-[380px] sm:max-w-[calc(100vw-2rem)]"
       >
         {items.map((t) => {
           const { color, Icon } = TONE_STYLE[t.tone];

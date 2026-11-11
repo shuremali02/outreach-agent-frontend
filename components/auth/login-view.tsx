@@ -110,7 +110,7 @@ export function LoginView() {
   const creating = mode === "create";
 
   return (
-    <div className="grid min-h-screen bg-bg lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
+    <div className="grid min-h-dvh bg-bg lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
       {/* Brand panel: wide screens only. */}
       <aside className="hidden flex-col justify-between border-r border-border bg-sidebar p-12 lg:flex">
         <Logo />

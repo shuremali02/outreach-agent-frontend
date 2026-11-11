@@ -1,5 +1,6 @@
 "use client";
 
+import { celebrate } from "@/components/ui/celebration-host";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { leadsApi } from "@/lib/api";
 import type { MentionPayload } from "@/lib/mentions";
@@ -245,7 +246,13 @@ export function useMeetingOutcome() {
       noShow?: boolean;
       callbackAt?: string;
     }) => leadsApi.meetingOutcome(id, stage, noShow, callbackAt),
-    onSuccess: invalidate,
+    // Hook-level (not a per-call mutate() callback) on purpose: the lead card that called mutate() is
+    // unmounted as soon as the cache update moves a closed lead out of its list, and TanStack skips
+    // mutate()-level callbacks for an unmounted component -- the celebration never ran from Pipeline.
+    onSuccess: (updated, vars) => {
+      invalidate(updated);
+      if (vars.stage === "won") celebrate();
+    },
   });
 }
 

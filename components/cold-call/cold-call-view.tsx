@@ -34,6 +34,7 @@ import type { Lead } from "@/types";
 import { EMPTY_STATES } from "@/lib/constants";
 import { stripEmoji, withIcons } from "@/components/ui/emoji-icon";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-is-mobile";
 
 // Module-level, not component-scoped: a `new Set(...)` recreated every render was never referentially
 // stable, so the lint rule correctly flagged it as unusable in a useMemo dependency array -- adding it
@@ -76,6 +77,8 @@ export function ColdCallView({
   // app/(workspace)/cold-call/page.tsx (or linkedin/page.tsx) exactly.
   const { data: mainLeads = [] } = useLeads({ q, slim: false, desk: channel, tried: false }, initialLeads);
   const qc = useQueryClient();
+  // Phone: every card starts closed (user, 2026-11-11). Desktop keeps today's behaviour.
+  const isMobile = useIsMobile();
   // "Already Tried" dropdown (user, 2026-10-01): "" = nothing picked, nothing fetched. "tried" reuses the
   // existing desk+tried=true query; "no_answer"/"not_interested" are the new `bucket` filter -- see
   // lib/constants.ts ALREADY_TRIED_FILTER and types/lead.ts LeadFilters.bucket. `desk` is always sent
@@ -537,7 +540,7 @@ export function ColdCallView({
             {withIcons(COLD_CALL_QUEUE.newHeading(newLeads.length))}
           </h3>
           {newLeads.map((lead) => (
-            <Battlecard key={lead.id} lead={lead} onActionTaken={dismiss} defaultOpen={channel !== "linkedin"} />
+            <Battlecard key={`${lead.id}-${isMobile}`} lead={lead} onActionTaken={dismiss} defaultOpen={!isMobile && channel !== "linkedin"} />
           ))}
         </div>
       )}
@@ -589,7 +592,7 @@ export function ColdCallView({
                 </p>
               )}
               {bucketLeads.map((lead) => (
-                <Battlecard key={lead.id} lead={lead} onActionTaken={dismiss} defaultOpen={channel !== "linkedin"} />
+                <Battlecard key={`${lead.id}-${isMobile}`} lead={lead} onActionTaken={dismiss} defaultOpen={!isMobile && channel !== "linkedin"} />
               ))}
               {/* "Load More" (2026-10-13) -- not_interested's own list (bucketLeads for that bucket is
                   client-filtered straight off bucketResult.data, same underlying rows) also benefits:

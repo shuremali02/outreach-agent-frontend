@@ -11,6 +11,7 @@ import { useUsers } from "@/hooks/use-users";
 import { extractMentions } from "@/lib/mentions";
 import { MENTIONS } from "@/lib/constants";
 import type { Lead } from "@/types";
+import { NotesLog } from "@/components/leads/notes-log";
 import { Ico } from "@/components/ui/emoji-icon";
 
 /**
@@ -85,7 +86,7 @@ export function NotesPanel({ lead: listLead }: { lead: Lead }) {
       ) : (
         lead.notes && (
           <div className="flex flex-col gap-1">
-            <p className="whitespace-pre-line rounded-[8px] bg-input px-3 py-2 text-[0.85rem]">{lead.notes}</p>
+            <NotesLog notes={lead.notes} />
             <button
               type="button"
               onClick={() => setEditing({ from: lead.notes, text: lead.notes })}

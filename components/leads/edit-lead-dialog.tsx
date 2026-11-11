@@ -21,7 +21,7 @@ export function EditLeadDialog({ lead, trigger }: { lead: Lead; trigger: React.R
       <Dialog.Trigger asChild>{trigger}</Dialog.Trigger>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/50" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 max-h-[85vh] w-[480px] max-w-[calc(100vw-32px)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-[12px] border border-border bg-card p-5 shadow-[var(--shadow-overlay)]">
+        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 max-h-[85dvh] w-[480px] max-w-[calc(100vw-32px)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-[12px] border border-border bg-card p-5 shadow-[var(--shadow-overlay)]">
           <div className="mb-3 flex items-start justify-between gap-3">
             <Dialog.Title className="text-[1.05rem] font-semibold">{lead.company_name}</Dialog.Title>
             <Dialog.Close asChild>
