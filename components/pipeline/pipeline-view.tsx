@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useMemo, useState } from "react";
+import { CalendarDays, LayoutGrid, List, Star } from "lucide-react";
 import { useAddNote, useBookFollowupMeeting, useCallOutcome, useLeads, useMeetingOutcome } from "@/hooks/use-leads";
 import { EmailPickerDialog } from "@/components/leads/email-picker-dialog";
 import { EditLeadDialog } from "@/components/leads/edit-lead-dialog";
@@ -12,9 +13,13 @@ import { LinkedInResearchPanel, HunterDecisionMakers, SiteScanPanel } from "@/co
 import { NotesPanel } from "@/components/leads/notes-panel";
 import { MetricCard } from "@/components/metrics/metric-card";
 import { Button } from "@/components/ui/button";
+import { Celebration } from "@/components/ui/celebration";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import { Select, Field, Input, Textarea } from "@/components/ui/input";
+import { CallbackDetailDialog } from "./callback-detail-dialog";
+import { CallbacksCalendar } from "./callbacks-calendar";
+import { cn } from "@/lib/utils";
 import {
   COUNTRIES,
   LEAD_SOURCE_LABELS,
@@ -162,6 +167,12 @@ function PipelineActions({ lead }: { lead: Lead }) {
   // No Show's own blocking reminder gate (user, 2026-10-19: "humny jo system proposal button pr lgaya
   // hai same woh no show pr bhi lagega") -- identical mechanism, see onNoShowScheduled below.
   const [noShowPrompt, setNoShowPrompt] = useState(false);
+  // "Client Closed" celebration (2026-11-10, user: "pipeline tab sy woh closed won dbaya na celebration
+  // aya jo pehle humny lagaya tha") -- Celebration (components/ui/celebration.tsx) was only ever wired
+  // into the Meetings detail dialog's own Client Closed button (meeting-detail-dialog.tsx), never into
+  // this shared PipelineActions (used by both Pipeline and Callbacks), so pressing it from either of
+  // those pages never showed anything -- not a regression, just never built here.
+  const [celebrate, setCelebrate] = useState(false);
   const noShowOutcome = MEETING_OUTCOMES.find((o) => o.noShow)!;
 
   // Not Interested / Proposal Send / Client Closed -- the same 3 (of 4) MEETING_OUTCOMES entries the
@@ -192,7 +203,10 @@ function PipelineActions({ lead }: { lead: Lead }) {
     outcome.mutate(
       { id: lead.id, stage: o.stage },
       {
-        onSuccess: () => toast.success(o.done(lead.company_name)),
+        onSuccess: () => {
+          toast.success(o.done(lead.company_name));
+          if (o.stage === "won") setCelebrate(true);
+        },
         onError: (e) => toast.error(e instanceof Error ? e.message : TOASTS.actionFailed),
       },
     );
@@ -376,6 +390,8 @@ function PipelineActions({ lead }: { lead: Lead }) {
   }
 
   return (
+    <>
+      {celebrate && <Celebration onDone={() => setCelebrate(false)} />}
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
       {/* One shared `outcome` mutation for all 3 buttons -- `disabled` blocks all of them while any one
           is in flight (a rep noticed, 2026-09-23: "loader spinner har button par chal rha hai"), but the
@@ -436,6 +452,7 @@ function PipelineActions({ lead }: { lead: Lead }) {
         </p>
       )}
     </div>
+    </>
   );
 }
 
@@ -506,6 +523,118 @@ export function PipelineSummary({ lead }: { lead: Lead }) {
   );
 }
 
+/**
+ * Callbacks page's Grid view (2026-11-10, Slack request via Bilal Lania: "can our card be in grid as
+ * well not just in lines"; REDESIGNED same day, user sketch: "is trhn possible hai k hum yeh UI rkhyn
+ * GRID me k jis din ki leads hon callback woh is trhn dikhy" -- a labeled box per DAY ("today 10-11-
+ * 2026", "11-11-2026", ...), that day's leads as small tiles wrapping inside it, not one flat grid of
+ * every lead mixed together regardless of date). Compact tile with the same at-a-glance info the List
+ * view's card header shows (star, company, deal value, category, who touched it last) -- no callback-
+ * date tag on the tile itself any more, since the day section heading above it already says the date.
+ * Clicking anywhere on the tile opens the full detail (CallbackDetailDialog) instead of expanding
+ * inline, which would reflow every neighboring tile in the wrapped row.
+ */
+function CallbackGridTile({ lead }: { lead: Lead }) {
+  const starred = Boolean(lead.starred_at);
+  return (
+    <CallbackDetailDialog
+      lead={lead}
+      trigger={
+        <button
+          type="button"
+          className={cn(
+            // Sized up 2026-11-10 (user: "yeh cards bohut choty dikh rhy hein andar waly inko thora
+            // increase kro") -- more padding/gap, bigger text, taller min-height so a tile reads as a
+            // real card, not a cramped line of text.
+            "flex min-h-[120px] w-full cursor-pointer flex-col items-start gap-2 rounded-[10px] border p-4 text-left transition-colors",
+            starred ? "border-2" : "border-border hover:border-accent",
+          )}
+          style={starred ? { borderColor: "var(--info)", background: "var(--info-tint)" } : undefined}
+        >
+          <span className="flex w-full items-center gap-1.5">
+            {starred && (
+              <Star className="h-4 w-4 shrink-0" style={{ color: "var(--info)" }} fill="var(--info)" aria-hidden />
+            )}
+            <strong className="min-w-0 flex-1 truncate text-[1.05rem]">{lead.company_name}</strong>
+            {/* Callback TIME (2026-11-10, user: "leads k upar unka time nhi dikh rha cards me k krni kab
+                hain kis time") -- the day-section heading only has the DATE, several callbacks on the
+                same day can still be at different times. */}
+            {lead.callback_at && (
+              <span className="shrink-0 rounded-[6px] bg-input px-1.5 py-0.5 text-[0.78rem] font-semibold text-accent">
+                {new Date(lead.callback_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+              </span>
+            )}
+          </span>
+          <span className="text-[0.92rem] text-muted">
+            {currency(lead.deal_value)} · <CategoryLabel value={lead.industry_tag} />
+          </span>
+          <span className="text-[0.78rem] text-muted">
+            <LeadWho lead={lead} />
+          </span>
+        </button>
+      }
+    />
+  );
+}
+
+/** YYYY-MM-DD / "today"-aware label for one Grid-view day section's heading. PKT, same convention
+ *  callbacks-calendar.tsx's todayKeyPKT() uses -- a rep in a different timezone still sees PKT's today. */
+function todayKeyPKT(): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Karachi",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+  return `${get("year")}-${get("month")}-${get("day")}`;
+}
+
+function dayHeading(dateKey: string, isToday: boolean): string {
+  const [y, m, d] = dateKey.split("-").map(Number);
+  const label = new Date(y, m - 1, d).toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+  return isToday ? `Today · ${label}` : label;
+}
+
+/** One Grid-view day section. `overdue` just swaps the border/heading colour to danger -- same
+ *  tiles/layout either way. */
+function CallbackDaySection({
+  day,
+  dayLeads,
+  isToday,
+  overdue,
+}: {
+  day: string;
+  dayLeads: Lead[];
+  isToday: boolean;
+  overdue?: boolean;
+}) {
+  return (
+    <div className={cn("rounded-[10px] border p-4", overdue ? "border-danger" : "border-accent")}>
+      <h3 className={cn("mb-3 text-[1rem] font-semibold", overdue && "text-danger")}>
+        {dayHeading(day, isToday)}{" "}
+        <span className="font-normal text-muted">
+          ({dayLeads.length} {dayLeads.length === 1 ? "callback" : "callbacks"})
+        </span>
+      </h3>
+      {/* auto-fill + minmax (2026-11-10, user: "responsive nhi hai yeh large or mobile screens k lye")
+          -- NOT a fixed column count: 1 column on a narrow phone, many columns filling the full width on
+          a large monitor, every width in between gets its own natural column count. Replaces the earlier
+          fixed-width flex-wrap tiles, which left most of a wide screen empty. */}
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4">
+        {dayLeads.map((lead) => (
+          <CallbackGridTile key={lead.id} lead={lead} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function PipelineView({
   initialLeads,
   category,
@@ -536,12 +665,17 @@ export function PipelineView({
   // as before.
   const [source, setSource] = useState(ALL_SOURCES);
   const [view, setView] = useState<
-    "all" | "meeting" | "email" | "proposal" | "noShow" | "starred" | "attempts_due"
+    "all" | "meeting" | "email" | "proposal" | "noShow" | "starred" | "attempts_due" | "overdue"
   >("all");
   // Date filter (user, 2026-09-23) -- "pipeline me last touched wali lead dekhyngy". updated_at, not
   // created_at: a lead already in Pipeline moved there by being worked, so "last touched" (when a
   // disposition/edit last changed it) is what's meaningful here, not when it was originally created.
   const [lastTouched, setLastTouched] = useState("");
+  // List / Grid / Calendar (2026-11-10, Slack request via Bilal Lania: "can we add calendar here?...
+  // Also can our card be in grid as well not just in lines") -- Callbacks page only, Pipeline's own
+  // scope always renders "list" regardless of this state (see the render branch below), so Pipeline is
+  // byte-identical to before this feature.
+  const [viewMode, setViewMode] = useState<"list" | "grid" | "calendar">("list");
 
   function setParam(key: string, value: string) {
     const params = new URLSearchParams(searchParams.toString());
@@ -593,7 +727,11 @@ export function PipelineView({
       inScope.filter(
         (l) =>
           (source === ALL_SOURCES || leadSource(l.source_prompt) === source) &&
+          // "overdue" is a Grid-only display toggle (see callbacksByDay/the Grid render branch below) --
+          // treated the same as "all" here so List/Calendar still show every in-scope lead regardless of
+          // which one is selected; Grid alone decides which day-bucket to render from this same list.
           (view === "all" ||
+            view === "overdue" ||
             (view === "meeting" && l.pipeline_stage === "meeting_booked") ||
             (view === "email" && l.pipeline_stage === "contacted") ||
             (view === "proposal" && l.pipeline_stage === "proposal_sent") ||
@@ -604,6 +742,29 @@ export function PipelineView({
       ),
     [inScope, source, view, lastTouched],
   );
+
+  // Grid view's day sections (2026-11-10, user sketch) -- only meaningful for scope === "callbacks",
+  // but harmless (empty) to compute otherwise since no lead there has callback_at set. Each lead keyed
+  // by its callback_at's own date string (naive wall-clock, see app/schemas/lead.py's _dt()) -- no
+  // Date/timezone conversion needed.
+  //
+  // Today-and-future sorted ascending, BEFORE overdue (2026-11-10 follow-up, user: "manage krna issue
+  // ho ra upar already jo pehle sy rkhyn hein toh woh upar he arhy hein" -- old overdue dates sorting
+  // first, chronologically, buried Today under weeks of stale entries). Overdue sorted most-recent-first
+  // (closest to today, i.e. most actionable, at the top of that section) instead.
+  const callbacksByDay = useMemo(() => {
+    const map = new Map<string, Lead[]>();
+    for (const l of leads) {
+      if (!l.callback_at) continue;
+      const key = l.callback_at.slice(0, 10);
+      map.set(key, [...(map.get(key) ?? []), l]);
+    }
+    const todayKey = todayKeyPKT();
+    const entries = [...map.entries()];
+    const upcoming = entries.filter(([day]) => day >= todayKey).sort(([a], [b]) => a.localeCompare(b));
+    const overdue = entries.filter(([day]) => day < todayKey).sort(([a], [b]) => b.localeCompare(a));
+    return { upcoming, overdue };
+  }, [leads]);
 
   // Two blocks (user, 2026-09-22, "pipeline me do cards add krny hain leads page ki trhn... jese
   // coldcalldesk pr pipeline show hota hai"): same MetricCard style as the Leads page's Today's/This
@@ -694,6 +855,7 @@ export function PipelineView({
             )}
             <option value="starred">{stripEmoji(PIPELINE_VIEW_FILTER.starred)}</option>
             <option value="attempts_due">{stripEmoji(PIPELINE_VIEW_FILTER.attemptsDue)}</option>
+            {scope === "callbacks" && <option value="overdue">{stripEmoji(PIPELINE_VIEW_FILTER.overdue)}</option>}
           </Select>
         </Field>
         <Field label="Category Filter">
@@ -732,11 +894,56 @@ export function PipelineView({
         </Field>
       </div>
 
+      {scope === "callbacks" && (
+        <div className="mb-4 flex gap-2">
+          {(
+            [
+              { mode: "list", label: "List", Icon: List },
+              { mode: "grid", label: "Grid", Icon: LayoutGrid },
+              { mode: "calendar", label: "Calendar", Icon: CalendarDays },
+            ] as const
+          ).map(({ mode, label, Icon }) => (
+            <Button
+              key={mode}
+              type="button"
+              variant={viewMode === mode ? "primary" : "secondary"}
+              size="sm"
+              onClick={() => setViewMode(mode)}
+            >
+              <Icon className="h-4 w-4" aria-hidden /> {label}
+            </Button>
+          ))}
+        </div>
+      )}
+
       {leads.length === 0 && (
         <p className="text-muted">{withIcons(scope === "callbacks" ? EMPTY_STATES.callbacks : EMPTY_STATES.pipeline)}</p>
       )}
 
-      {leads.map((lead) => (
+      {scope === "callbacks" && viewMode === "calendar" ? (
+        <CallbacksCalendar leads={leads} />
+      ) : scope === "callbacks" && viewMode === "grid" ? (
+        // "Overdue" view filter (2026-11-10, user: "overdue ka view filter me ek add kro jab woh press
+        // ho grid tab me tb he woh show ho overdue wali sari past ki leads or present or future wali
+        // sari wese he show ho jese ho rhin") -- Grid shows EITHER today+future OR only past/overdue,
+        // never both stacked together any more (that auto-appended "Overdue" section was the earlier,
+        // rejected design -- see this file's history in docs.md).
+        <div className="flex flex-col gap-4">
+          {(view === "overdue" ? callbacksByDay.overdue : callbacksByDay.upcoming).length === 0 && (
+            <p className="text-muted">
+              {view === "overdue" ? "No overdue callbacks. 🎉" : "No upcoming callbacks to show."}
+            </p>
+          )}
+          {view === "overdue"
+            ? callbacksByDay.overdue.map(([day, dayLeads]) => (
+                <CallbackDaySection key={day} day={day} dayLeads={dayLeads} isToday={false} overdue />
+              ))
+            : callbacksByDay.upcoming.map(([day, dayLeads]) => (
+                <CallbackDaySection key={day} day={day} dayLeads={dayLeads} isToday={day === todayKeyPKT()} />
+              ))}
+        </div>
+      ) : (
+      leads.map((lead) => (
         <LeadCard
           key={lead.id}
           lead={lead}
@@ -909,7 +1116,8 @@ export function PipelineView({
             <NotesPanel lead={lead} />
           </div>
         </LeadCard>
-      ))}
+      ))
+      )}
     </>
   );
 }

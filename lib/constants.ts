@@ -1034,6 +1034,11 @@ export const PIPELINE_VIEW_FILTER = {
   // pr mark dekh kr pata lagana prhta ha" -- every lead whose callback/no_show/proposal attempt tracker
   // next_attempt_due has passed, across all three contexts, without opening each card.
   attemptsDue: "⏰ Attempts Due",
+  // Callbacks page's Grid view only (2026-11-10, user: "overdue ka view filter me ek add kro jab woh
+  // press ho grid tab me tb he woh show ho overdue wali sari past ki leads or present or future wali
+  // sari wese he show ho jese ho rhin") -- toggles Grid between showing today+future day-sections
+  // (default) and ONLY past/overdue day-sections. See pipeline-view.tsx's callbacksByDay.
+  overdue: "🔴 Overdue",
 } as const;
 
 /**
@@ -1124,7 +1129,9 @@ export const PIPELINE_CARD = {
  * is no longer a View filter to pick between the two.
  */
 export const PROJECTS_VIEW = {
-  tag: { won: "🏆 Won" } as Record<string, string>,
+  // User, 2026-11-10: "project tab me bhi ab humyn ALHAMDULILAH CLOSED WON likha hua permanent chahiye
+  // card me" -- was "🏆 Won".
+  tag: { won: "🏆 ALHAMDULILAH CLOSED WON" } as Record<string, string>,
   // Stat-tile row (2026-10-14, Projects' own identity) -- same labels Today's MetricCard row uses
   // elsewhere, scoped to whatever's currently filtered (category/country/source), not all-time.
   stats: {

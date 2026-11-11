@@ -146,6 +146,16 @@ export function ProjectsView({
             </span>
           }
         >
+          {/* Win celebration banner (2026-11-10, user screenshot: "yeh yahan center me jo jaga khali hai
+              whn rkhna hai humny yeh title") -- the Company & Contact column's sparse content (often just
+              a name/country/edit-link) left a big blank area next to it on a wide screen; this fills it
+              with the same "ALHAMDULILAH CLOSED WON" the header badge already carries, much larger. */}
+          <div
+            className="mb-4 rounded-[10px] py-4 text-center text-[1.3rem] font-bold"
+            style={{ background: "var(--success-tint)", color: "var(--success)" }}
+          >
+            {withIcons(PROJECTS_VIEW.tag.won)}
+          </div>
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.6fr_1fr]">
             <div className="flex flex-col gap-3">
               <h4 className="text-[1rem] font-semibold"><Ico e="🏢" /> Company &amp; Contact</h4>
