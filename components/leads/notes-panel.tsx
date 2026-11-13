@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useAddNote, useEditNotes, useFullLead } from "@/hooks/use-leads";
+import { useAddNote, useEditNotes } from "@/hooks/use-leads";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
@@ -29,8 +29,10 @@ import { Ico } from "@/components/ui/emoji-icon";
  * worked -- see crud/leads.py add_note() / apply_call_outcome().
  */
 export function NotesPanel({ lead: listLead }: { lead: Lead }) {
-  // Only the "Open in Email App" body needs the full lead; mounts with the open card, so it is fetched on demand.
-  const { lead } = useFullLead(listLead);
+  // Nothing here needs the long text columns any more (only the "Open in Email App" body did, and that button is
+  // commented out below), so the slim row is enough. It used to fetch the FULL lead for every open card, which on a
+  // page of 100 open cards fired 100 requests at once (2026-11-13: QueuePool exhausted on the live backend).
+  const lead = listLead;
   const addNote = useAddNote();
   const editNotes = useEditNotes();
   const toast = useToast();

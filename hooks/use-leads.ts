@@ -70,8 +70,12 @@ type SlimField =
  * updated_at makes a new key, and the detail is fetched again -- no invalidation to remember at the many
  * places that write these fields. placeholderData keeps showing the previous text while that happens.
  */
-export function useFullLead(lead: Lead): { lead: Lead; ready: boolean; failed: boolean } {
-  const needs = Boolean(lead.slim);
+export function useFullLead(
+  lead: Lead,
+  /** false = do not fetch (the caller knows it does not need the long text columns for this lead). */
+  enabled = true,
+): { lead: Lead; ready: boolean; failed: boolean } {
+  const needs = Boolean(lead.slim) && enabled;
   const { data, isError } = useQuery({
     queryKey: ["lead", lead.id, lead.updated_at],
     queryFn: () => leadsApi.get(lead.id),

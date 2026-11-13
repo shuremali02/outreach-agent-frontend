@@ -21,8 +21,13 @@ import { withIcons } from "@/components/ui/emoji-icon";
  * scraper.scan_site() can take up to ~98s.
  */
 export function SiteScanPanel({ lead: listLead }: { lead: Lead }) {
-  // product_description (the persisted-scan fallback below) is not in a slim list row -- see useFullLead().
-  const { lead } = useFullLead(listLead);
+  // product_description (the persisted-scan fallback below) is not in a slim list row -- see useFullLead(). Only a
+  // lead that actually HAS a persisted scan needs it; fetching the full lead for every open card made a page of 100
+  // open cards fire 100 requests at once (2026-11-13: QueuePool exhausted on the live backend).
+  const hasPersistedScan = Boolean(
+    listLead.product_title || listLead.matched_signals.length || listLead.screenshot_path,
+  );
+  const { lead } = useFullLead(listLead, hasPersistedScan);
   const qc = useQueryClient();
   const toast = useToast();
   const [jobId, setJobId] = useState<string | null>(null);
