@@ -6,6 +6,7 @@ import { PipelineSummary } from "@/components/pipeline/pipeline-view";
 import { LeadCard } from "@/components/leads/lead-card";
 import { EditLeadDialog } from "@/components/leads/edit-lead-dialog";
 import { NotesPanel } from "@/components/leads/notes-panel";
+import { FollowupTracker } from "@/components/pipeline/followup-tracker";
 import { PhoneNumberList } from "@/components/leads/phone-number-list";
 import { LinkedInResearchPanel, HunterDecisionMakers, SiteScanPanel } from "@/components/enrichment";
 import { Button } from "@/components/ui/button";
@@ -131,7 +132,13 @@ function EmailDeskCard({ lead }: { lead: Lead }) {
           </Button>
         </div>
 
-        <PipelineSummary lead={lead} />
+        <div className="flex flex-col gap-3">
+          <PipelineSummary lead={lead} />
+          {/* Email Desk's own reminders (user, 2026-11-12), BELOW the action buttons like Pipeline's
+              trackers (user: "yeh neechy any chahiye action button sy"). "Mark Attempted" counts toward
+              the rep's weekly Email Attempts; "Mark Sent" on the left stays the FIRST email. */}
+          <FollowupTracker lead={lead} context="email_desk" />
+        </div>
 
         <NotesPanel lead={lead} />
       </div>

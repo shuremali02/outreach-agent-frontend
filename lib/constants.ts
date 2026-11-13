@@ -180,6 +180,9 @@ export const TEAM_ACTIVITY = {
     // "Dead Lines" renamed "Dead Leads" 2026-11-03, same reasoning as DISPOSITIONS.dead_number's label.
     disconnected: "Dead Leads",
     no_shows: "No Shows",
+    // Reminder "Mark Attempted" clicks (2026-11-12) -- the weekly record of follow-up work.
+    email_attempts: "Email Attempts",
+    callback_attempts: "Callback Attempts",
     // Per-NUMBER marks (2026-11-02, see components/leads/phone-number-list.tsx) -- how many individual
     // phone numbers this person marked, and how many of those were good vs. wrong/dead.
     numbers_called: "Numbers Called",
@@ -201,6 +204,7 @@ export const TEAM_ACTIVITY = {
   event: {
     email_sent: "✉️ Marked an email as sent",
     note_added: "📝 Added a note",
+    meeting_added: "📅 Added a lead with a booked meeting",
     stage_change: (stage: string) => `➡️ Moved to ${stage}`,
   },
 } as const;
@@ -231,6 +235,24 @@ export const LEAD_BREAKDOWN = {
     meetings: "Meetings",
     projects: "Projects",
     emails: "Emails",
+  },
+  // Date-range (week / month) mode: the same breakdown, but every number is what happened INSIDE the range.
+  periodConnectRateHeading: "Connect Rate (% of calls that reached a live person)",
+  callsHeading: "Calls made",
+  periodColumns: {
+    leads: "Leads added",
+    calls: "Calls",
+    connecting: "Connected",
+    pipeline: "To Pipeline",
+    meetings: "Meetings",
+    projects: "Won",
+    emails: "Emails",
+  },
+  period: {
+    label: "Period",
+    all: "All time",
+    week: "Week",
+    month: "Month",
   },
 } as const;
 
@@ -688,10 +710,6 @@ export const BATTLECARD = {
   whyHelps: "Why Elipse Studio Helps:",
   whyHelpsFallback:
     "High-ticket custom catalog converts higher with real-time 3D web builder.",
-  scriptHeading: "🎯 Live 20-Second Phone Script (Read Verbatim)",
-  generateBattlecard: "✨ Generate AI battlecard",
-  generatingBattlecard: "Generating…",
-  objectionsHeading: "🛡️ Live Objection Matrix & Rebuttals",
   noteLabel: "Call Notes / Follow-up Details",
   notePlaceholder: "e.g. Left voicemail · gatekeeper screened · callback Tue 2 PM",
   // Saves this note immediately (append-only, crud/leads.py add_note()),
@@ -709,32 +727,9 @@ export const BATTLECARD = {
   // email sent, saving a call note) silently reverted to the idle button
   // with zero feedback that anything had gone wrong.
   recordFailed: "Failed to record this outcome. Try again.",
-  generateFailed: "Failed to generate the battlecard. Try again.",
   markEmailSentFailed: "Failed to mark email sent. Try again.",
   addNoteFailed: "Failed to save note. Try again.",
 } as const;
-
-/** app.py:1876-1881 — used when phone_script is missing or under 15 chars. */
-export function fallbackScript(firstName: string, company: string): string {
-  return (
-    `Hi ${firstName}, Bilal with Elipse Studio. I was looking at ${company}'s custom collection online, ` +
-    `and noticed your buyers browse static photos rather than customizing finishes live in 3D. ` +
-    `We build interactive real-time 3D web configurators that let clients customize options live on your site before buying. ` +
-    `Would you be open to a 3-minute visual concept tailored for ${company} this Thursday?`
-  );
-}
-
-/** app.py:1885-1892 — used when objection_notes is missing or under 15 chars. */
-export const FALLBACK_OBJECTIONS = [
-  "**- 'We already have photos on our site':**",
-  "Photos show what you already built; an interactive 3D builder lets high-ticket buyers customize what they want to buy today.",
-  "",
-  "**- 'Just send me an email with information':**",
-  "I'll send that over to your direct inbox right now. Are you at your screen Thursday at 2 PM to see a 3-minute live preview?",
-  "",
-  "**- 'We are too busy / call back in 6 months':**",
-  "Completely understand. Our 3D models integrate directly into your site in under 2 weeks without eating up your team's time.",
-].join("\n");
 
 /** app.py:2000-2031 — the 1-click disposition bar, with its button tooltips. */
 export const DISPOSITIONS = [
@@ -1080,8 +1075,10 @@ export const FOLLOWUP_TRACKER = {
     // hai same woh no show pr bhi lagega... call attempts bhi or email attempts bhi").
     no_show_email_followup: "✉️ No Show Email Attempt",
     no_show_call_followup: "📞 No Show Call Attempt",
+    // Email Desk's own reminders (2026-11-12).
+    email_desk: "✉️ Email Attempt",
   } as Record<
-    "email_followup" | "call_followup" | "callback" | "no_show_email_followup" | "no_show_call_followup",
+    "email_followup" | "call_followup" | "callback" | "no_show_email_followup" | "no_show_call_followup" | "email_desk",
     string
   >,
   attemptLabel: (n: number) => `${n}`,
@@ -1347,7 +1344,6 @@ export const TOASTS = {
   wrongNumberSent: (company: string) => `${company}'s number was wrong -- sent back to Leads`,
   noteAdded: (company: string) => `Note added to ${company}`,
   emailMarked: (company: string) => `Email marked as sent for ${company}`,
-  battlecardReady: (company: string) => `AI battlecard ready for ${company}`,
   saved: (company: string) => `Changes saved for ${company}`,
   stageChanged: (company: string, stage: string) => `${company} moved to ${stage}`,
   leadRemoved: (company: string) => `${company} was removed from the CRM`,
@@ -1397,6 +1393,8 @@ export const ACTIVITY_SCROLLER = {
     { key: "numbers_called", label: "Numbers Called", color: "#84cc16" },
     { key: "connected", label: "Connected", color: "#10b981" },
     { key: "emails", label: "Emails", color: "#e06842" },
+    // Email reminders marked attempted, right next to Emails (2026-11-12, user: "email k barabr me").
+    { key: "email_attempts", label: "Email Attempts", color: "#f97316" },
     // "Leads" alone read as ambiguous -- this specifically counts leads the
     // sales team added manually (source_prompt == "Manual entry"), not AI/
     // Maps/CSV-discovered ones, so the label says so.
@@ -1407,6 +1405,8 @@ export const ACTIVITY_SCROLLER = {
     // hona chahiye count ka") -- Callback Scheduled dispositions, see crud/call_events.py
     // _CALLBACK_OUTCOMES.
     { key: "callbacks", label: "Callbacks", color: "#0ea5e9" },
+    // Callback + call reminders marked attempted, right next to Callbacks (2026-11-12).
+    { key: "callback_attempts", label: "Callback Attempts", color: "#38bdf8" },
     { key: "meetings", label: "Meetings", color: "#14b8a6" },
     // "Disconnected"/"Dead Lines" renamed "Dead Leads" 2026-11-03, see DISPOSITIONS.dead_number's label.
     { key: "disconnected", label: "Dead Leads", color: "#ef4444" },

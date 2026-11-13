@@ -45,6 +45,9 @@ const TRIED_OUTCOMES = new Set(["voicemail", "hang_up"]);
 // request 422s (found live, 2026-10-26: repeated clicks past 500 silently broke pagination).
 const BUCKET_LIMIT_MAX = 500;
 
+/** Cards rendered at a time on the Cold Call / LinkedIn desk, before "Show more". */
+const CARD_PAGE = 100;
+
 // Stages that belong to Pipeline / Projects / closed, never to this desk -- mirrors DESK_EXCLUDED_STAGES in
 // the backend (crud/leads.py). Also applied here because a lead edited to one of them stays in the cached
 // desk list until the next refetch.
@@ -69,13 +72,14 @@ export function ColdCallView({
    * the isolated LinkedIn desk instead. See app/(workspace)/linkedin/page.tsx. */
   channel?: "cold_call" | "linkedin";
 }) {
-  // Full rows, not slim: every card here shows the phone script and objections (and the mailto body), and
-  // 139 cards each fetching their own full lead would be far worse than one bigger list.
+  // Slim rows (2026-11-13): the phone script / objection matrix were removed from the card, so the desk no longer
+  // needs the long text columns (email draft, script, objections...) on every row -- a much smaller payload for a
+  // long queue. The email draft is fetched only when a rep clicks the address (battlecard.tsx).
   // Only the desk's own leads (filtered in SQL, not in the browser), and NOT Voicemail/Hang Up or No
   // Answer: those (plus Not Interested) only load once the rep picks one from the "Already Tried" dropdown
   // below, so none of the three is downloaded on every visit. These filters must match
   // app/(workspace)/cold-call/page.tsx (or linkedin/page.tsx) exactly.
-  const { data: mainLeads = [] } = useLeads({ q, slim: false, desk: channel, tried: false }, initialLeads);
+  const { data: mainLeads = [] } = useLeads({ q, desk: channel, tried: false }, initialLeads);
   const qc = useQueryClient();
   // Phone: every card starts closed (user, 2026-11-11). Desktop keeps today's behaviour.
   const isMobile = useIsMobile();
@@ -101,7 +105,6 @@ export function ColdCallView({
   const [bucketLimit, setBucketLimit] = useState(100);
   const bucketFilters = {
     q,
-    slim: false,
     desk: channel,
     tried: bucket === "tried" ? true : undefined,
     bucket: bucket === "no_answer" || bucket === "not_interested" ? bucket : undefined,
@@ -208,6 +211,11 @@ export function ColdCallView({
   // lead below older ones whose local time happened to be open -- e.g. a batch of US leads pulled in during
   // Pakistan's afternoon (US night) sank under the whole UK/Gulf list. Local-time order is now opt-in via the button.
   const [byLocalTime, setByLocalTime] = useState(false);
+  // Cards shown at a time (2026-11-13, user: "300 leads... sab ek saath load na ho"): every card is a heavy component
+  // (phone list, research panels, notes composer, contacts request...), so rendering all ~300 at once made the page
+  // slow and froze the pop-ups. The first CARD_PAGE show; "Show more" adds another page. The whole queue is still
+  // fetched, sorted and filtered here, so the order and the numbers up top are unchanged.
+  const [shownState, setShownState] = useState<{ key: string; n: number }>({ key: "", n: CARD_PAGE });
 
   // "Already Tried -> Voicemail/Hang Up" sort toggle (2026-10-26, user asked for a latest/oldest switch
   // after checking September's voicemail/hang-up counts). Default stays newest-activity-first, unchanged
@@ -222,6 +230,15 @@ export function ColdCallView({
   // regardless of which stage it lands in server-side; a real refetch would
   // otherwise just bring an unresolved follow-up right back.
   const [dismissed, setDismissed] = useState<Set<number>>(new Set());
+  // Optimistic dispositions: if the background save fails, the card comes back.
+  function restore(leadId: number) {
+    setDismissed((prev) => {
+      if (!prev.has(leadId)) return prev;
+      const next = new Set(prev);
+      next.delete(leadId);
+      return next;
+    });
+  }
   function dismiss(leadId: number) {
     setDismissed((prev) => (prev.has(leadId) ? prev : new Set(prev).add(leadId)));
     // A Voicemail / Hang Up outcome moves the lead into the (possibly unloaded) tried group: keep its count honest.
@@ -355,6 +372,11 @@ export function ColdCallView({
         ),
     [filtered, rank, byLocalTime],
   );
+
+  // The window resets to the first page whenever the list itself changes (a filter, a search, a bucket, the sort).
+  const windowKey = [channel ?? "cold_call", q, bucket, category, country, source, line, linkedinOwner, byLocalTime].join("|");
+  const shown = shownState.key === windowKey ? shownState.n : CARD_PAGE;
+  const showMore = () => setShownState({ key: windowKey, n: shown + CARD_PAGE });
 
   const verifiedLines = queue.filter(
     (l) => l.phone_status === "verified_direct" && l.contact_phone,
@@ -539,9 +561,14 @@ export function ColdCallView({
           <h3 className="mb-2 text-[1.05rem] font-semibold">
             {withIcons(COLD_CALL_QUEUE.newHeading(newLeads.length))}
           </h3>
-          {newLeads.map((lead) => (
-            <Battlecard key={`${lead.id}-${isMobile}`} lead={lead} onActionTaken={dismiss} defaultOpen={!isMobile && channel !== "linkedin"} />
+          {newLeads.slice(0, shown).map((lead) => (
+            <Battlecard key={`${lead.id}-${isMobile}`} lead={lead} onActionTaken={dismiss} onActionFailed={restore} defaultOpen={!isMobile && channel !== "linkedin"} />
           ))}
+          {newLeads.length > shown && (
+            <Button variant="secondary" size="sm" block className="mt-2" onClick={showMore}>
+              Show {Math.min(CARD_PAGE, newLeads.length - shown)} more ({shown} of {newLeads.length} shown)
+            </Button>
+          )}
         </div>
       )}
 
@@ -591,9 +618,14 @@ export function ColdCallView({
                   {triedStillAutoSearching ? ALREADY_TRIED_FILTER.searching : ALREADY_TRIED_FILTER.empty}
                 </p>
               )}
-              {bucketLeads.map((lead) => (
-                <Battlecard key={`${lead.id}-${isMobile}`} lead={lead} onActionTaken={dismiss} defaultOpen={!isMobile && channel !== "linkedin"} />
+              {bucketLeads.slice(0, shown).map((lead) => (
+                <Battlecard key={`${lead.id}-${isMobile}`} lead={lead} onActionTaken={dismiss} onActionFailed={restore} defaultOpen={!isMobile && channel !== "linkedin"} />
               ))}
+              {bucketLeads.length > shown && (
+                <Button variant="secondary" size="sm" block className="mt-2" onClick={showMore}>
+                  Show {Math.min(CARD_PAGE, bucketLeads.length - shown)} more ({shown} of {bucketLeads.length} shown)
+                </Button>
+              )}
               {/* "Load More" (2026-10-13) -- not_interested's own list (bucketLeads for that bucket is
                   client-filtered straight off bucketResult.data, same underlying rows) also benefits:
                   more rows load the same way once clicked. Shown only while the true total says there's

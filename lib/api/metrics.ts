@@ -14,10 +14,13 @@ export const metricsApi = {
   crm: () => api.get<CrmMetrics>("/metrics"),
   /** Sales Terminal's country/category charts. country/category (ISO2 / industry_tag) cross-filter
    *  each breakdown by the OTHER dimension -- see crud.get_lead_breakdown()'s docstring. */
-  breakdown: (country?: string, category?: string) =>
+  breakdown: (country?: string, category?: string, dateFrom?: string, dateTo?: string) =>
     api.get<LeadBreakdown>("/metrics/breakdown", {
       country: country || undefined,
       category: category || undefined,
+      // PKT calendar days, both inclusive: a week or a month of activity (2026-11-13). Neither = all-time.
+      date_from: dateFrom || undefined,
+      date_to: dateTo || undefined,
     }),
   status: () => api.get<SystemStatus>("/status"),
   team: (sheetUrl?: string) => api.get<TeamMetrics>("/team-metrics", { sheet_url: sheetUrl }),

@@ -19,6 +19,7 @@ export const leadsApi = {
       limit: filters.limit,
       offset: filters.offset,
       search_all_stages: filters.searchAllStages ? 1 : undefined,
+      scope: filters.scope,
     }),
   /** Size of a desk's Voicemail / Hang Up group, so the collapsed section can show it unloaded.
    * `desk` (2026-10-05): defaults to "cold_call" on the backend if omitted. */
@@ -125,7 +126,7 @@ export const leadsApi = {
    */
   scheduleSlot: (
     id: number,
-    context: "email_followup" | "call_followup" | "callback" | "no_show_email_followup" | "no_show_call_followup",
+    context: "email_followup" | "call_followup" | "callback" | "no_show_email_followup" | "no_show_call_followup" | "email_desk",
     index: number,
     scheduledAt: string,
     assignedToUserId?: number | null,
@@ -136,9 +137,9 @@ export const leadsApi = {
       assigned_to_user_id: assignedToUserId ?? null,
       assigned_to_team: assignedToTeam ?? false,
     }),
-  markSlotAttempted: (id: number, context: "email_followup" | "call_followup" | "callback" | "no_show_email_followup" | "no_show_call_followup", index: number) =>
+  markSlotAttempted: (id: number, context: "email_followup" | "call_followup" | "callback" | "no_show_email_followup" | "no_show_call_followup" | "email_desk", index: number) =>
     api.post<Lead>(`/leads/${id}/slots/${context}/${index}/attempted`),
-  unmarkSlotAttempted: (id: number, context: "email_followup" | "call_followup" | "callback" | "no_show_email_followup" | "no_show_call_followup", index: number) =>
+  unmarkSlotAttempted: (id: number, context: "email_followup" | "call_followup" | "callback" | "no_show_email_followup" | "no_show_call_followup" | "email_desk", index: number) =>
     api.delete<Lead>(`/leads/${id}/slots/${context}/${index}/attempted`),
   /**
    * "➕ Add Note" -- always APPENDS server-side (see app/crud/leads.py
@@ -169,7 +170,6 @@ export const enrichmentApi = {
    * lead. One Gemini/Groq call, run manually per lead -- bulk search no
    * longer generates this automatically for every candidate.
    */
-  generateBattlecard: (leadId: number) => api.post<Lead>(`/leads/${leadId}/battlecard`),
 
   /**
    * Look up a missing company website via Google Places Text Search. No-op

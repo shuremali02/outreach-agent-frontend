@@ -654,7 +654,8 @@ export function PipelineView({
   // set OR stage is meeting_booked OR stage is contacted" as a single stage filter, so this page always
   // fetches unfiltered by stage (Category/Country still filter server-side, unchanged) and narrows the
   // rest -- including the new scope rule itself -- client-side below.
-  const { data: fetchedLeads = [] } = useLeads({ category, country, q }, initialLeads);
+  // `scope` is sent to the backend too (2026-11-13): it returns only this page's own slice, not every lead.
+  const { data: fetchedLeads = [] } = useLeads({ category, country, q, scope }, initialLeads);
   // Source (leadSource(), derived from source_prompt) isn't a backend column, filtered client-side same
   // as before.
   const [source, setSource] = useState(ALL_SOURCES);

@@ -51,7 +51,8 @@ export function ProjectsView({
   const searchParams = useSearchParams();
   // No `stage` param -- same reasoning as Pipeline (Phase 4): the backend's list_leads() only supports a
   // single exact-match stage filter, so this fetches unfiltered by stage and narrows client-side.
-  const { data: fetchedLeads = [] } = useLeads({ category, country, q }, initialLeads);
+  // Only the won deals come from the backend (2026-11-13), not every lead.
+  const { data: fetchedLeads = [] } = useLeads({ category, country, q, scope: "won" }, initialLeads);
   const [source, setSource] = useState(ALL_SOURCES);
 
   function setParam(key: string, value: string) {

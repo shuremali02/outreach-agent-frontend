@@ -128,19 +128,33 @@ export function ContactsView({ initialLeads, q }: { initialLeads: Lead[]; q: str
   // (confirmed live, 2026-10-19). `q` already searches the backend (crud/leads.py _lead_filters()), so
   // typing in the search box narrows the SQL query itself rather than filtering an already-fetched list.
   const [limit, setLimit] = useState(100);
-  // searchAllStages (2026-10-29): a real search here should also find a Not Interested/Dead Line lead --
-  // see types/lead.ts LeadFilters.searchAllStages. No-op when q is empty.
-  const { data: allLeads = [], isFetching } = useLeads({ q, limit, searchAllStages: true }, initialLeads);
-  // The TRUE total for this search, independent of `limit` -- allLeads.length is only ever <=limit once
-  // pagination is in play, so the Load More button's visibility needs its own count query. Must pass the
-  // same searchAllStages as the list query above, or this total would disagree with what's shown.
-  const total = useQuery({
-    queryKey: ["leads-filtered-count", { q, searchAllStages: true }],
-    queryFn: () => leadsApi.filteredCount({ q, searchAllStages: true }),
-    staleTime: 30_000,
-  });
+  // Category and Country are sent to the BACKEND (2026-11-13, user: "country or category"): they used to filter only
+  // the first 100 leads already in the browser, so picking UK hid UK leads beyond those 100 and the Load More total
+  // ignored the filter. Now the 100-at-a-time list, the Load More button and its total all follow the dropdowns.
+  // Source is still filtered in the browser (it is derived from source_prompt, not a column the backend can filter yet).
   const [category, setCategory] = useState(ALL_CATEGORIES);
   const [country, setCountry] = useState(ALL_COUNTRIES);
+  const serverCategory = category === ALL_CATEGORIES ? undefined : category;
+  const serverCountry = country === ALL_COUNTRIES ? undefined : country; // "unknown" is understood by the backend
+  // The page's server-fetched leads are the UNFILTERED first 100: they are the right starting data only for exactly
+  // that query. For any other (a dropdown picked, a bigger Load More) a query seeded with them would count as fresh
+  // and not fetch, showing wrong rows until it went stale.
+  const isPageQuery = limit === 100 && !serverCategory && !serverCountry;
+  // searchAllStages (2026-10-29): a real search here should also find a Not Interested/Dead Line lead --
+  // see types/lead.ts LeadFilters.searchAllStages. No-op when q is empty.
+  const { data: allLeads = [], isFetching } = useLeads(
+    { q, limit, searchAllStages: true, category: serverCategory, country: serverCountry },
+    isPageQuery ? initialLeads : undefined,
+  );
+  // The TRUE total for this search + filters, independent of `limit` -- allLeads.length is only ever <=limit once
+  // pagination is in play, so the Load More button's visibility needs its own count query. Must pass the
+  // same filters as the list query above, or this total would disagree with what's shown.
+  const total = useQuery({
+    queryKey: ["leads-filtered-count", { q, searchAllStages: true, category: serverCategory, country: serverCountry }],
+    queryFn: () =>
+      leadsApi.filteredCount({ q, searchAllStages: true, category: serverCategory, country: serverCountry }),
+    staleTime: 30_000,
+  });
   const [source, setSource] = useState(ALL_SOURCES);
 
   const leads = useMemo(

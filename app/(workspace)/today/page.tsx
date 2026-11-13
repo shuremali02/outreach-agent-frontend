@@ -1,31 +1,25 @@
+import { Suspense } from "react";
 import { QuoteStrip } from "@/components/today/quote-strip";
 import { MeetingReminderBanner } from "@/components/today/meeting-reminder-banner";
 import { ActivityScroller } from "@/components/today/activity-scroller";
 import { TeamTodayTable } from "@/components/today/team-today";
-import { PriorityOutreachList } from "@/components/today/priority-outreach";
 import { ProblemDesk } from "@/components/problems/problem-desk";
-import { MetricCard } from "@/components/metrics/metric-card";
-import { leadsApi, metricsApi } from "@/lib/api";
-import { currency, num, todayEyebrow } from "@/lib/format";
-import { Ico } from "@/components/ui/emoji-icon";
+import { leadsApi } from "@/lib/api";
+import { todayEyebrow } from "@/lib/format";
 
 // See meetings/page.tsx -- no dynamic API here either, so this would fail
 // `next build` the same way once that page's error is fixed.
 export const dynamic = "force-dynamic";
 
-export default async function TodayPage() {
+export default function TodayPage() {
   // team_analytics' Google Sheet call stats moved out of this page --
   // SalesFloorTicker (kept, unused, in case it's wanted again) only ever had
   // 3-week blocks, never a "today" row, so it could never answer what this
   // page now needs. Sales Terminal (app/(workspace)/terminal/page.tsx) still
   // fetches metricsApi.team() on its own for the full historical view.
-  const [leads, metrics, activity, teamToday] = await Promise.all([
-    leadsApi.list(),
-    metricsApi.crm(),
-    metricsApi.activity(),
-    // Older backend without the per-person endpoint: skip the table rather than break the page.
-    metricsApi.teamToday().catch(() => null),
-  ]);
+  // The activity cards and the Team Today table are NOT fetched here any more: a server-side fetch carries only
+  // the shared API key (no user identity), and an admin must get the whole team while a rep gets only their own
+  // numbers (2026-11-13). Those two components fetch in the browser, with the signed-in user's token.
 
   return (
     <div>
@@ -49,50 +43,20 @@ export default async function TodayPage() {
         <ProblemDesk mentionedMeOnly />
       </div>
 
-      <MeetingReminderBanner leads={leads} />
+      {/* Only the banner needs the leads list, so only it waits; everything else on Today shows at once (2026-11-13). */}
+      <Suspense fallback={null}>
+        <ReminderBanner />
+      </Suspense>
 
-      <ActivityScroller data={activity} />
+      <ActivityScroller />
 
-      {teamToday && <TeamTodayTable data={teamToday} />}
-
-      {/* Stayed at 4 columns (not 5, despite 5 cards) -- user, 2026-10-15, screenshot: "data bahir ja rha
-          hai value k numbers card k" -- 5 narrower columns clipped a large value like "$29,590,500" past
-          the card's edge. .metric-val's 2.1rem bold font-size is shared by every MetricCard in the app, so
-          shrinking it site-wide to fit 5-up here risked breaking other pages; wrapping the 5th card
-          (Callbacks) onto its own row at this width keeps every card exactly as wide as before. */}
-      <div className="my-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <MetricCard
-          label="Pipeline Value"
-          value={currency(metrics.pipeline_value)}
-          sub={`Across ${num(metrics.active_opportunities)} opportunities`}
-        />
-        <MetricCard
-          label="Active Opportunities"
-          value={num(metrics.active_opportunities)}
-          sub={`${num(metrics.active_opportunities)} need attention`}
-        />
-        <MetricCard
-          label="Won This Month"
-          value={currency(metrics.won_this_month)}
-          sub="Closed 3D/CGI projects"
-        />
-        <MetricCard
-          label="Follow-ups Due"
-          value={num(metrics.followups_due)}
-          sub={metrics.followups_due > 0 ? "Ready for next touch" : "All caught up"}
-        />
-        {/* Split out of Pipeline Value/Active Opportunities above (user, 2026-10-15: "ab pipeline me nhi
-            count hon callbacks alag sy count hona chahiye ... ek diff card callbacks ka") -- same
-            hasOpenCallback() leads as the new Callbacks page, no longer folded into Pipeline's numbers. */}
-        <MetricCard
-          label="Callbacks"
-          value={currency(metrics.callback_value)}
-          sub={`${num(metrics.callback_count)} scheduled`}
-        />
-      </div>
-
-      <h2 className="mb-3 text-[1.35rem] font-semibold"><Ico e="🎯" /> Priority Outreach Items</h2>
-      <PriorityOutreachList initialLeads={leads} />
+      <TeamTodayTable />
     </div>
   );
+}
+
+async function ReminderBanner() {
+  // Only the meetings about to start (the banner's 6-hour window), not every lead.
+  const leads = await leadsApi.list({ scope: "reminders" });
+  return <MeetingReminderBanner leads={leads} />;
 }

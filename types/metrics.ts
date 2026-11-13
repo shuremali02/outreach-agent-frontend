@@ -82,9 +82,15 @@ export interface ActivityWindow {
   decision_maker: number;
   /** Meeting outcome "No Show" (2026-09-28) -- see app/crud/leads.py set_meeting_outcome(no_show=True). */
   no_shows: number;
+  /** Reminder "Mark Attempted" clicks (2026-11-12) -- see app/crud/call_events.py _count_slot_attempts. */
+  email_attempts: number;
+  callback_attempts: number;
   /** Org-wide total of individual phone numbers marked (2026-11-02) -- see app/models.py LeadPhoneMark.
    *  Distinct from "calls" above (companies/leads worked). Per-rep breakdown is TeamRow, not this. */
   numbers_called: number;
+  /** Of those, how many were marked good / wrong. */
+  numbers_good: number;
+  numbers_wrong: number;
 }
 
 export interface ActivityMetrics {
@@ -106,12 +112,16 @@ export interface LeadBreakdownRow {
   meetings: number;
   projects: number;
   emails: number;
+  /** Date-range (period) mode only: call outcomes marked in the range; 0 in the all-time view. */
+  calls: number;
 }
 
 /** GET /metrics/breakdown — Sales Terminal's country/category charts. */
 export interface LeadBreakdown {
   by_country: LeadBreakdownRow[];
   by_category: LeadBreakdownRow[];
+  /** true = the rows are what happened inside a date range (week / month), not all-time totals. */
+  period: boolean;
 }
 
 /** GET /status — drives the sidebar SYSTEM STATUS block. */

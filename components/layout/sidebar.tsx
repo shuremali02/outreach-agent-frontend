@@ -7,6 +7,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { NAV_ITEMS, SIDEBAR_TOGGLE } from "@/lib/constants";
 import { useMetrics } from "@/hooks/use-metrics";
 import { useMounted } from "@/hooks/use-mounted";
+import { useIsAdmin } from "@/hooks/use-is-admin";
 import { cn } from "@/lib/utils";
 import { Logo, LogoMark } from "./logo";
 import { SystemStatusPanel } from "./system-status";
@@ -81,6 +82,7 @@ export function Sidebar({
   const pathname = usePathname();
   const { data: metrics } = useMetrics(initialMetrics);
   const mounted = useMounted();
+  const isAdmin = useIsAdmin();
 
   // Open/close, remembered across visits (per browser). The server (and hydration) always renders it open,
   // then the stored choice applies, so the markup matches.
@@ -157,13 +159,15 @@ export function Sidebar({
         {NAV_ITEMS.map((item) => {
           const active = pathname === item.href;
           const count = badgeFor(item.badge);
+          // A rep gets the same page as "My Report": the weekly report with only their own numbers.
+          const label = item.href === "/terminal" && !isAdmin ? "My Report" : item.name;
           return (
             <Link
               key={item.href}
               href={item.href}
               onClick={closeMobileSidebar}
               aria-current={active ? "page" : undefined}
-              title={collapsed ? `${item.name}${count !== null ? ` (${count})` : ""}` : undefined}
+              title={collapsed ? `${label}${count !== null ? ` (${count})` : ""}` : undefined}
               className={cn(
                 // Colors still transition (hover/active feedback); padding does NOT -- instant, matching
                 // the <aside> above (2026-09-28: an animated collapse read as slow, user wants it immediate).
@@ -179,7 +183,7 @@ export function Sidebar({
               </span>
               {!collapsed && (
                 <span className="overflow-hidden whitespace-nowrap">
-                  {item.name}
+                  {label}
                   {count !== null && ` (${count})`}
                 </span>
               )}

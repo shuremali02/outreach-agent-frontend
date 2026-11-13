@@ -3,15 +3,14 @@
 import { useState } from "react";
 import { useAddNote, useEditNotes, useFullLead } from "@/hooks/use-leads";
 import { Button } from "@/components/ui/button";
-import { Field, Textarea } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 import { ApiRequestError } from "@/lib/api";
-import { MentionField } from "@/components/common/mention-field";
 import { useUsers } from "@/hooks/use-users";
 import { extractMentions } from "@/lib/mentions";
-import { MENTIONS } from "@/lib/constants";
 import type { Lead } from "@/types";
 import { NotesLog } from "@/components/leads/notes-log";
+import { NoteComposer } from "@/components/leads/note-composer";
 import { Ico } from "@/components/ui/emoji-icon";
 
 /**
@@ -97,24 +96,18 @@ export function NotesPanel({ lead: listLead }: { lead: Lead }) {
           </div>
         )
       )}
-      <Field label="Add a Note">
-        <MentionField rows={3} value={draft} onChange={setDraft} />
-        <p className="mt-1 text-[0.75rem] text-muted">{MENTIONS.hint}</p>
-      </Field>
-      <Button
-        variant="primary"
-        size="sm"
-        loading={addNote.isPending}
-        disabled={!draft.trim()}
-        onClick={() =>
+      <NoteComposer
+        leadId={lead.id}
+        value={draft}
+        onChange={setDraft}
+        adding={addNote.isPending}
+        onAdd={() =>
           addNote.mutate(
             { id: lead.id, text: draft, mention: extractMentions(draft, users) },
             { onSuccess: () => setDraft("") },
           )
         }
-      >
-        {addNote.isPending ? "Adding…" : "➕ Add Note"}
-      </Button>
+      />
       {/* "Open in Email App" temporarily commented out, not removed (user, 2026-10-21: "abhi k lye
           commentout krdo jab need ho gi tb dekh lyngy") -- a proper email feature is being built to
           replace this mailto: shortcut. Shared component (Pipeline/Contacts/Meetings popup all render

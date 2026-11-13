@@ -6,3 +6,4 @@ export { jobsApi } from "./jobs";
 export { authApi } from "./auth";
 export { notificationsApi } from "./notifications";
 export { pushApi } from "./push";
+export { voiceNotesApi } from "./voice-notes";

@@ -206,7 +206,7 @@ function NeedsFollowUpCard({ lead, calendarLink }: { lead: Lead; calendarLink: s
  * "followup_due" and may still carry an old meeting_at from a previous meeting.
  */
 export function NeedsFollowUpList({ initialLeads, calendarLink }: { initialLeads: Lead[]; calendarLink: string }) {
-  const { data: allLeads = [] } = useLeads({ includeMeetingHidden: true }, initialLeads);
+  const { data: allLeads = [] } = useLeads({ includeMeetingHidden: true, scope: "meetings" }, initialLeads);
   const scoped = useMemo(
     () =>
       allLeads.filter(

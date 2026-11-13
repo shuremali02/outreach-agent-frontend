@@ -20,7 +20,8 @@ export type FollowupContext =
   | "call_followup"
   | "callback"
   | "no_show_email_followup"
-  | "no_show_call_followup";
+  | "no_show_call_followup"
+  | "email_desk";
 
 function fields(lead: Lead, context: FollowupContext): FollowupSlot[] {
   switch (context) {
@@ -34,6 +35,8 @@ function fields(lead: Lead, context: FollowupContext): FollowupSlot[] {
       return lead.no_show_email_followup_slots;
     case "no_show_call_followup":
       return lead.no_show_call_followup_slots;
+    case "email_desk":
+      return lead.email_desk_slots;
   }
 }
 

@@ -99,6 +99,8 @@ const STAGE_BADGE: Record<string, { label: string; color: string }> = {
   no_show_email_followup_slot_escalated: { label: "No Show Email Follow-up Overdue", color: "var(--danger)" },
   no_show_call_followup_slot_due: { label: "No Show Call Follow-up Due", color: "var(--warn)" },
   no_show_call_followup_slot_escalated: { label: "No Show Call Follow-up Overdue", color: "var(--danger)" },
+  email_desk_slot_due: { label: "Email Follow-up Due", color: "var(--warn)" },
+  email_desk_slot_escalated: { label: "Email Follow-up Overdue", color: "var(--danger)" },
 };
 
 /**

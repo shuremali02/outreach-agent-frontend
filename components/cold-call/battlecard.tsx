@@ -1,6 +1,8 @@
 "use client";
 
-import { NotesLog } from "@/components/leads/notes-log";
+import { ChevronDown, ChevronUp, StickyNote } from "lucide-react";
+import { NotesLog, parseNotes } from "@/components/leads/notes-log";
+import { NoteComposer } from "@/components/leads/note-composer";
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useUpdateLead, useCallOutcome, useAddNote, useCallPickedBy } from "@/hooks/use-leads";
@@ -16,7 +18,6 @@ import { Loader } from "@/components/ui/loader";
 import { Input, Field } from "@/components/ui/input";
 import { EditLeadDialog } from "@/components/leads/edit-lead-dialog";
 import { ProposalReminderPrompt } from "@/components/pipeline/proposal-reminder-prompt";
-import { MentionField } from "@/components/common/mention-field";
 import { useUsers } from "@/hooks/use-users";
 import { extractMentions } from "@/lib/mentions";
 import { useConfirm } from "@/components/ui/confirm-dialog";
@@ -28,29 +29,19 @@ import {
 import {
   BATTLECARD,
   CLOSING_DISPOSITIONS,
-  MENTIONS,
   DISPOSITIONS,
   CALL_PICKED_BY,
   CALLBACK_BOOKING,
   EMAIL_SEND,
   LAST_TOUCH,
-  FALLBACK_OBJECTIONS,
   LEAD_SOURCE_LABELS,
   MEETING_BOOKING,
   TOASTS,
   countryLabel,
-  fallbackScript,
   linkedinOwnerLabel,
 } from "@/lib/constants";
 import type { CallOutcome, Lead } from "@/types";
 import { CategoryLabel, CountryFlag, Ico, withIcons } from "@/components/ui/emoji-icon";
-
-/** app.py:1874-1881 — the template used when phone_script is missing or < 15 chars. */
-function scriptFor(lead: Lead): string {
-  if (lead.phone_script && lead.phone_script.length >= 15) return lead.phone_script;
-  const first = (lead.contact_name || "there").split(" ")[0];
-  return fallbackScript(first, lead.company_name);
-}
 
 function EditContact({ lead }: { lead: Lead }) {
   const update = useUpdateLead();
@@ -117,6 +108,7 @@ function EditContact({ lead }: { lead: Lead }) {
 export function Battlecard({
   lead,
   onActionTaken,
+  onActionFailed,
   defaultOpen = true,
 }: {
   lead: Lead;
@@ -125,6 +117,9 @@ export function Battlecard({
    * gets clear feedback the click registered instead of the card just
    * sitting there unchanged. */
   onActionTaken?: (leadId: number) => void;
+  /** The background save failed after the card was already hidden (optimistic dispositions, 2026-11-12):
+   * the parent should show the lead again. */
+  onActionFailed?: (leadId: number) => void;
   /** Cold Call Desk's own cards stay open by default (unchanged). LinkedIn desk's don't (user, 2026-10-14:
    * "linkedin tab wali sari leads k card by default band rkho... sab ko open rkhny ki need nhi hai") --
    * see cold-call-view.tsx, which passes `channel !== "linkedin"`. */
@@ -135,14 +130,6 @@ export function Battlecard({
   const confirm = useConfirm();
   const record = useCallOutcome();
   const callPickedBy = useCallPickedBy();
-  const generate = useMutation({
-    mutationFn: () => enrichmentApi.generateBattlecard(lead.id),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["leads"] });
-      toast.success(TOASTS.battlecardReady(lead.company_name));
-    },
-    onError: (e) => toast.error(e instanceof Error ? e.message : TOASTS.actionFailed),
-  });
   // "Search Company LinkedIn (free)" -- same free-search-then-save pattern as the per-contact
   // "Find LinkedIn (free)" button (contacts-panel.tsx), but for the company's own page, not a person's.
   const findCompanyLinkedIn = useMutation({
@@ -180,7 +167,6 @@ export function Battlecard({
   // opens this lead can see what the previous call covered even if this one
   // doesn't get disposed with a note attached.
   const addNote = useAddNote();
-  const [objectionsOpen, setObjectionsOpen] = useState(false);
   // Used to be gated behind a click (contactsOpen) -- every card in the Call Desk queue renders fully
   // expanded, so HunterDecisionMakers firing its GET /leads/{id}/contacts on mount meant one request per
   // visible lead all at once (30 leads on screen, 30 parallel calls), same reasoning objectionsOpen below
@@ -251,22 +237,24 @@ export function Battlecard({
       if (!ok) return;
     }
     const label = DISPOSITIONS.find((d) => d.outcome === outcome)?.label ?? outcome;
-    record.mutate(
-      { id: lead.id, outcome, notes: note, mention: extractMentions(note, users) },
-      {
-        onSuccess: () => {
-          // Wrong Number gets its own message (it goes back to Contacts, not just "saved").
-          toast.success(
-            outcome === "wrong_number"
-              ? TOASTS.wrongNumberSent(lead.company_name)
-              : TOASTS.disposition(label, lead.company_name),
-          );
-          setNote("");
-          onActionTaken?.(lead.id);
-        },
-        onError: (e) => toast.error(e instanceof Error ? e.message : TOASTS.actionFailed),
-      },
+    // Optimistic (2026-11-12, user: show the stage change on screen at once and let the backend catch up --
+    // "jese hum ny notification k cross pr kya ha"): the card hides and the toast shows NOW, the request
+    // runs behind it, and a failure (via onFailed) brings the card back with the error.
+    record.mutate({ id: lead.id, outcome, notes: note, mention: extractMentions(note, users), onFailed: failed });
+    // Wrong Number gets its own message (it goes back to Contacts, not just "saved").
+    toast.success(
+      outcome === "wrong_number"
+        ? TOASTS.wrongNumberSent(lead.company_name)
+        : TOASTS.disposition(label, lead.company_name),
     );
+    setNote("");
+    onActionTaken?.(lead.id);
+  }
+
+  /** Background save failed after the card was hidden: say so and show the lead again. */
+  function failed(e: unknown) {
+    toast.error(e instanceof Error ? e.message : TOASTS.actionFailed);
+    onActionFailed?.(lead.id);
   }
 
   function confirmBooking() {
@@ -278,19 +266,15 @@ export function Battlecard({
         notes: note,
         mention: extractMentions(note, users),
         meetingAt: `${meetingDate}T${meetingTime}:00`,
-      },
-      {
-        onSuccess: () => {
-          toast.success(TOASTS.meetingBooked(lead.company_name));
-          setNote("");
-          setBookingPrompt(false);
-          setBooked(true);
-          onActionTaken?.(lead.id);
-          bookedTimer.current = setTimeout(() => setBooked(false), 4000);
-        },
-        onError: (e) => toast.error(e instanceof Error ? e.message : TOASTS.actionFailed),
+        onFailed: failed,
       },
     );
+    toast.success(TOASTS.meetingBooked(lead.company_name));
+    setNote("");
+    setBookingPrompt(false);
+    setBooked(true);
+    onActionTaken?.(lead.id);
+    bookedTimer.current = setTimeout(() => setBooked(false), 4000);
   }
 
   function cancelBooking() {
@@ -306,17 +290,13 @@ export function Battlecard({
         notes: note,
         mention: extractMentions(note, users),
         callbackAt: `${callbackDate}T${callbackTime}:00`,
-      },
-      {
-        onSuccess: () => {
-          toast.success(TOASTS.callbackScheduled(lead.company_name));
-          setNote("");
-          setCallbackPrompt(false);
-          onActionTaken?.(lead.id);
-        },
-        onError: (e) => toast.error(e instanceof Error ? e.message : TOASTS.actionFailed),
+        onFailed: failed,
       },
     );
+    toast.success(TOASTS.callbackScheduled(lead.company_name));
+    setNote("");
+    setCallbackPrompt(false);
+    onActionTaken?.(lead.id);
   }
 
   function cancelCallback() {
@@ -325,18 +305,11 @@ export function Battlecard({
 
   function onProposalScheduled() {
     const label = DISPOSITIONS.find((d) => d.outcome === "closed")?.label ?? "closed";
-    record.mutate(
-      { id: lead.id, outcome: "closed", notes: note, mention: extractMentions(note, users) },
-      {
-        onSuccess: () => {
-          toast.success(TOASTS.disposition(label, lead.company_name));
-          setNote("");
-          setProposalPrompt(false);
-          onActionTaken?.(lead.id);
-        },
-        onError: (e) => toast.error(e instanceof Error ? e.message : TOASTS.actionFailed),
-      },
-    );
+    record.mutate({ id: lead.id, outcome: "closed", notes: note, mention: extractMentions(note, users), onFailed: failed });
+    toast.success(TOASTS.disposition(label, lead.company_name));
+    setNote("");
+    setProposalPrompt(false);
+    onActionTaken?.(lead.id);
   }
 
   function cancelProposal() {
@@ -472,6 +445,19 @@ export function Battlecard({
               <div className="flex flex-wrap items-center gap-2">
                 <a
                   href={mailtoUrl(lead.contact_email, lead.subject, lead.body)}
+                  // The desk list is "slim" now (no email draft in the row), so the draft body is fetched only when
+                  // the rep actually clicks the address, then the mail app opens with it.
+                  onClick={async (e) => {
+                    if (!lead.slim) return;
+                    e.preventDefault();
+                    let body = lead.body;
+                    try {
+                      body = (await leadsApi.get(lead.id)).body;
+                    } catch {
+                      /* open the mail app without the draft rather than not at all */
+                    }
+                    window.location.href = mailtoUrl(lead.contact_email, lead.subject, body);
+                  }}
                   className="text-accent underline"
                 >
                   <Ico e="✉" /> {lead.contact_email}
@@ -508,48 +494,6 @@ export function Battlecard({
 
         {/* Battlecard column */}
         <div className="flex flex-col gap-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h4 className="text-[0.95rem] font-semibold">
-              {withIcons(BATTLECARD.scriptHeading)}
-            </h4>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => generate.mutate()}
-              loading={generate.isPending}
-            >
-              {withIcons(generate.isPending ? BATTLECARD.generatingBattlecard : BATTLECARD.generateBattlecard)}
-            </Button>
-          </div>
-          {generate.isError && (
-            <p className="text-[0.8rem] text-danger">
-              {withIcons(generate.error instanceof Error ? generate.error.message : BATTLECARD.generateFailed)}
-            </p>
-          )}
-          <p
-            className="rounded-[8px] bg-tag px-4 py-3 text-[0.95rem] leading-[1.55]"
-            style={{ border: "1.5px solid var(--accent)" }}
-          >
-            “{scriptFor(lead)}”
-          </p>
-
-          <div>
-            <button
-              type="button"
-              onClick={() => setObjectionsOpen((v) => !v)}
-              className="cursor-pointer text-[0.85rem] font-semibold text-muted hover:text-accent"
-            >
-              {withIcons(BATTLECARD.objectionsHeading)}
-            </button>
-            {objectionsOpen && (
-              <div className="mt-2 whitespace-pre-line rounded-[8px] bg-input px-4 py-3 text-[0.85rem] leading-relaxed">
-                {lead.objection_notes && lead.objection_notes.length >= 15
-                  ? lead.objection_notes
-                  : FALLBACK_OBJECTIONS}
-              </div>
-            )}
-          </div>
-
           {/* "Call picked by" -- structure-plan.md Phase 3. Tag only: no stage change, no queue move.
               One shared mutation for all 3 buttons -- spinner only on the one actually clicked
               (callPickedBy.variables), `disabled` still blocks the others while it's in flight (a rep
@@ -582,70 +526,52 @@ export function Battlecard({
               <button
                 type="button"
                 onClick={() => setNotesOpen((v) => !v)}
-                className="cursor-pointer text-left text-[0.85rem] font-semibold text-muted hover:text-accent"
+                aria-expanded={notesOpen}
+                className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-[0.82rem] font-semibold text-muted transition-colors hover:border-accent hover:text-accent"
               >
-                {withIcons(notesOpen ? BATTLECARD.hideNotes : BATTLECARD.showNotes)}
+                <StickyNote className="h-4 w-4" aria-hidden />
+                Notes ({parseNotes(lead.notes).length})
+                {notesOpen ? <ChevronUp className="h-4 w-4" aria-hidden /> : <ChevronDown className="h-4 w-4" aria-hidden />}
               </button>
-              {notesOpen && (
-                <NotesLog notes={lead.notes} className="mt-1.5" />
-              )}
+              {notesOpen && <NotesLog notes={lead.notes} className="mt-2" />}
             </div>
           )}
 
-          <Field
-            label={
-              <span className="flex items-center justify-between gap-2">
-                {withIcons(BATTLECARD.noteLabel)}
-                {/* Opens the full edit form in a popup right here, so structured fields -- an email
-                    given verbally on the call, for example -- get saved properly instead of typed into
-                    this notes box. structure-plan.md Phase 3; popup instead of a new tab per the user
-                    ("dusry tab pr na lekr jaye, wohin popup ho"). */}
-                <EditLeadDialog
-                  lead={lead}
-                  trigger={
-                    <button
-                      type="button"
-                      className="cursor-pointer text-[0.75rem] font-semibold text-accent underline"
-                    >
-                      <Ico e="✏" /> Edit
-                    </button>
-                  }
-                />
-              </span>
-            }
-          >
-            <div className="flex gap-2">
-              <div className="min-w-0 flex-1">
-                <MentionField
-                  value={note}
-                  onChange={setNote}
-                  placeholder={BATTLECARD.notePlaceholder}
-                  maxLength={4000}
-                />
-              </div>
-              <Button
-                variant="secondary"
-                size="sm"
-                loading={addNote.isPending}
-                disabled={!note.trim()}
-                onClick={() =>
-                  addNote.mutate(
-                    { id: lead.id, text: note, mention: extractMentions(note, users) },
-                    {
-                      onSuccess: () => {
-                        setNote("");
-                        toast.success(TOASTS.noteAdded(lead.company_name));
-                      },
-                      onError: (e) => toast.error(e instanceof Error ? e.message : TOASTS.actionFailed),
-                    },
-                  )
+          {/* Text + voice note in one composer, the same one the Notes panel uses (2026-11-13). The text is also
+              sent with whichever call outcome is clicked below, which is why it lives in this card's state. */}
+          <NoteComposer
+            leadId={lead.id}
+            title={BATTLECARD.noteLabel}
+            placeholder={BATTLECARD.notePlaceholder}
+            value={note}
+            onChange={setNote}
+            adding={addNote.isPending}
+            headerAction={
+              // Opens the full edit form in a popup right here, so structured fields -- an email given verbally on
+              // the call, for example -- get saved properly instead of typed into this notes box (structure-plan.md
+              // Phase 3; popup instead of a new tab per the user).
+              <EditLeadDialog
+                lead={lead}
+                trigger={
+                  <button type="button" className="cursor-pointer text-[0.75rem] font-semibold text-accent underline">
+                    <Ico e="✏" /> Edit
+                  </button>
                 }
-              >
-                {withIcons(addNote.isPending ? "Adding…" : BATTLECARD.addNote)}
-              </Button>
-            </div>
-            <p className="mt-1 text-[0.75rem] text-muted">{MENTIONS.hint}</p>
-          </Field>
+              />
+            }
+            onAdd={() =>
+              addNote.mutate(
+                { id: lead.id, text: note, mention: extractMentions(note, users) },
+                {
+                  onSuccess: () => {
+                    setNote("");
+                    toast.success(TOASTS.noteAdded(lead.company_name));
+                  },
+                  onError: (e) => toast.error(e instanceof Error ? e.message : TOASTS.actionFailed),
+                },
+              )
+            }
+          />
           {addNote.isError && (
             <p className="text-[0.8rem] text-danger">
               {withIcons(addNote.error instanceof Error ? addNote.error.message : BATTLECARD.addNoteFailed)}

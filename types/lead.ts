@@ -162,6 +162,8 @@ export interface Lead {
   /** No Show's own Email/Call trackers (2026-10-19), same per-slot shape as above. */
   no_show_email_followup_slots: FollowupSlot[];
   no_show_call_followup_slots: FollowupSlot[];
+  /** Email Desk's own reminder slots (2026-11-12). */
+  email_desk_slots: FollowupSlot[];
   /**
    * true on a row from the slim list (GET /leads?slim=1, what every page but Cold Call Desk loads):
    * body, phone_script, objection_notes, product_description, qualification_notes and discovery_citations
@@ -286,6 +288,10 @@ export interface LeadFilters {
    * that every other query (and Contacts itself with no q) still never sees -- user: "sari leads ajayen
    * hamary pass kisi bhi stage mein ho woh search karne par dikh jaye". No-op without a `q`. */
   searchAllStages?: boolean;
+  /** The page's OWN slice, filtered by the backend (2026-11-13) instead of fetching every lead and discarding most
+   *  in the browser: "pipeline" | "callbacks" | "won" (Projects) | "meetings" | "reminders" (Today's banner).
+   *  See crud/leads.py _lead_filters() -- each rule mirrors what that page used to filter itself. */
+  scope?: "pipeline" | "callbacks" | "won" | "meetings" | "reminders";
   /** Cold Call Desk's "Already Tried" dropdown (2026-10-01): "no_answer" is its own on-demand group
    * (excluded from the default desk+tried:false fetch once anything asks for this bucket); "not_interested"
    * bypasses the hidden_at filter server-side, restricted to exactly that outcome -- Dead Line is never

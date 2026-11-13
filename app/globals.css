@@ -519,3 +519,48 @@ body {
 main {
   overflow-wrap: break-word;
 }
+
+/* Skeleton placeholders (components/ui/skeleton.tsx) and the top loading line (components/layout/fetch-bar.tsx),
+   2026-11-13. */
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--input) 25%,
+    color-mix(in srgb, var(--border) 65%, var(--input)) 40%,
+    var(--input) 55%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes fetch-bar-slide {
+  0% {
+    transform: translateX(-110%);
+  }
+  100% {
+    transform: translateX(260%);
+  }
+}
+
+.fetch-bar-slide {
+  animation: fetch-bar-slide 1.1s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+  .fetch-bar-slide {
+    animation: none;
+    width: 100%;
+  }
+}

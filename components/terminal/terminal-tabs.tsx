@@ -7,7 +7,6 @@ import { TabButton } from "@/components/common/tab-button";
 // uncomment every "SHEET TAB" block here and in app/(workspace)/terminal/page.tsx.
 // import { TerminalView } from "@/components/terminal/terminal-view";
 import { TEAM_ACTIVITY } from "@/lib/constants";
-import type { TeamWeeks } from "@/types";
 // import type { TeamMetrics } from "@/types"; // SHEET TAB
 import { withIcons } from "@/components/ui/emoji-icon";
 
@@ -15,13 +14,7 @@ import { withIcons } from "@/components/ui/emoji-icon";
  * Sales Terminal: the CRM-backed Weekly Report. The original Google Sheet history tab is commented out
  * (2026-11-07) -- see the SHEET TAB blocks below.
  */
-export function TerminalTabs({
-  weeks,
-  // sheet, // SHEET TAB
-}: {
-  weeks: TeamWeeks | null;
-  // sheet: TeamMetrics | null; // SHEET TAB
-}) {
+export function TerminalTabs(/* { sheet }: { sheet: TeamMetrics | null } SHEET TAB */) {
   return (
     <Tabs.Root defaultValue="weekly">
       <Tabs.List className="mb-5 flex gap-2">
@@ -31,7 +24,7 @@ export function TerminalTabs({
         */}
       </Tabs.List>
       <Tabs.Content value="weekly">
-        {weeks ? <WeeklyReport initialData={weeks} /> : <p className="text-muted">{withIcons(TEAM_ACTIVITY.sheetUnavailable)}</p>}
+        <WeeklyReport />
       </Tabs.Content>
       {/* SHEET TAB
       <Tabs.Content value="sheet">

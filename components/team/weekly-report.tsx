@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useState } from "react";
+import { MyStatsGrid } from "@/components/team/my-stats";
 import { TeamTable } from "@/components/team/team-table";
 import { LeadBreakdownCharts } from "@/components/terminal/lead-breakdown-charts";
 import { Field, Select } from "@/components/ui/input";
@@ -10,8 +11,11 @@ import { metricsApi } from "@/lib/api";
 import { DISPOSITIONS, STAGE_LABELS, TEAM_ACTIVITY } from "@/lib/constants";
 import { activityTime, num } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { useIsAdmin } from "@/hooks/use-is-admin";
 import { useUsers } from "@/hooks/use-users";
-import type { ActivityFeedItem, PipelineStage, TeamWeeks } from "@/types";
+import { BarLoader } from "@/components/ui/loader";
+import { Skeleton } from "@/components/ui/skeleton";
+import type { ActivityFeedItem, PipelineStage } from "@/types";
 import { stripEmoji, withIcons } from "@/components/ui/emoji-icon";
 
 /** A "month" here is a block of 4 weeks (not a calendar month) -- see WeeklyReport below. */
@@ -23,6 +27,7 @@ function describe(item: ActivityFeedItem): string {
   if (item.event_type === "call_outcome") return OUTCOME_LABELS[item.outcome ?? ""] ?? item.outcome ?? "Call";
   if (item.event_type === "email_sent") return TEAM_ACTIVITY.event.email_sent;
   if (item.event_type === "note_added") return TEAM_ACTIVITY.event.note_added;
+  if (item.event_type === "meeting_added") return TEAM_ACTIVITY.event.meeting_added;
   if (item.event_type === "stage_change") {
     return TEAM_ACTIVITY.event.stage_change(STAGE_LABELS[item.outcome as PipelineStage] ?? item.outcome ?? "");
   }
@@ -42,7 +47,7 @@ function fmtRange(start: string, end: string): string {
  * revised moments later in the same conversation to "50 nahi, last 10 dekha dete hain") -- was always
  * rendering immediately, 100 rows deep, the moment Sales Terminal loaded.
  */
-function ActivityFeed() {
+function ActivityFeed({ isAdmin }: { isAdmin: boolean }) {
   const [open, setOpen] = useState(false);
   const [person, setPerson] = useState<string>("all");
   const { data: users = [] } = useUsers();
@@ -70,7 +75,8 @@ function ActivityFeed() {
       </button>
       {open && (
         <>
-          <div className="mb-3 mt-3 flex flex-wrap items-end justify-end gap-3">
+          {/* The "show activity for" person filter is for admins; the backend gives a rep only their own anyway. */}
+          <div className={cn("mb-3 mt-3 flex-wrap items-end justify-end gap-3", isAdmin ? "flex" : "hidden")}>
             <Field label={TEAM_ACTIVITY.feedFilter} className="w-56">
               <Select value={person} onChange={(e) => setPerson(e.target.value)}>
                 <option value="all">{stripEmoji(TEAM_ACTIVITY.allPeople)}</option>
@@ -112,14 +118,33 @@ function ActivityFeed() {
  * a row per person for the chosen week, how the team's calls moved vs the week before, and the
  * Recent Activity feed underneath.
  */
-export function WeeklyReport({ initialData }: { initialData: TeamWeeks }) {
-  const { data = initialData } = useQuery({
+export function WeeklyReport() {
+  // Fetched in the browser so the backend knows who is asking: an admin gets the whole team, a rep only their own
+  // numbers ("My Report"), and the lead ratio / connectivity charts are admin-only.
+  const isAdmin = useIsAdmin();
+  const { data, isError } = useQuery({
     queryKey: ["team-weeks"],
     queryFn: metricsApi.teamWeeks,
-    initialData,
     refetchInterval: 60_000,
+    // Refresh on coming back to the tab / opening the page too (2026-11-13), not only every 60 s: someone who just
+    // booked a meeting then looks at Today sees it at once. Cheap -- the backend answers from a cache that every
+    // write clears (app/services/stats_cache.py).
+    refetchOnWindowFocus: true,
+    staleTime: 10_000,
   });
   const [picked, setPicked] = useState<number | null>(null);
+
+  if (!data) {
+    return isError ? (
+      <p className="text-muted">{withIcons(TEAM_ACTIVITY.sheetUnavailable)}</p>
+    ) : (
+      <div role="status" aria-live="polite" className="flex flex-col gap-4">
+        <BarLoader />
+        <Skeleton className="h-8 w-72 max-w-full" />
+        <Skeleton className="h-48 rounded-[12px]" />
+      </div>
+    );
+  }
 
   if (!data.started) {
     return (
@@ -127,8 +152,8 @@ export function WeeklyReport({ initialData }: { initialData: TeamWeeks }) {
         <p className="rounded-[8px] px-3 py-2 text-[0.9rem]" style={{ background: "var(--info-tint)", color: "var(--info)" }}>
           {withIcons(TEAM_ACTIVITY.weekNotStarted(fmtRange(data.week1_start, data.week1_start).split(" to ")[0]))}
         </p>
-        <LeadBreakdownCharts />
-        <ActivityFeed />
+        {isAdmin && <LeadBreakdownCharts weeks={data.weeks} />}
+        <ActivityFeed isAdmin={isAdmin} />
       </>
     );
   }
@@ -223,7 +248,12 @@ export function WeeklyReport({ initialData }: { initialData: TeamWeeks }) {
               {week.calls_change !== null && ` · ${TEAM_ACTIVITY.callsChange(week.calls_change)}`}
             </span>
           </div>
-          <TeamTable rows={week.rows} total={week.total} />
+          {isAdmin ? (
+            <TeamTable rows={week.rows} total={week.total} />
+          ) : (
+            // A rep's own week as tiles (no wide, sideways-scrolling table).
+            <MyStatsGrid stats={week.rows[0] ?? week.total} />
+          )}
         </>
       )}
 
@@ -235,8 +265,8 @@ export function WeeklyReport({ initialData }: { initialData: TeamWeeks }) {
         </p>
       )}
 
-      <LeadBreakdownCharts />
-      <ActivityFeed />
+      {isAdmin && <LeadBreakdownCharts weeks={data.weeks} />}
+      <ActivityFeed isAdmin={isAdmin} />
     </>
   );
 }

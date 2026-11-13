@@ -2,7 +2,7 @@
 
 import { celebrate } from "@/components/ui/celebration-host";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { leadsApi } from "@/lib/api";
+import { leadsApi, voiceNotesApi } from "@/lib/api";
 import type { MentionPayload } from "@/lib/mentions";
 import type { CallOutcome, Lead, LeadFilters, UpdateLeadInput } from "@/types";
 
@@ -29,6 +29,8 @@ export function leadsKey(filters: LeadFilters = {}) {
     // smaller page's cached 100 rows.
     filters.limit ?? null,
     filters.offset ?? null,
+    // A page's own scoped slice is a different list from the unscoped one -- its own cache entry.
+    filters.scope ?? null,
   ] as const;
 }
 
@@ -117,6 +119,10 @@ function useInvalidate() {
       qc.setQueriesData<Lead[]>({ queryKey: ["leads"] }, (old) =>
         old ? old.map((l) => (l.id === updated.id ? updated : l)) : old,
       );
+      // Pages now hold only THEIR slice of the leads (scope), so a lead whose stage just changed may belong in a
+      // slice that is not cached yet / is cached without it. Patching in place cannot ADD it, so mark every list
+      // stale (no refetch of what is on screen): the next page you open fetches fresh.
+      qc.invalidateQueries({ queryKey: ["leads"], refetchType: "none" });
     } else {
       qc.invalidateQueries({ queryKey: ["leads"] });
     }
@@ -179,8 +185,14 @@ export function useCallOutcome() {
     }: {
       id: number; outcome: CallOutcome; notes?: string; meetingAt?: string; mention?: MentionPayload;
       callbackAt?: string;
+      /** Optimistic callers (Cold Call Desk, 2026-11-12) show the result at once and run the request in
+       * the background; this is how they hear it failed and put the card back. Passed through variables and
+       * invoked from the HOOK-level onError below, because a per-call mutate() callback never fires once the
+       * card that called it has unmounted (the card is hidden the moment the click happens). */
+      onFailed?: (error: unknown) => void;
     }) => leadsApi.recordOutcome(id, outcome, notes ?? "", meetingAt, mention, callbackAt),
     onSuccess: invalidate,
+    onError: (error, vars) => vars.onFailed?.(error),
   });
 }
 
@@ -293,7 +305,7 @@ export function useScheduleSlot() {
       assignedToTeam,
     }: {
       id: number;
-      context: "email_followup" | "call_followup" | "callback" | "no_show_email_followup" | "no_show_call_followup";
+      context: "email_followup" | "call_followup" | "callback" | "no_show_email_followup" | "no_show_call_followup" | "email_desk";
       index: number;
       scheduledAt: string;
       assignedToUserId?: number | null;
@@ -312,7 +324,7 @@ export function useMarkSlotAttempted() {
       index,
     }: {
       id: number;
-      context: "email_followup" | "call_followup" | "callback" | "no_show_email_followup" | "no_show_call_followup";
+      context: "email_followup" | "call_followup" | "callback" | "no_show_email_followup" | "no_show_call_followup" | "email_desk";
       index: number;
     }) => leadsApi.markSlotAttempted(id, context, index),
     onSuccess: invalidate,
@@ -328,7 +340,7 @@ export function useUnmarkSlotAttempted() {
       index,
     }: {
       id: number;
-      context: "email_followup" | "call_followup" | "callback" | "no_show_email_followup" | "no_show_call_followup";
+      context: "email_followup" | "call_followup" | "callback" | "no_show_email_followup" | "no_show_call_followup" | "email_desk";
       index: number;
     }) => leadsApi.unmarkSlotAttempted(id, context, index),
     onSuccess: invalidate,
@@ -355,6 +367,25 @@ export function useEditNotes() {
 }
 
 /** "➕ Add Note" -- always appends server-side, see lib/api/leads.ts addNote(). */
+/** Voice note: upload the recorded audio; the answer is the updated lead (its notes now hold the marker line). */
+export function useUploadVoiceNote() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: ({ id, blob, durationMs }: { id: number; blob: Blob; durationMs: number }) =>
+      voiceNotesApi.upload(id, blob, durationMs),
+    onSuccess: invalidate,
+  });
+}
+
+/** Delete a voice note: the answer is the updated lead without the note's line, patched into every cached list. */
+export function useDeleteVoiceNote() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (id: number) => voiceNotesApi.remove(id),
+    onSuccess: invalidate,
+  });
+}
+
 export function useAddNote() {
   const invalidate = useInvalidate();
   return useMutation({

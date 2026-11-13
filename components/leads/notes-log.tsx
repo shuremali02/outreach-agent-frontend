@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Check, Copy } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { VoiceNotePlayer } from "@/components/leads/voice-note-player";
 
 /**
  * Readable timeline for a lead's notes (user, 2026-11-11: the raw "[Oct 02, 17:24 Ali] text" blob "vague sa
@@ -116,6 +117,32 @@ function Linkified({ text }: { text: string }) {
   );
 }
 
+// A voice note's marker line (written by the backend, crud/voice_notes.py): "🎙 Voice note (0:42) [vn:12]".
+const VOICE_RE = /\u{1F399}?\s*Voice note \((\d+):(\d{2})\)\s*\[vn:(\d+)\]/u;
+
+function NoteBody({ body }: { body: string }) {
+  if (!body) return null;
+  const m = VOICE_RE.exec(body);
+  if (m) {
+    const rest = body.replace(VOICE_RE, "").trim();
+    return (
+      <>
+        <VoiceNotePlayer id={Number(m[3])} durationSec={Number(m[1]) * 60 + Number(m[2])} />
+        {rest && (
+          <p className="mt-0.5 whitespace-pre-line break-words text-[0.88rem] leading-snug">
+            <Linkified text={rest} />
+          </p>
+        )}
+      </>
+    );
+  }
+  return (
+    <p className="mt-0.5 whitespace-pre-line break-words text-[0.88rem] leading-snug">
+      <Linkified text={body} />
+    </p>
+  );
+}
+
 export function NotesLog({ notes, className }: { notes: string; className?: string }) {
   const entries = parseNotes(notes);
   if (entries.length === 0) return null;
@@ -135,11 +162,7 @@ export function NotesLog({ notes, className }: { notes: string; className?: stri
               </span>
             )}
           </div>
-          {e.body && (
-            <p className="mt-0.5 whitespace-pre-line break-words text-[0.88rem] leading-snug">
-              <Linkified text={e.body} />
-            </p>
-          )}
+          <NoteBody body={e.body} />
         </li>
       ))}
     </ol>

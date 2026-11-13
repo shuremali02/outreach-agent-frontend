@@ -149,7 +149,7 @@ function MeetingEntry({ lead, isToday }: { lead: Lead; isToday?: boolean }) {
 export function MeetingsCalendar({ initialLeads }: { initialLeads: Lead[] }) {
   // Phone: one entry per day, the rest behind "+N more" (user, 2026-11-11). Desktop still shows 2.
   const perDay = useIsMobile() ? 1 : 2;
-  const { data: allLeads = [] } = useLeads({ includeMeetingHidden: true }, initialLeads);
+  const { data: allLeads = [] } = useLeads({ includeMeetingHidden: true, scope: "meetings" }, initialLeads);
   // A lead can reach meeting_booked without a time (e.g. dragged there
   // directly via the Pipeline stage dropdown) -- those simply don't render
   // on the grid, which is correct: there is nowhere to put them.

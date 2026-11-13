@@ -4,6 +4,9 @@ export interface AuthUser {
   email: string;
   name: string;
   avatar_url: string;
+  /** On the backend's ADMIN_EMAILS list (or everybody while that list is empty). Only decides what the UI
+   *  shows; the backend enforces it. Missing on a session saved before this field existed. */
+  is_admin?: boolean;
 }
 
 export interface AuthConfig {
@@ -42,6 +45,9 @@ export interface TeamRow {
   decision_maker: number;
   /** Meeting outcome "No Show" (2026-09-28) -- see app/crud/leads.py set_meeting_outcome(no_show=True). */
   no_shows: number;
+  /** Reminder "Mark Attempted" clicks (2026-11-12) -- see app/crud/call_events.py _count_slot_attempts. */
+  email_attempts: number;
+  callback_attempts: number;
   /** Per-NUMBER activity (2026-11-02, see app/models.py LeadPhoneMark) -- "calls" above counts
    *  companies/leads worked, this counts individual phone numbers marked. numbers_called =
    *  numbers_good + numbers_wrong. */

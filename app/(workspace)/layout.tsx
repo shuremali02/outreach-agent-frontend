@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { Sidebar } from "@/components/layout/sidebar";
+import { FetchBar } from "@/components/layout/fetch-bar";
 import { TopBar } from "@/components/layout/top-bar";
 import { metricsApi } from "@/lib/api";
 import type { CrmMetrics, SystemStatus } from "@/types";
@@ -23,6 +24,7 @@ export default async function WorkspaceLayout({ children }: LayoutProps<"/">) {
 
   return (
     <div className="flex h-dvh overflow-hidden bg-bg">
+      <FetchBar />
       <Sidebar initialMetrics={metrics} initialStatus={status} />
       <div className="flex min-w-0 flex-1 flex-col">
         <Suspense fallback={<div className="h-[53px] border-b border-border" />}>
